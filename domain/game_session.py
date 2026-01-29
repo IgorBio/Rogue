@@ -1,11 +1,12 @@
 """
 Game session management and core game loop logic.
 
-REFACTORING NOTE (Step 1.5):
-- Integrated PositionSynchronizer for 2D ↔ 3D coordinate synchronization
-- Updated toggle_rendering_mode() to use synchronizer
-- Updated movement handlers to use synchronizer
-- Ensures type-safe coordinate handling
+REFACTORING NOTE (Step 2.1):
+- Replaced boolean flags (game_over, victory, player_asleep) with StateMachine
+- All state management now goes through state_machine.transition_to()
+- Added helper properties for backward compatibility during refactoring
+- State is now explicit and type-safe
+- Integrated position synchronizer for 2D ↔ 3D coordinate synchronization
 """
 
 from domain.level_generator import generate_level, spawn_emergency_healing
@@ -13,6 +14,7 @@ from domain.entities.character import Character
 from domain.fog_of_war import FogOfWar
 from domain.dynamic_difficulty import DifficultyManager
 from domain.services.position_synchronizer import PositionSynchronizer
+from domain.services.game_states import GameState, StateMachine
 from utils.constants import LEVEL_COUNT, EnemyType, ItemType
 from utils.raycasting import Camera
 from utils.camera_controller import CameraController
@@ -43,19 +45,19 @@ class GameSession:
         level: Current Level instance
         character: Player Character instance
         fog_of_war: FogOfWar instance
-        game_over (bool): Whether the game has ended
-        victory (bool): Whether the player won
         message (str): Current message to display
         death_reason (str): Cause of death if game over
-        player_asleep (bool): Whether player is sleeping (snake mage effect)
         pending_selection: Pending item selection data
         rendering_mode (str): Current rendering mode ('2d' or '3d')
         camera: Camera instance for 3D mode
         camera_controller: CameraController instance for 3D mode
         difficulty_manager: DifficultyManager instance
         stats: Statistics instance
-    NEW in Step 1.5:
-        position_sync: PositionSynchronizer for coordinate sync between Character and Camera
+        state_machine: StateMachine for explicit state management
+        position_sync: PositionSynchronizer for coordinate sync
+    
+    NEW in Step 2.1:
+        state_machine: Replaces game_over, victory, player_asleep flags
     """
     
     def __init__(self, test_mode=False, test_level=1, test_fog_of_war=False):
@@ -78,18 +80,18 @@ class GameSession:
         self.level = None
         self.character = None
         self.fog_of_war = None
-        self.game_over = False
-        self.victory = False
         self.message = ""
         self.death_reason = ""
-        self.player_asleep = False
         self.pending_selection = None
         
         self.rendering_mode = '2d'
         self.camera = None
         self.camera_controller = None
 
-        # NEW: Position synchronizer for 2D ↔ 3D coordinate sync
+        # NEW: State machine for explicit state management (Step 2.1)
+        self.state_machine = StateMachine()
+        
+        # Position synchronizer for 2D ↔ 3D coordinate sync
         self.position_sync = PositionSynchronizer(center_offset=0.5)
         
         self.difficulty_manager = DifficultyManager()
@@ -98,6 +100,99 @@ class GameSession:
         self.stats = Statistics()
         
         self._generate_new_level()
+        
+        # Transition to PLAYING after initialization
+        self.state_machine.transition_to(GameState.PLAYING)
+    
+    # ============================================================================
+    # BACKWARD COMPATIBILITY PROPERTIES (During refactoring transition)
+    # ============================================================================
+    
+    @property
+    def game_over(self) -> bool:
+        """Check if game is over (died). Uses state machine."""
+        return self.state_machine.is_game_over()
+    
+    @game_over.setter
+    def game_over(self, value: bool) -> None:
+        """Set game over state (for backward compatibility)."""
+        if value and not self.state_machine.is_game_over():
+            if not self.state_machine.is_victory():
+                self.state_machine.transition_to(GameState.GAME_OVER)
+    
+    @property
+    def victory(self) -> bool:
+        """Check if game is won. Uses state machine."""
+        return self.state_machine.is_victory()
+    
+    @victory.setter
+    def victory(self, value: bool) -> None:
+        """Set victory state (for backward compatibility)."""
+        if value and not self.state_machine.is_victory():
+            if not self.state_machine.is_game_over():
+                self.state_machine.transition_to(GameState.VICTORY)
+    
+    @property
+    def player_asleep(self) -> bool:
+        """Check if player is asleep. Uses state machine."""
+        return self.state_machine.is_asleep()
+    
+    @player_asleep.setter
+    def player_asleep(self, value: bool) -> None:
+        """Set asleep state (for backward compatibility)."""
+        if value and not self.state_machine.is_asleep():
+            self.state_machine.transition_to(GameState.PLAYER_ASLEEP)
+        elif not value and self.state_machine.is_asleep():
+            self.state_machine.transition_to(GameState.PLAYING)
+    
+    # ============================================================================
+    # STATE MACHINE METHODS
+    # ============================================================================
+    
+    def set_game_over(self, reason: str = "") -> None:
+        """Set game over state with optional death reason.
+        
+        Args:
+            reason: Cause of death
+        """
+        self.death_reason = reason
+        self.state_machine.transition_to(GameState.GAME_OVER)
+        self.stats.record_game_end(self.character, victory=False)
+    
+    def set_victory(self) -> None:
+        """Set victory state (won the game)."""
+        self.state_machine.transition_to(GameState.VICTORY)
+        self.stats.record_game_end(self.character, victory=True)
+    
+    def set_player_asleep(self) -> None:
+        """Put player to sleep (snake mage effect)."""
+        self.state_machine.transition_to(GameState.PLAYER_ASLEEP)
+    
+    def wake_player(self) -> None:
+        """Wake player from sleep."""
+        if self.state_machine.is_asleep():
+            self.state_machine.transition_to(GameState.PLAYING)
+    
+    def request_item_selection(self) -> None:
+        """Transition to item selection state."""
+        self.state_machine.transition_to(GameState.ITEM_SELECTION)
+    
+    def return_from_selection(self) -> None:
+        """Return to playing from item selection."""
+        if self.state_machine.is_waiting_for_selection():
+            self.state_machine.transition_to(GameState.PLAYING)
+    
+    def begin_level_transition(self) -> None:
+        """Begin level transition."""
+        self.state_machine.transition_to(GameState.LEVEL_TRANSITION)
+    
+    def complete_level_transition(self) -> None:
+        """Complete level transition, return to playing."""
+        self.state_machine.transition_to(GameState.PLAYING)
+    
+    # ============================================================================
+    # CORE GAME METHODS
+    # ============================================================================
     
     def _generate_new_level(self):
         """Generate a new level and place the character."""
@@ -221,10 +316,16 @@ class GameSession:
             bool: Whether the action was successful
         """
         
-        if self.player_asleep:
+        # Check if player is asleep
+        if self.state_machine.is_asleep():
             self.message = "You are asleep and cannot act this turn!"
-            self.player_asleep = False
+            self.state_machine.transition_to(GameState.PLAYING)
             self._process_enemy_turns()
+            return False
+        
+        # Check if game is over
+        if self.state_machine.is_terminal():
+            self.message = "Game is over!"
             return False
         
         self.message = ""
@@ -249,7 +350,7 @@ class GameSession:
         elif action_type == InputHandler.ACTION_USE_SCROLL:
             return self._request_scroll_selection()
         elif action_type == InputHandler.ACTION_QUIT:
-            self.game_over = True
+            self.set_game_over("Game quit by player")
             self.message = "Game quit by player."
             return True
         elif action_type == InputHandler.ACTION_NONE:
@@ -293,7 +394,7 @@ class GameSession:
         elif action_type == InputHandler3D.ACTION_USE_SCROLL:
             return self._request_scroll_selection()
         elif action_type == InputHandler3D.ACTION_QUIT:
-            self.game_over = True
+            self.set_game_over("Game quit by player")
             self.message = "Game quit by player."
             return True
         elif action_type == InputHandler3D.ACTION_NONE:
@@ -370,7 +471,7 @@ class GameSession:
             if result['killed'] and result.get('treasure'):
                 self.stats.record_enemy_defeated(result['treasure'])
             
-            if not self.game_over:
+            if not self.state_machine.is_terminal():
                 self._process_enemy_turns()
         
         return success
@@ -448,7 +549,7 @@ class GameSession:
                     if pickup_message:
                         self.message += " | " + pickup_message
             
-            if not self.game_over:
+            if not self.state_machine.is_terminal():
                 self._process_enemy_turns()
             
             return combat_result
@@ -456,7 +557,7 @@ class GameSession:
         enemy = self._get_revealed_enemy_at(new_x, new_y)
         if enemy:
             combat_result = self._handle_combat(enemy)
-            if combat_result and not self.game_over:
+            if combat_result and not self.state_machine.is_terminal():
                 self._process_enemy_turns()
             return combat_result
         
@@ -566,7 +667,7 @@ class GameSession:
                             combat_messages.append(f"Vampire stole {special_effects['health_steal']} max health!")
                         
                         if special_effects['sleep']:
-                            self.player_asleep = True
+                            self.set_player_asleep()
                             combat_messages.append("Snake Mage puts you to sleep!")
                         
                         if special_effects['counterattack']:
@@ -575,9 +676,7 @@ class GameSession:
                     handle_post_attack(enemy, result)
                     
                     if result['killed']:
-                        self.game_over = True
-                        self.death_reason = f"Killed by {enemy.enemy_type}"
-                        self.stats.record_game_end(self.character, victory=False)
+                        self.set_game_over(f"Killed by {enemy.enemy_type}")
                         combat_messages.append("You have died!")
                         break
                 else:
@@ -609,6 +708,7 @@ class GameSession:
             'title': 'Select Food to Consume',
             'allow_zero': False
         }
+        self.request_item_selection()
         return True
     
     def _request_weapon_selection(self):
@@ -626,6 +726,7 @@ class GameSession:
             'title': 'Select Weapon to Equip (0 to unequip current)',
             'allow_zero': True
         }
+        self.request_item_selection()
         return True
     
     def _request_elixir_selection(self):
@@ -642,6 +743,7 @@ class GameSession:
             'title': 'Select Elixir to Drink',
             'allow_zero': False
         }
+        self.request_item_selection()
         return True
     
     def _request_scroll_selection(self):
@@ -658,6 +760,7 @@ class GameSession:
             'title': 'Select Scroll to Read',
             'allow_zero': False
         }
+        self.request_item_selection()
         return True
     
     def complete_item_selection(self, selected_idx):
@@ -670,6 +773,7 @@ class GameSession:
         if selected_idx is None:
             self.message = f"Cancelled {selection_type} selection."
             self.pending_selection = None
+            self.return_from_selection()
             return False
         
         if selection_type == 'food':
@@ -684,8 +788,9 @@ class GameSession:
             result = False
         
         self.pending_selection = None
+        self.return_from_selection()
         
-        if result and not self.game_over:
+        if result and not self.state_machine.is_terminal():
             self._process_enemy_turns()
         
         return result
@@ -920,11 +1025,10 @@ class GameSession:
     
     def _advance_level(self):
         """Advance to the next level."""
+        self.begin_level_transition()
         
         if self.current_level_number >= LEVEL_COUNT:
-            self.game_over = True
-            self.victory = True
-            self.stats.record_game_end(self.character, victory=True)
+            self.set_victory()
             self.message = "Congratulations! You've completed all 21 levels!"
         else:
             self.character.backpack.items[ItemType.KEY] = []
@@ -932,6 +1036,7 @@ class GameSession:
             self.current_level_number += 1
             self.stats.record_level_reached(self.current_level_number)
             self._generate_new_level()
+            self.complete_level_transition()
             
             if not self.test_mode:
                 difficulty_desc = self.difficulty_manager.get_difficulty_description()
@@ -941,6 +1046,10 @@ class GameSession:
             
             if not self.test_mode:
                 self.save_to_file()
+    
+    def advance_level(self):
+        """Public method to advance to next level."""
+        self._advance_level()
     
     def save_to_file(self, filename=None):
         """Save the current game state to file."""
@@ -967,8 +1076,8 @@ class GameSession:
             'damage_received': self.stats.damage_received,
             'elixirs_used': self.stats.elixirs_used,
             'scrolls_read': self.stats.scrolls_read,
-            'victory': self.victory,
-            'death_reason': self.death_reason if not self.victory else None
+            'victory': self.state_machine.is_victory(),
+            'death_reason': self.death_reason if not self.state_machine.is_victory() else None
         }
         
         if not self.test_mode:
@@ -981,8 +1090,6 @@ class GameSession:
         from data.statistics import Statistics
         
         self.current_level_number = 1
-        self.game_over = False
-        self.victory = False
         self.message = ""
         self.death_reason = ""
         self.character = None
@@ -991,11 +1098,13 @@ class GameSession:
         self.camera = None
         self.camera_controller = None
         self.rendering_mode = '2d'
+        self.state_machine.reset_to_initial()
         self._generate_new_level()
+        self.state_machine.transition_to(GameState.PLAYING)
     
     def is_game_over(self):
-        """Check if the game is over."""
-        return self.game_over or not self.character.is_alive()
+        """Check if the game is over (terminal state reached)."""
+        return self.state_machine.is_terminal()
     
     def get_current_level(self):
         """Get the current level."""
@@ -1020,3 +1129,7 @@ class GameSession:
     def get_message(self):
         """Get the current message."""
         return self.message
+    
+    def get_state_machine(self):
+        """Get the state machine (NEW in Step 2.1)."""
+        return self.state_machine
