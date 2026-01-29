@@ -98,6 +98,9 @@ class GameSession:
         
         from data.statistics import Statistics
         self.stats = Statistics()
+        # Combat system service (extract combat resolution)
+        from domain.services.combat_system import CombatSystem
+        self.combat_system = CombatSystem(self.stats)
         
         self._generate_new_level()
         
@@ -622,7 +625,7 @@ class GameSession:
     def _process_enemy_turns(self):
         """Process all enemy turns after player action."""
         from utils.pathfinding import get_distance
-        from domain.combat import resolve_attack, get_combat_message
+        from domain.combat import get_combat_message
         from domain.enemy_ai import (
             get_enemy_movement, 
             get_special_attack_effects, 
@@ -651,13 +654,12 @@ class GameSession:
                     continue
                 
                 if should_enemy_attack(enemy):
-                    result = resolve_attack(enemy, self.character)
+                    result = self.combat_system.resolve_enemy_attack(enemy, self.character)
                     special_effects = get_special_attack_effects(enemy, result)
                     combat_messages.append(get_combat_message(result))
-                    
-                    if result['hit']:
-                        self.stats.record_hit_taken(result.get('damage', 0))
-                        
+
+                    if result.get('hit'):
+                        # health steal / sleep / counterattack effects
                         if special_effects['health_steal'] > 0:
                             self.character.max_health -= special_effects['health_steal']
                             if self.character.max_health < 1:
@@ -665,17 +667,17 @@ class GameSession:
                             if self.character.health > self.character.max_health:
                                 self.character.health = self.character.max_health
                             combat_messages.append(f"Vampire stole {special_effects['health_steal']} max health!")
-                        
+
                         if special_effects['sleep']:
                             self.set_player_asleep()
                             combat_messages.append("Snake Mage puts you to sleep!")
-                        
+
                         if special_effects['counterattack']:
                             combat_messages.append("Ogre counterattacks!")
-                    
+
                     handle_post_attack(enemy, result)
-                    
-                    if result['killed']:
+
+                    if result.get('killed'):
                         self.set_game_over(f"Killed by {enemy.enemy_type}")
                         combat_messages.append("You have died!")
                         break
@@ -944,7 +946,7 @@ class GameSession:
             }
             messages.append("Your first attack against the vampire misses! (Vampire ability)")
         else:
-            player_result = resolve_attack(self.character, enemy, self.character.current_weapon)
+            player_result = self.combat_system.resolve_player_attack(self.character, enemy, self.character.current_weapon)
             messages.append(get_combat_message(player_result))
         
         self.stats.record_attack(player_result['hit'], player_result.get('damage', 0))

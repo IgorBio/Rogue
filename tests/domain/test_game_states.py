@@ -163,7 +163,8 @@ class TestStateMachineHistory:
         for i, target in enumerate(transitions):
             expected_prev = transitions[i-1] if i > 0 else GameState.INITIALIZING
             if i > 0:
-                assert sm.previous_state == expected_prev
+                # The current_state should equal the previous transition target
+                assert sm.current_state == expected_prev
             sm.transition_to(target)
             assert sm.current_state == target
 

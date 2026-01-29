@@ -189,26 +189,26 @@ class CameraController:
         if distance > self.interaction_range:
             return (False, "Enemy too far away", None)
         
-        # Trigger combat
-        from domain.combat import resolve_attack, get_combat_message, calculate_treasure_reward
-        
-        result = resolve_attack(character, entity, character.current_weapon)
+        # Trigger combat via CombatSystem wrapper to centralize logic
+        from domain.services.combat_system import CombatSystem
+        from domain.combat import get_combat_message
+
+        combat_system = CombatSystem()  # lightweight instance; no stats available here
+        result = combat_system.resolve_player_attack(character, entity, character.current_weapon)
         message = get_combat_message(result)
-        
-        # Check if enemy died
-        if result['killed']:
-            # Calculate treasure reward
-            treasure = calculate_treasure_reward(entity, 1)  # Level number would come from game session
-            
-            # Remove enemy from room
+
+        # If enemy died, remove from room and append treasure message
+        if result.get('killed'):
+            treasure = result.get('treasure')
+
             for room in level.rooms:
                 if entity in room.enemies:
                     room.remove_enemy(entity)
                     break
-            
-            message += f" Gained {treasure} treasure!"
-            result['treasure'] = treasure
-        
+
+            if treasure is not None:
+                message += f" Gained {treasure} treasure!"
+
         return (True, message, result)
     
     def pickup_item_in_front(self, character, level):
