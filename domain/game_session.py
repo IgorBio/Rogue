@@ -101,6 +101,10 @@ class GameSession:
         # Combat system service (extract combat resolution)
         from domain.services.combat_system import CombatSystem
         self.combat_system = CombatSystem(self.stats)
+
+        # Level manager service (extract level generation/progression)
+        from domain.services.level_manager import LevelManager
+        self.level_manager = LevelManager(self.difficulty_manager)
         
         self._generate_new_level()
         
@@ -199,14 +203,13 @@ class GameSession:
     
     def _generate_new_level(self):
         """Generate a new level and place the character."""
-        difficulty_adjustments = None
-        if not self.test_mode and self.character is not None:
-            difficulty_adjustments = self.difficulty_manager.calculate_difficulty_adjustment(
-                self.character, self.stats, self.current_level_number
-            )
-            self.difficulty_manager.update_performance(self.stats, self.character)
-
-        self.level = generate_level(self.current_level_number, difficulty_adjustments)
+        # Delegate generation to LevelManager to centralize generation logic
+        self.level = self.level_manager.generate_level(
+            self.current_level_number,
+            character=self.character,
+            stats=self.stats,
+            test_mode=self.test_mode,
+        )
         self.fog_of_war = FogOfWar(self.level)
 
         starting_room = self.level.get_starting_room()
@@ -1028,26 +1031,33 @@ class GameSession:
     def _advance_level(self):
         """Advance to the next level."""
         self.begin_level_transition()
-        
         if self.current_level_number >= LEVEL_COUNT:
             self.set_victory()
             self.message = "Congratulations! You've completed all 21 levels!"
+            return
+
+        # Clear keys, advance via level manager and regenerate
+        self.character.backpack.items[ItemType.KEY] = []
+
+        new_level_num = self.level_manager.advance_to_next_level(LEVEL_COUNT)
+        if new_level_num is None:
+            self.set_victory()
+            self.message = "Congratulations! You've completed all levels!"
+            return
+
+        self.current_level_number = new_level_num
+        self.stats.record_level_reached(self.current_level_number)
+        self._generate_new_level()
+        self.complete_level_transition()
+
+        if not self.test_mode:
+            difficulty_desc = self.difficulty_manager.get_difficulty_description()
+            self.message = f"Advanced to level {self.current_level_number}! (Difficulty: {difficulty_desc})"
         else:
-            self.character.backpack.items[ItemType.KEY] = []
-            
-            self.current_level_number += 1
-            self.stats.record_level_reached(self.current_level_number)
-            self._generate_new_level()
-            self.complete_level_transition()
-            
-            if not self.test_mode:
-                difficulty_desc = self.difficulty_manager.get_difficulty_description()
-                self.message = f"Advanced to level {self.current_level_number}! (Difficulty: {difficulty_desc})"
-            else:
-                self.message = f"Advanced to level {self.current_level_number}!"
-            
-            if not self.test_mode:
-                self.save_to_file()
+            self.message = f"Advanced to level {self.current_level_number}!"
+
+        if not self.test_mode:
+            self.save_to_file()
     
     def advance_level(self):
         """Public method to advance to next level."""
