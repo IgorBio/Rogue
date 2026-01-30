@@ -49,3 +49,53 @@ class LevelManager:
             return None
         self.current_level_number += 1
         return self.current_level_number
+
+    def advance_and_setup(self, session, max_levels: int):
+        """Advance the session to the next level and perform setup.
+
+        This centralizes the level-advance flow previously in GameSession so
+        callers can remain thin coordinators.
+        """
+        # Clear keys
+        try:
+            session.character.backpack.items[session.character.backpack.KEY] = []
+        except Exception:
+            # Backwards-compat: ItemType.KEY may be used as mapping key
+            try:
+                from utils.constants import ItemType
+                session.character.backpack.items[ItemType.KEY] = []
+            except Exception:
+                pass
+
+        new_level_num = self.advance_to_next_level(max_levels)
+        if new_level_num is None:
+            session.set_victory()
+            session.message = "Congratulations! You've completed all levels!"
+            return None
+
+        session.current_level_number = new_level_num
+        try:
+            session.stats.record_level_reached(session.current_level_number)
+        except Exception:
+            pass
+
+        # Generate and place character
+        session._generate_new_level()
+        session.complete_level_transition()
+
+        if not session.test_mode:
+            try:
+                difficulty_desc = session.difficulty_manager.get_difficulty_description()
+                session.message = f"Advanced to level {session.current_level_number}! (Difficulty: {difficulty_desc})"
+            except Exception:
+                session.message = f"Advanced to level {session.current_level_number}!"
+        else:
+            session.message = f"Advanced to level {session.current_level_number}!"
+
+        if not session.test_mode:
+            try:
+                session.save_to_file()
+            except Exception:
+                pass
+
+        return new_level_num

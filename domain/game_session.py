@@ -115,6 +115,8 @@ class GameSession:
         self.enemy_turn_processor = EnemyTurnProcessor(self)
         from domain.services.inventory_manager import InventoryManager
         self.inventory_manager = InventoryManager(self)
+        from domain.services.enemy_locator import EnemyLocator
+        self.enemy_locator = EnemyLocator()
         
         self._generate_new_level()
         
@@ -357,38 +359,13 @@ class GameSession:
         return self.movement_handler.handle_2d_movement(direction)
     
     def _get_disguised_mimic_at(self, x, y):
-        """Get DISGUISED mimic at the specified position."""
-        
-        for room in self.level.rooms:
-            for enemy in room.enemies:
-                if (enemy.position == (x, y) and 
-                    enemy.is_alive() and 
-                    enemy.enemy_type == EnemyType.MIMIC and
-                    hasattr(enemy, 'is_disguised') and
-                    enemy.is_disguised):
-                    return enemy
-        return None
+        return self.enemy_locator.get_disguised_mimic_at(self.level, x, y)
     
     def _get_revealed_enemy_at(self, x, y):
-        """Get REVEALED enemy at the specified position."""
-        
-        for room in self.level.rooms:
-            for enemy in room.enemies:
-                if enemy.position == (x, y) and enemy.is_alive():
-                    if (enemy.enemy_type == EnemyType.MIMIC and 
-                        hasattr(enemy, 'is_disguised') and 
-                        enemy.is_disguised):
-                        continue
-                    return enemy
-        return None
+        return self.enemy_locator.get_revealed_enemy_at(self.level, x, y)
     
     def _get_item_at(self, x, y):
-        """Get item at the specified position, if any."""
-        for room in self.level.rooms:
-            for item in room.items:
-                if item.position and item.position == (x, y):
-                    return item
-        return None
+        return self.enemy_locator.get_item_at(self.level, x, y)
     
     def _process_enemy_turns(self):
         return self.enemy_turn_processor.process_enemy_turns()
@@ -435,11 +412,7 @@ class GameSession:
         return self.combat_system.process_player_attack(self, enemy)
     
     def _get_enemy_room(self, enemy):
-        """Get the room that contains the specified enemy."""
-        for room in self.level.rooms:
-            if enemy in room.enemies:
-                return room
-        return None
+        return self.enemy_locator.get_enemy_room(self.level, enemy)
     
     def _pickup_item(self, item):
         return self.inventory_manager.pickup_item(item)
@@ -448,35 +421,7 @@ class GameSession:
         return self.inventory_manager.get_item_room(item)
     
     def _advance_level(self):
-        """Advance to the next level."""
-        self.begin_level_transition()
-        if self.current_level_number >= LEVEL_COUNT:
-            self.set_victory()
-            self.message = "Congratulations! You've completed all 21 levels!"
-            return
-
-        # Clear keys, advance via level manager and regenerate
-        self.character.backpack.items[ItemType.KEY] = []
-
-        new_level_num = self.level_manager.advance_to_next_level(LEVEL_COUNT)
-        if new_level_num is None:
-            self.set_victory()
-            self.message = "Congratulations! You've completed all levels!"
-            return
-
-        self.current_level_number = new_level_num
-        self.stats.record_level_reached(self.current_level_number)
-        self._generate_new_level()
-        self.complete_level_transition()
-
-        if not self.test_mode:
-            difficulty_desc = self.difficulty_manager.get_difficulty_description()
-            self.message = f"Advanced to level {self.current_level_number}! (Difficulty: {difficulty_desc})"
-        else:
-            self.message = f"Advanced to level {self.current_level_number}!"
-
-        if not self.test_mode:
-            self.save_to_file()
+        return self.level_manager.advance_and_setup(self, LEVEL_COUNT)
     
     def advance_level(self):
         """Public method to advance to next level."""

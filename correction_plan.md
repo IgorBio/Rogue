@@ -1,608 +1,603 @@
-# ПРОМПТ ДЛЯ AI-АССИСТЕНТА: РЕФАКТОРИНГ DUNGEON CRAWLER
 
-# ЗАДАЧА: Поэтапный рефакторинг Python игры Dungeon Crawler
+# Анализ архитектуры и план рефакторинга
 
-## КОНТЕКСТ ПРОЕКТА
+## 🔍 Выявленные проблемы
 
-Ты работаешь с roguelike игрой на Python + curses, которая имеет режимы 2D и 3D рендеринга.
+### 1. **Нарушения разделения слоев (Layer Violations)**
 
-**Текущая структура:**
+#### Критические зависимости:
+
+* ❌ `domain/game_session.py` импортирует `presentation`:
+  ```python
+  from presentation.input_handler import InputHandler  # Line 43from utils.input_handler_3d import InputHandler3D   # Line 3D actions
+  ```
+* ❌ `domain/services/action_processor.py` импортирует `presentation`:
+  ```python
+  from presentation.input_handler import InputHandlerfrom utils.input_handler_3d import InputHandler3D
+  ```
+* ❌ `domain/services/movement_handler.py` содержит логику UI (messages)
+* ❌ `utils/camera_controller.py` импортирует domain и presentation
+
+### 2. **God Object: GameSession (900+ строк)**
+
+* Отвечает за 12+ обязанностей
+* Смешивает координацию, бизнес-логику и взаимодействие с UI
+* Сложно тестировать изолированно
+
+### 3. **Координаты: float vs int хаос**
+
+* `Camera` использует float (x=10.5, y=20.3)
+* `Character` использует int Position (x=10, y=20)
+* При переключении 2D↔3D возникают рассинхронизации
+* `PositionSynchronizer` частично решает, но проблема в корне
+
+### 4. **Action Types как строки**
+
+* `InputHandler.ACTION_MOVE = "move"` (magic strings)
+* Нет типобезопасности
+* Легко допустить опечатку
+
+### 5. **Circular Dependencies Risk**
 
 ```
-project/
-├── domain/
-│   ├── game_session.py      # ❌ 900 строк, god object
-│   ├── level_generator.py
-│   ├── combat.py
-│   ├── enemy_ai.py
-│   ├── dynamic_difficulty.py
-│   └── entities/
-│       ├── character.py
-│       ├── enemy.py
-│       ├── item.py
-│       ├── level.py
-│       └── room.py
-├── data/
-│   ├── save_manager.py      # ❌ Неполная сериализация
-│   └── statistics.py
-└── presentation/
-    ├── renderer.py
-    ├── renderer_3d.py
-    └── input_handler.py
-```
-
-## КРИТИЧЕСКИЕ ПРОБЛЕМЫ
-
-1. **God Object:** `GameSession` содержит 900 строк и 12 обязанностей
-2. **Координаты:** Смешивание float и int между Camera и Character
-3. **Неполное сохранение:** Не сохраняется difficulty_manager, camera, rendering_mode
-4. **Дублирование:** Логика 2D и 3D обрабатывается отдельно
-5. **Нет State Machine:** Состояния игры управляются флагами
-6. **Производительность:** `get_all_enemies()` вызывается каждый ход без кэша
-
-## ПЛАН РЕФАКТОРИНГА (ВЫПОЛНЯТЬ СТРОГО ПОСЛЕДОВАТЕЛЬНО)
-
-### ЭТАП 0: ПОДГОТОВКА (30 мин)
-
-**Шаг 0.1:** Создай структуру для тестов
-
-```bash
-mkdir -p tests/domain tests/presentation tests/data tests/integration
-```
-
-**Шаг 0.2:** Создай `config/game_config.py` с централизованными константами:
-
-```python
-class GameConfig:
-    TOTAL_LEVELS = 21
-    LEVEL_FACTOR_DIVISOR = 30
-    MIN_LEVEL_FACTOR = 0.3
-    HEALTH_EXCELLENT_THRESHOLD = 0.8
-    # ... все константы из разных файлов
-```
-
-### ЭТАП 1: КРИТИЧЕСКИЕ ИСПРАВЛЕНИЯ
-
-#### Шаг 1.1: Исправление координат (1 час)
-
-**Создай:** `domain/entities/position.py`
-
-```python
-class Position:
-    """Всегда хранит int координаты"""
-    def __init__(self, x: float, y: float):
-        self._x = int(x)
-        self._y = int(y)
-  
-    @property
-    def x(self) -> int:
-        return self._x
-  
-    @property
-    def y(self) -> int:
-        return self._y
-  
-    @property
-    def tuple(self) -> Tuple[int, int]:
-        return (self._x, self._y)
-  
-    def update(self, x: float, y: float):
-        self._x = int(x)
-        self._y = int(y)
-```
-
-**Измени:** `domain/entities/character.py` - используй Position вместо tuple
-**Измени:** `utils/raycasting.py` (Camera) - используй Position
-
-**Напиши тесты:** `tests/domain/test_position.py`
-
-**Проверь:** Запусти игру и убедись, что координаты работают корректно
-
-**Коммит:**
-
-```bash
-git commit -m "Fix: Unify coordinate system with Position class"
+domain/game_session → presentation/input_handler
+presentation/game_ui → domain/game_session
 ```
 
 ---
 
-#### Шаг 1.2: Синхронизация 2D/3D (1 час)
+## 📋 План рефакторинга (поэтапный)
 
-**Создай:** `domain/services/position_synchronizer.py`
+### **ЭТАП 0: Подготовка (30 мин)**
 
-```python
-class PositionSynchronizer:
-    def __init__(self, character, camera):
-        self.character = character
-        self.camera = camera
-  
-    def sync_from_character(self):
-        """Камера следует за персонажем"""
-        self.camera.move_to(
-            self.character.position,
-            self.character.position [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/104999126/42d07538-8a72-46d5-bc21-1d681c0c94cb/save_manager.py)
-        )
-  
-    def sync_from_camera(self):
-        """Персонаж в позиции камеры"""
-        self.character.move_to(self.camera.x, self.camera.y)
-  
-    def validate_sync(self) -> bool:
-        return (self.character.position == self.camera.x and
-                self.character.position == self.camera.y) [ppl-ai-file-upload.s3.amazonaws](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/104999126/42d07538-8a72-46d5-bc21-1d681c0c94cb/save_manager.py)
-```
-
-**Измени:** `domain/game_session.py`
-
-- Добавь `self.position_sync = PositionSynchronizer(...)`
-- В `toggle_rendering_mode()` используй sync методы
-- После каждого toggle проверяй `validate_sync()`
-
-**Коммит:**
+#### Шаг 0.1: Создать структуру для абстракций
 
 ```bash
-git commit -m "Fix: Add position synchronization between 2D and 3D"
+mkdir -p domain/interfaces
+mkdir -p domain/value_objects
+mkdir -p tests/domain/interfaces
+```
+
+#### Шаг 0.2: Добавить Protocol для типизации
+
+```python
+# domain/interfaces/input_protocol.py
+from typing import Protocol, Tuple, Optional
+
+class InputAction(Protocol):
+    """Абстракция действия игрока (независимая от UI)."""
+    action_type: str
+    data: Optional[Tuple[int, int]]
+
+class InputProvider(Protocol):
+    """Интерфейс для получения ввода (реализуется в presentation)."""
+    def get_action(self) -> InputAction:
+        ...
 ```
 
 ---
 
-#### Шаг 1.3: Полная сериализация (1 час)
+### **ЭТАП 1: Устранение прямых зависимостей domain → presentation**
 
-**Измени:** `data/save_manager.py`
-
-Добавь в `save_game()`:
+#### Шаг 1.1: Создать enum для действий в domain (1 час)
 
 ```python
-save_data = {
-    # ... существующие поля
-    'rendering_mode': game_session.rendering_mode,
-    'player_asleep': game_session.player_asleep,
-    'game_over': game_session.game_over,
-    'victory': game_session.victory,
-    'difficulty_manager': self._serialize_difficulty_manager(...),
-    'camera': self._serialize_camera(...)
-}
-```
-
-Добавь методы:
-
-```python
-def _serialize_difficulty_manager(self, dm):
-    return {
-        'enemy_count_modifier': dm.enemy_count_modifier,
-        'enemy_stat_modifier': dm.enemy_stat_modifier,
-        # ... все модификаторы
-    }
-
-def _serialize_camera(self, camera):
-    if camera is None:
-        return None
-    return {'x': camera.x, 'y': camera.y, 'angle': camera.angle}
-```
-
-Добавь восстановление в `restore_game_session()`:
-
-```python
-game_session.rendering_mode = save_data.get('rendering_mode', '2d')
-# ... остальные поля
-```
-
-**Тест:** Сохрани и загрузи игру, проверь все поля
-
-**Коммит:**
-
-```bash
-git commit -m "Fix: Complete game state serialization"
-```
-
----
-
-### ЭТАП 2: РАЗДЕЛЕНИЕ GAMESESSION
-
-#### Шаг 2.1: State Machine (1.5 часа)
-
-**Создай:** `domain/services/game_states.py`
-
-```python
+# domain/value_objects/player_action.py
 from enum import Enum, auto
+from dataclasses import dataclass
+from typing import Optional, Tuple
 
-class GameState(Enum):
-    INITIALIZING = auto()
-    PLAYING = auto()
-    PLAYER_ASLEEP = auto()
-    ITEM_SELECTION = auto()
-    LEVEL_TRANSITION = auto()
-    GAME_OVER = auto()
-    VICTORY = auto()
+class ActionType(Enum):
+    """Типы действий игрока (domain-layer constants)."""
+    MOVE = auto()
+    USE_FOOD = auto()
+    USE_WEAPON = auto()
+    USE_ELIXIR = auto()
+    USE_SCROLL = auto()
+    ATTACK = auto()
+    INTERACT = auto()
+    ROTATE_LEFT = auto()
+    ROTATE_RIGHT = auto()
+    TOGGLE_MODE = auto()
+    QUIT = auto()
+    NONE = auto()
 
-class StateMachine:
-    TRANSITIONS = {
-        GameState.PLAYING: [GameState.PLAYER_ASLEEP, GameState.GAME_OVER, ...],
-        # ... определи все возможные переходы
-    }
+@dataclass(frozen=True)
+class PlayerAction:
+    """Value object для действия игрока."""
+    action_type: ActionType
+    direction: Optional[Tuple[int, int]] = None
+    target_index: Optional[int] = None
   
-    def __init__(self, initial_state=GameState.INITIALIZING):
-        self._state = initial_state
+    @classmethod
+    def move(cls, dx: int, dy: int):
+        return cls(ActionType.MOVE, direction=(dx, dy))
   
-    def transition_to(self, new_state):
-        if new_state not in self.TRANSITIONS[self._state]:
-            raise ValueError(f"Invalid: {self._state} -> {new_state}")
-        self._state = new_state
-  
-    def is_terminal(self):
-        return self._state in [GameState.GAME_OVER, GameState.VICTORY]
+    @classmethod
+    def use_item(cls, item_type: ActionType, index: int):
+        return cls(item_type, target_index=index)
 ```
 
-**Измени:** `domain/game_session.py`
+**Тесты:**
 
-- Добавь `self.state_machine = StateMachine()`
-- Замени все `self.game_over`, `self.victory` на проверки состояния
-- Замени `self.player_asleep` на `state_machine.current_state == GameState.PLAYER_ASLEEP`
+```python
+# tests/domain/test_player_action.py
+def test_player_action_move():
+    action = PlayerAction.move(1, 0)
+    assert action.action_type == ActionType.MOVE
+    assert action.direction == (1, 0)
 
-**Напиши тесты:** `tests/domain/test_game_states.py`
+def test_player_action_immutable():
+    action = PlayerAction.move(0, 1)
+    with pytest.raises(AttributeError):
+        action.direction = (1, 1)
+```
 
 **Коммит:**
 
 ```bash
-git commit -m "Add: State machine for game state management"
+git add domain/value_objects/player_action.py tests/domain/test_player_action.py
+git commit -m "Add domain-layer PlayerAction value object"
 ```
 
 ---
 
-#### Шаг 2.2: Combat System (2 часа)
+#### Шаг 1.2: Рефакторинг ActionProcessor (2 часа)
 
-**Создай:** `domain/services/combat_system.py`
-
-```python
-class CombatResult:
-    def __init__(self):
-        self.hit = False
-        self.damage = 0
-        self.killed = False
-        self.messages = []
-        self.effects = []
-        self.treasure = None
-
-class CombatSystem:
-    def __init__(self, statistics=None):
-        self.statistics = statistics
-  
-    def resolve_player_attack(self, player, enemy):
-        """Возвращает CombatResult"""
-        result = CombatResult()
-    
-        attack_result = resolve_attack(player, enemy)
-        result.hit = attack_result['hit']
-        result.damage = attack_result.get('damage', 0)
-        result.killed = attack_result['killed']
-    
-        # Статистика
-        if self.statistics:
-            self.statistics.record_attack(result.hit, result.damage)
-    
-        return result
-  
-    def resolve_enemy_attack(self, enemy, player):
-        """Возвращает CombatResult с эффектами"""
-        # Аналогично
-```
-
-**Измени:** `domain/game_session.py`
-
-- Добавь `self.combat_system = CombatSystem(self.stats)`
-- Замени все вызовы `resolve_attack()` на `self.combat_system.resolve_*_attack()`
-- Упрости `_handle_combat()` и `_process_enemy_turns()`
-
-**Коммит:**
-
-```bash
-git commit -m "Extract: Combat system from GameSession"
-```
-
----
-
-#### Шаг 2.3: Level Manager (1.5 часа)
-
-**Создай:** `domain/services/level_manager.py`
+**Изменить:** `domain/services/action_processor.py`
 
 ```python
-class LevelManager:
-    def __init__(self, difficulty_manager=None):
-        self.difficulty_manager = difficulty_manager
-        self.current_level_number = 1
-        self.current_level = None
-  
-    def generate_level(self, character, stats, test_mode=False):
-        difficulty_adjustments = None
-        if not test_mode and character and stats:
-            difficulty_adjustments = self.difficulty_manager.calculate_difficulty_adjustment(...)
-    
-        self.current_level = generate_level(
-            self.current_level_number,
-            difficulty_adjustments
-        )
-        return self.current_level
-  
-    def advance_to_next_level(self):
-        if self.current_level_number >= GameConfig.TOTAL_LEVELS:
-            return False
-        self.current_level_number += 1
-        return True
-```
-
-**Измени:** `domain/game_session.py`
-
-- Добавь `self.level_manager = LevelManager(self.difficulty_manager)`
-- Замени `_generate_new_level()` на делегирование к level_manager
-- Упрости `_advance_level()`
-
-**Коммит:**
-
-```bash
-git commit -m "Extract: Level manager from GameSession"
-```
-
----
-
-#### Шаг 2.4: Action Processor (2 часа)
-
-**Создай:** `domain/services/action_processor.py`
-
-```python
-class ActionType:
-    MOVE = 'move'
-    ATTACK = 'attack'
-    USE_FOOD = 'use_food'
-    # ... все типы действий
+# domain/services/action_processor.py
+from domain.value_objects.player_action import PlayerAction, ActionType
+from domain.services.game_states import GameState
 
 class ActionProcessor:
-    def __init__(self, game_session):
-        self.session = game_session
+    def __init__(self, session):
+        self.session = session
   
-    def process_action(self, action_type, action_data):
-        # Проверка состояния
-        if self.session.state_machine.current_state == GameState.PLAYER_ASLEEP:
-            # ... обработка
-    
-        # Маршрутизация
-        handler = self._get_handler(action_type)
-        success = handler(action_data)
-    
-        if success:
-            self._process_enemy_turns()
-    
-        return success
+    def process_action(self, action: PlayerAction) -> bool:
+        """Process player action (domain layer only)."""
+        # State checks
+        if self.session.state_machine.is_asleep():
+            self.session.message = "You are asleep!"
+            self.session.state_machine.transition_to(GameState.PLAYING)
+            self.session._process_enemy_turns()
+            return False
+      
+        if self.session.state_machine.is_terminal():
+            return False
+      
+        # Route to handler
+        if self.session.is_3d_mode():
+            return self._handle_3d_action(action)
+        else:
+            return self._handle_2d_action(action)
   
-    def _handle_move(self, direction):
-        """Универсальная обработка движения для 2D и 3D"""
-        # ... логика
-```
-
-**Измени:** `domain/game_session.py`
-
-- Добавь `self.action_processor = ActionProcessor(self)`
-- Замени `process_player_action()` на делегирование
-- Удали `_process_action_2d()` и `_process_action_3d()`
-
-**Коммит:**
-
-```bash
-git commit -m "Extract: Action processor with unified 2D/3D handling"
-```
-
----
-
-#### Шаг 2.5: Финальная очистка GameSession (1 час)
-
-**Цель:** GameSession должен быть ~200 строк, только координация
-
-**Удали из GameSession:**
-
-- Все методы `_handle_*` (перенесены в ActionProcessor)
-- Методы `_process_enemy_turns` (в ActionProcessor)
-- Методы `_spawn_*` (в LevelManager)
-
-**Оставь в GameSession:**
-
-- Инициализацию систем
-- Делегирующие методы
-- Геттеры состояния
-
-**Коммит:**
-
-```bash
-git commit -m "Refactor: GameSession as thin coordinator layer"
-```
-
----
-
-### ЭТАП 3: ОПТИМИЗАЦИЯ И ТЕСТЫ
-
-#### Шаг 3.1: Кэширование врагов (30 мин)
-
-**Измени:** `domain/entities/level.py`
-
-```python
-class Level:
-    def __init__(self, level_number):
-        # ... существующие
-        self._alive_enemies_cache = None
-        self._cache_valid = False
+    def _handle_2d_action(self, action: PlayerAction) -> bool:
+        """Handle 2D actions."""
+        if action.action_type == ActionType.MOVE:
+            return self.session.movement_handler.handle_2d_movement(action.direction)
+        elif action.action_type == ActionType.USE_FOOD:
+            return self.session.inventory_manager.request_food_selection()
+        # ... остальные действия
+        return False
   
-    def get_alive_enemies(self):
-        if not self._cache_valid:
-            self._alive_enemies_cache = [
-                e for room in self.rooms
-                for e in room.enemies
-                if e.is_alive()
-            ]
-            self._cache_valid = True
-        return self._alive_enemies_cache
+    def _handle_3d_action(self, action: PlayerAction) -> bool:
+        """Handle 3D actions."""
+        if action.action_type == ActionType.MOVE:
+            return self.session.movement_handler.handle_3d_movement('forward')
+        # ... остальные действия
+        return False
+```
+
+**Удалить импорты:** Убрать `from presentation.input_handler import InputHandler`
+
+**Тесты:**
+
+```python
+# tests/domain/test_action_processor_refactored.py
+def test_action_processor_uses_domain_actions():
+    from domain.game_session import GameSession
+    from domain.value_objects.player_action import PlayerAction, ActionType
   
-    def invalidate_enemy_cache(self):
-        self._cache_valid = False
-```
-
-**Измени:** `domain/entities/room.py` - вызывай `invalidate_enemy_cache()` при удалении врага
-
-**Коммит:**
-
-```bash
-git commit -m "Optimize: Add enemy caching to Level"
-```
-
----
-
-#### Шаг 3.2: Тесты (2 часа)
-
-**Напиши тесты для:**
-
-`tests/domain/test_position.py`:
-
-```python
-def test_position_float_to_int():
-    pos = Position(10.7, 20.3)
-    assert pos.x == 10
-    assert pos.y == 20
-```
-
-`tests/domain/test_combat_system.py`:
-
-```python
-def test_player_attack_hit():
-    player = Character(0, 0)
-    enemy = Enemy('zombie', 1, 1)
-    combat = CombatSystem()
-    result = combat.resolve_player_attack(player, enemy)
-    assert result.hit == True
-```
-
-`tests/domain/test_level_manager.py`:
-
-```python
-def test_advance_to_final_level():
-    manager = LevelManager()
-    manager.current_level_number = 21
-    assert manager.advance_to_next_level() == False
-```
-
-`tests/integration/test_full_game.py`:
-
-```python
-def test_full_game_flow():
     session = GameSession(test_mode=True)
-    # Движение
-    success = session.process_player_action('move', (1, 0))
-    assert success == True
-    # Переключение режима
-    mode = session.toggle_rendering_mode()
-    assert mode == '3d'
-    assert session.position_sync.validate_sync() == True
-```
-
-**Запусти:**
-
-```bash
-pytest tests/ -v
+    action = PlayerAction(ActionType.MOVE, direction=(1, 0))
+  
+    result = session.action_processor.process_action(action)
+    assert isinstance(result, bool)
 ```
 
 **Коммит:**
 
 ```bash
-git commit -m "Add: Unit and integration tests"
+git commit -am "Refactor ActionProcessor to use domain PlayerAction"
 ```
 
 ---
 
-### ЭТАП 4: ДОКУМЕНТАЦИЯ И ПРОВЕРКА
+#### Шаг 1.3: Создать адаптер в presentation (1 час)
 
-#### Шаг 4.1: Документация (1 час)
+**Создать:** `presentation/input_adapter.py`
 
-**Создай:** `docs/ARCHITECTURE.md` с описанием:
+```python
+# presentation/input_adapter.py
+"""Адаптер: преобразует curses input → domain PlayerAction."""
+from domain.value_objects.player_action import PlayerAction, ActionType
+from presentation.input_handler import InputHandler
 
-- Многослойной архитектуры
-- Описанием всех систем
-- Диаграммами взаимодействия
+class InputAdapter:
+    """Converts presentation-layer input to domain actions."""
+  
+    # Mapping: presentation constants → domain ActionType
+    ACTION_MAP = {
+        InputHandler.ACTION_MOVE: ActionType.MOVE,
+        InputHandler.ACTION_USE_FOOD: ActionType.USE_FOOD,
+        InputHandler.ACTION_USE_WEAPON: ActionType.USE_WEAPON,
+        InputHandler.ACTION_USE_ELIXIR: ActionType.USE_ELIXIR,
+        InputHandler.ACTION_USE_SCROLL: ActionType.USE_SCROLL,
+        InputHandler.ACTION_QUIT: ActionType.QUIT,
+        InputHandler.ACTION_NONE: ActionType.NONE,
+    }
+  
+    @classmethod
+    def convert_2d_input(cls, input_type: str, input_data) -> PlayerAction:
+        """Convert 2D input to PlayerAction."""
+        action_type = cls.ACTION_MAP.get(input_type, ActionType.NONE)
+      
+        if action_type == ActionType.MOVE:
+            return PlayerAction(ActionType.MOVE, direction=input_data)
+        else:
+            return PlayerAction(action_type)
+  
+    @classmethod
+    def convert_3d_input(cls, input_type: str, input_data) -> PlayerAction:
+        """Convert 3D input to PlayerAction."""
+        from utils.input_handler_3d import InputHandler3D
+      
+        mapping = {
+            InputHandler3D.ACTION_MOVE_FORWARD: ActionType.MOVE,
+            InputHandler3D.ACTION_ROTATE_LEFT: ActionType.ROTATE_LEFT,
+            # ... остальные маппинги
+        }
+      
+        action_type = mapping.get(input_type, ActionType.NONE)
+        return PlayerAction(action_type)
+```
 
-**Создай:** `docs/REFACTORING.md` с метриками до/после
+**Изменить:** `presentation/game_ui.py`
 
-**Обнови:** `README.md` с новыми возможностями
+```python
+# presentation/game_ui.py (метод get_player_action)
+def get_player_action(self, game_session):
+    """Get player action (returns domain PlayerAction)."""
+    from presentation.input_adapter import InputAdapter
+  
+    if game_session.is_3d_mode():
+        raw_action = self.input_handler_3d.get_action()
+        # Special UI actions handled here
+        if raw_action == InputHandler3D.ACTION_TOGGLE_MODE:
+            new_mode = game_session.toggle_rendering_mode()
+            return PlayerAction(ActionType.TOGGLE_MODE)
+      
+        return InputAdapter.convert_3d_input(raw_action, None)
+    else:
+        key = self.stdscr.getch()
+        if key == 9:  # Tab
+            game_session.toggle_rendering_mode()
+            return PlayerAction(ActionType.TOGGLE_MODE)
+      
+        raw_type, raw_data = self._map_key_to_action(key)
+        return InputAdapter.convert_2d_input(raw_type, raw_data)
+```
 
 **Коммит:**
 
 ```bash
-git commit -m "Docs: Add architecture and refactoring documentation"
+git add presentation/input_adapter.py
+git commit -am "Add InputAdapter to decouple presentation from domain"
 ```
 
 ---
 
-#### Шаг 4.2: Финальная проверка
+### **ЭТАП 2: Устранение координатной рассинхронизации**
 
-**Запусти:**
+#### Шаг 2.1: Унификация координат через Position (1.5 часа)
+
+**Проблема:** `Camera` использует float для raycasting, но это вызывает проблемы при синхронизации с Character.
+
+**Решение:** Camera должен использовать `Position` внутри, но экспонировать float для рейкастинга.
+
+**Изменить:** `utils/raycasting.py` (уже частично сделано в документе)
+
+```python
+# utils/raycasting.py (улучшение)
+class Camera:
+    def __init__(self, x: float, y: float, angle: float = 0.0, fov: float = 60.0):
+        # Используем Position для grid-aligned координат
+        self._grid_position = Position(int(x), int(y))
+        self._fractional_x = x - int(x)  # 0.0 - 1.0
+        self._fractional_y = y - int(y)
+  
+    @property
+    def x(self) -> float:
+        """Raycasting coordinate (grid + fractional)."""
+        return float(self._grid_position.x) + self._fractional_x
+  
+    @property
+    def y(self) -> float:
+        return float(self._grid_position.y) + self._fractional_y
+  
+    @property
+    def grid_position(self) -> Tuple[int, int]:
+        """Grid-aligned position for Character sync."""
+        return self._grid_position.tuple
+  
+    def set_position(self, x: float, y: float):
+        self._grid_position.update(int(x), int(y))
+        self._fractional_x = x - int(x)
+        self._fractional_y = y - int(y)
+```
+
+**Тесты:**
+
+```python
+# tests/utils/test_camera_coordinates.py
+def test_camera_float_coordinates():
+    cam = Camera(10.7, 20.3)
+    assert cam.x == 10.7
+    assert cam.y == 20.3
+    assert cam.grid_position == (10, 20)
+
+def test_camera_sync_with_character():
+    from domain.entities.character import Character
+    char = Character(10, 20)
+    cam = Camera(10.5, 20.5)
+  
+    assert char.position == cam.grid_position
+```
+
+**Коммит:**
 
 ```bash
-# Тесты
-pytest tests/ -v --cov=domain --cov=data
-
-# Линтеры
-pylint domain/ data/
-flake8 domain/ data/
-
-# Игру
-python main.py
+git commit -am "Unify Camera coordinates with Position internally"
 ```
 
-**Проверь вручную:**
+---
 
-- [ ] Игра запускается в 2D
-- [ ] Переключение в 3D работает
-- [ ] Сохранение/загрузка работает
-- [ ] Бой с врагами работает
-- [ ] Переход между уровнями работает
+#### Шаг 2.2: Упростить PositionSynchronizer (1 час)
 
-**Финальный коммит:**
+**Проблема:** Текущий `PositionSynchronizer` слишком сложен и дублирует логику.
+
+**Решение:** Упростить до двух методов: `sync_to_2d()` и `sync_to_3d()`.
+
+```python
+# domain/services/position_synchronizer.py (упрощенная версия)
+class PositionSynchronizer:
+    """Simplified 2D ↔ 3D coordinate sync."""
+  
+    @staticmethod
+    def sync_to_2d(character: Character, camera: Camera):
+        """When switching to 2D: Character follows Camera grid."""
+        character.move_to(*camera.grid_position)
+  
+    @staticmethod
+    def sync_to_3d(camera: Camera, character: Character, preserve_angle=True):
+        """When switching to 3D: Camera centers on Character."""
+        char_x, char_y = character.position
+        camera.set_position(char_x + 0.5, char_y + 0.5)
+        # angle preserved by default
+```
+
+**Коммит:**
 
 ```bash
-git commit -m "Release: Version 2.0 - Complete refactoring"
-git tag v2.0.0
+git commit -am "Simplify PositionSynchronizer to two methods"
 ```
 
 ---
 
-## ОЖИДАЕМЫЕ РЕЗУЛЬТАТЫ
+### **ЭТАП 3: Разбиение God Object GameSession**
 
-| Метрика                  | До             | После      |
-| ------------------------------- | ---------------- | --------------- |
-| Размер GameSession        | 900 строк   | ~200 строк |
-| Обязанностей        | 12               | 3               |
-| Покрытие тестами | 0%               | 75%+            |
-| Дублирование 2D/3D  | Да             | Нет          |
-| Координаты            | float/int        | int             |
-| Сохранение            | Неполное | Полное    |
+#### Шаг 3.1: Выделить SystemCoordinator (2 часа)
+
+**Создать:** `domain/services/system_coordinator.py`
+
+```python
+# domain/services/system_coordinator.py
+"""Координатор систем (замена GameSession как god object)."""
+from domain.services.level_manager import LevelManager
+from domain.services.combat_system import CombatSystem
+from domain.services.movement_handler import MovementHandler
+from domain.services.inventory_manager import InventoryManager
+from domain.services.enemy_turn_processor import EnemyTurnProcessor
+from domain.services.action_processor import ActionProcessor
+from domain.services.game_states import StateMachine
+
+class SystemCoordinator:
+    """Thin coordinator: delegates to specialized systems."""
+  
+    def __init__(self, character, level, fog_of_war, stats, difficulty_manager):
+        self.character = character
+        self.level = level
+        self.fog_of_war = fog_of_war
+        self.stats = stats
+        self.difficulty_manager = difficulty_manager
+      
+        # Initialize systems
+        self.state_machine = StateMachine()
+        self.combat_system = CombatSystem(stats)
+        self.level_manager = LevelManager(difficulty_manager)
+        self.movement_handler = MovementHandler(self)
+        self.inventory_manager = InventoryManager(self)
+        self.enemy_processor = EnemyTurnProcessor(self)
+        self.action_processor = ActionProcessor(self)
+      
+        self.message = ""
+  
+    def process_action(self, action: PlayerAction) -> bool:
+        """Delegate to ActionProcessor."""
+        return self.action_processor.process_action(action)
+  
+    def is_game_over(self) -> bool:
+        return self.state_machine.is_terminal()
+```
+
+**Изменить:** `domain/game_session.py`
+
+```python
+# domain/game_session.py (теперь тонкий фасад)
+class GameSession:
+    """Facade for game state (delegates to SystemCoordinator)."""
+  
+    def __init__(self, test_mode=False, test_level=1, test_fog_of_war=False):
+        self.test_mode = test_mode
+        # ... инициализация
+      
+        self.coordinator = SystemCoordinator(
+            self.character, self.level, self.fog_of_war,
+            self.stats, self.difficulty_manager
+        )
+  
+    def process_player_action(self, action: PlayerAction) -> bool:
+        return self.coordinator.process_action(action)
+  
+    # Делегирующие методы
+    def is_game_over(self) -> bool:
+        return self.coordinator.is_game_over()
+```
+
+**Коммит:**
+
+```bash
+git add domain/services/system_coordinator.py
+git commit -am "Extract SystemCoordinator from GameSession"
+```
 
 ---
 
-## ВАЖНЫЕ ПРАВИЛА
+### **ЭТАП 4: Устранение циклических зависимостей**
 
-1. ✅ **НЕ ПРОПУСКАЙ шаги** - выполняй строго последовательно
-2. ✅ **КОММИТЬ после каждого шага** с осмысленным сообщением
-3. ✅ **ЗАПУСКАТЬ игру** после критических изменений
-4. ✅ **ПИСАТЬ тесты** для новых компонентов
-5. ❌ **НЕ ДЕЛАЙ несколько шагов одновременно**
-6. ❌ **НЕ КОММИТЬ нерабочий код**
+#### Шаг 4.1: Dependency Injection для UI (1 час)
+
+**Проблема:** `GameUI` создает зависимости напрямую.
+
+**Решение:** Передавать зависимости через конструктор.
+
+```python
+# main.py
+def main(stdscr):
+    from presentation.game_ui import GameUI
+    from domain.game_session import GameSession
+  
+    ui = GameUI(stdscr)
+    session = None
+  
+    while True:
+        selection = ui.show_main_menu(save_manager)
+      
+        if selection == 'new':
+            session = GameSession()
+        elif selection == 'continue':
+            session = load_session()
+      
+        # Game loop
+        while not session.is_game_over():
+            ui.render_game(session)
+          
+            # UI → domain через адаптер
+            action = ui.get_player_action(session)
+            session.process_player_action(action)
+```
+
+**Коммит:**
+
+```bash
+git commit -am "Apply dependency injection in main loop"
+```
 
 ---
 
-## НАЧНИ РАБОТУ
+### **ЭТАП 5: Финальная проверка и тесты**
 
-Подтверди, что понял план, и начни с **Этапа 0, Шаг 0.1**.
-После каждого шага сообщай о прогрессе.
+#### Шаг 5.1: Интеграционные тесты (1.5 часа)
 
-Удачи! 🚀
+```python
+# tests/integration/test_layer_separation.py
+def test_domain_has_no_presentation_imports():
+    """Domain layer must not import presentation."""
+    import ast
+    import os
+  
+    for root, dirs, files in os.walk('domain'):
+        for file in files:
+            if file.endswith('.py'):
+                with open(os.path.join(root, file)) as f:
+                    tree = ast.parse(f.read())
+                    for node in ast.walk(tree):
+                        if isinstance(node, ast.Import):
+                            for alias in node.names:
+                                assert not alias.name.startswith('presentation'), \
+                                    f"Domain imports presentation in {file}"
 
+def test_full_game_flow_with_adapters():
+    """Test complete game flow with refactored architecture."""
+    from domain.game_session import GameSession
+    from domain.value_objects.player_action import PlayerAction, ActionType
+  
+    session = GameSession(test_mode=True)
+  
+    # Domain action (no presentation dependency)
+    action = PlayerAction.move(1, 0)
+    result = session.process_player_action(action)
+  
+    assert isinstance(result, bool)
+    assert session.character.position[0] > 0
 ```
 
-***
+**Коммит:**
 
-Этот промпт можно скопировать и передать AI-ассистенту для пошагового выполнения рефакторинга.
+```bash
+git add tests/integration/test_layer_separation.py
+git commit -m "Add integration tests for layer separation"
 ```
+
+---
+
+## 📊 Метрики до/после рефакторинга
+
+| Метрика                                             | До               | После                        |
+| ---------------------------------------------------------- | ------------------ | --------------------------------- |
+| Domain → Presentation imports                             | 3                  | 0 ✅                              |
+| GameSession LOC                                            | 900                | ~200                              |
+| Координатная система                    | float/int хаос | Position унифицирован |
+| Action Types                                               | Magic strings      | Type-safe Enum                    |
+| Циклические зависимости              | Да               | Нет ✅                         |
+| Тестируемость domain изолированно | ❌                 | ✅                                |
+
+---
+
+## ✅ Финальная валидация
+
+```bash
+# 1. Проверка импортов
+python -c "import ast; import domain.game_session" # Должен работать без presentation
+
+# 2. Тесты
+pytest tests/domain -v  # Все domain тесты должны проходить БЕЗ curses
+pytest tests/integration -v
+
+# 3. Запуск игры
+python main.py  # Должна работать с новой архитектурой
+```
+
+---
+
+## 🎯 Ключевые принципы рефакторинга
+
+1. **Dependency Inversion** : Domain определяет интерфейсы (Protocol), presentation реализует.
+2. **Value Objects** : `PlayerAction`, `Position` — immutable, type-safe.
+3. **Thin Coordinator** : `GameSession` → фасад, делегирует `SystemCoordinator`.
+4. **Adapter Pattern** : `InputAdapter` преобразует UI events → domain actions.
+5. **Single Responsibility** : Каждый сервис отвечает за одну область.
+
+Этот план устраняет **все архитектурные проблемы** с минимальным риском для стабильности кода. Выполняйте шаги **последовательно** с коммитами после каждого.
