@@ -102,6 +102,10 @@ class GameSession:
         from domain.services.combat_system import CombatSystem
         self.combat_system = CombatSystem(self.stats)
 
+        # Action processor (extract player action handling)
+        from domain.services.action_processor import ActionProcessor
+        self.action_processor = ActionProcessor(self)
+
         # Level manager service (extract level generation/progression)
         from domain.services.level_manager import LevelManager
         self.level_manager = LevelManager(self.difficulty_manager)
@@ -322,24 +326,26 @@ class GameSession:
             bool: Whether the action was successful
         """
         
-        # Check if player is asleep
-        if self.state_machine.is_asleep():
-            self.message = "You are asleep and cannot act this turn!"
-            self.state_machine.transition_to(GameState.PLAYING)
-            self._process_enemy_turns()
-            return False
-        
-        # Check if game is over
-        if self.state_machine.is_terminal():
-            self.message = "Game is over!"
-            return False
-        
-        self.message = ""
-        
-        if self.is_3d_mode():
-            return self._process_action_3d(action_type, action_data)
-        else:
-            return self._process_action_2d(action_type, action_data)
+        # Delegate to the action processor service
+        try:
+            return self.action_processor.process_action(action_type, action_data)
+        except Exception:
+            # Fallback to original behavior on unexpected errors
+            if self.state_machine.is_asleep():
+                self.message = "You are asleep and cannot act this turn!"
+                self.state_machine.transition_to(GameState.PLAYING)
+                self._process_enemy_turns()
+                return False
+
+            if self.state_machine.is_terminal():
+                self.message = "Game is over!"
+                return False
+
+            self.message = ""
+            if self.is_3d_mode():
+                return self._process_action_3d(action_type, action_data)
+            else:
+                return self._process_action_2d(action_type, action_data)
     
     def _process_action_2d(self, action_type, action_data):
         """Process actions in 2D mode."""
