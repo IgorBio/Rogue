@@ -109,52 +109,19 @@ class GameSession:
         # Level manager service (extract level generation/progression)
         from domain.services.level_manager import LevelManager
         self.level_manager = LevelManager(self.difficulty_manager)
+        from domain.services.movement_handler import MovementHandler
+        self.movement_handler = MovementHandler(self)
+        from domain.services.enemy_turn_processor import EnemyTurnProcessor
+        self.enemy_turn_processor = EnemyTurnProcessor(self)
+        from domain.services.inventory_manager import InventoryManager
+        self.inventory_manager = InventoryManager(self)
         
         self._generate_new_level()
         
         # Transition to PLAYING after initialization
         self.state_machine.transition_to(GameState.PLAYING)
     
-    # ============================================================================
-    # BACKWARD COMPATIBILITY PROPERTIES (During refactoring transition)
-    # ============================================================================
-    
-    @property
-    def game_over(self) -> bool:
-        """Check if game is over (died). Uses state machine."""
-        return self.state_machine.is_game_over()
-    
-    @game_over.setter
-    def game_over(self, value: bool) -> None:
-        """Set game over state (for backward compatibility)."""
-        if value and not self.state_machine.is_game_over():
-            if not self.state_machine.is_victory():
-                self.state_machine.transition_to(GameState.GAME_OVER)
-    
-    @property
-    def victory(self) -> bool:
-        """Check if game is won. Uses state machine."""
-        return self.state_machine.is_victory()
-    
-    @victory.setter
-    def victory(self, value: bool) -> None:
-        """Set victory state (for backward compatibility)."""
-        if value and not self.state_machine.is_victory():
-            if not self.state_machine.is_game_over():
-                self.state_machine.transition_to(GameState.VICTORY)
-    
-    @property
-    def player_asleep(self) -> bool:
-        """Check if player is asleep. Uses state machine."""
-        return self.state_machine.is_asleep()
-    
-    @player_asleep.setter
-    def player_asleep(self, value: bool) -> None:
-        """Set asleep state (for backward compatibility)."""
-        if value and not self.state_machine.is_asleep():
-            self.state_machine.transition_to(GameState.PLAYER_ASLEEP)
-        elif not value and self.state_machine.is_asleep():
-            self.state_machine.transition_to(GameState.PLAYING)
+    # (Backward-compatibility properties removed — refactor completed)
     
     # ============================================================================
     # STATE MACHINE METHODS
@@ -327,179 +294,52 @@ class GameSession:
         """
         
         # Delegate to the action processor service
-        try:
-            return self.action_processor.process_action(action_type, action_data)
-        except Exception:
-            # Fallback to original behavior on unexpected errors
-            if self.state_machine.is_asleep():
-                self.message = "You are asleep and cannot act this turn!"
-                self.state_machine.transition_to(GameState.PLAYING)
-                self._process_enemy_turns()
-                return False
+        return self.action_processor.process_action(action_type, action_data)
 
-            if self.state_machine.is_terminal():
-                self.message = "Game is over!"
-                return False
-
-            self.message = ""
-            if self.is_3d_mode():
-                return self._process_action_3d(action_type, action_data)
-            else:
-                return self._process_action_2d(action_type, action_data)
-    
+    # Backwards-compatible delegators used during refactor transition.
+    # Tests and older call sites may patch these on the session, so keep
+    # thin wrappers that forward to the ActionProcessor implementation.
     def _process_action_2d(self, action_type, action_data):
-        """Process actions in 2D mode."""
-        from presentation.input_handler import InputHandler
-        
-        if action_type == InputHandler.ACTION_MOVE:
-            return self._handle_movement(action_data)
-        elif action_type == InputHandler.ACTION_USE_FOOD:
-            return self._request_food_selection()
-        elif action_type == InputHandler.ACTION_USE_WEAPON:
-            return self._request_weapon_selection()
-        elif action_type == InputHandler.ACTION_USE_ELIXIR:
-            return self._request_elixir_selection()
-        elif action_type == InputHandler.ACTION_USE_SCROLL:
-            return self._request_scroll_selection()
-        elif action_type == InputHandler.ACTION_QUIT:
-            self.set_game_over("Game quit by player")
-            self.message = "Game quit by player."
-            return True
-        elif action_type == InputHandler.ACTION_NONE:
-            return False
-        else:
-            self.message = "Action not yet implemented."
-            return False
-    
+        return self.action_processor._process_action_2d(action_type, action_data)
+
     def _process_action_3d(self, action_type, action_data):
-        """Process actions in 3D mode."""
-        from utils.input_handler_3d import InputHandler3D
-        
-        if action_type == InputHandler3D.ACTION_MOVE_FORWARD:
-            return self._handle_3d_movement('forward')
-        elif action_type == InputHandler3D.ACTION_MOVE_BACKWARD:
-            return self._handle_3d_movement('backward')
-        elif action_type == InputHandler3D.ACTION_STRAFE_LEFT:
-            return self._handle_3d_movement('strafe_left')
-        elif action_type == InputHandler3D.ACTION_STRAFE_RIGHT:
-            return self._handle_3d_movement('strafe_right')
-        elif action_type == InputHandler3D.ACTION_ROTATE_LEFT:
-            self.camera_controller.rotate_left()
-            self.message = f"Facing {self.camera_controller.get_direction_name()}"
-            return True
-        elif action_type == InputHandler3D.ACTION_ROTATE_RIGHT:
-            self.camera_controller.rotate_right()
-            self.message = f"Facing {self.camera_controller.get_direction_name()}"
-            return True
-        elif action_type == InputHandler3D.ACTION_INTERACT:
-            return self._handle_3d_interact()
-        elif action_type == InputHandler3D.ACTION_ATTACK:
-            return self._handle_3d_attack()
-        elif action_type == InputHandler3D.ACTION_PICKUP:
-            return self._handle_3d_pickup()
-        elif action_type == InputHandler3D.ACTION_USE_FOOD:
-            return self._request_food_selection()
-        elif action_type == InputHandler3D.ACTION_USE_WEAPON:
-            return self._request_weapon_selection()
-        elif action_type == InputHandler3D.ACTION_USE_ELIXIR:
-            return self._request_elixir_selection()
-        elif action_type == InputHandler3D.ACTION_USE_SCROLL:
-            return self._request_scroll_selection()
-        elif action_type == InputHandler3D.ACTION_QUIT:
-            self.set_game_over("Game quit by player")
-            self.message = "Game quit by player."
-            return True
-        elif action_type == InputHandler3D.ACTION_NONE:
-            return False
-        else:
-            return False
+        return self.action_processor._process_action_3d(action_type, action_data)
+
+    @property
+    def game_over(self) -> bool:
+        """Backward-compatible property: whether the game is over."""
+        return self.state_machine.is_game_over()
+
+    @game_over.setter
+    def game_over(self, value: bool) -> None:
+        if value and not self.state_machine.is_game_over():
+            if not self.state_machine.is_victory():
+                self.state_machine.transition_to(GameState.GAME_OVER)
+
+    @property
+    def victory(self) -> bool:
+        """Backward-compatible property: whether the game is won."""
+        return self.state_machine.is_victory()
+
+    @victory.setter
+    def victory(self, value: bool) -> None:
+        if value and not self.state_machine.is_victory():
+            if not self.state_machine.is_game_over():
+                self.state_machine.transition_to(GameState.VICTORY)
+
+    @property
+    def player_asleep(self) -> bool:
+        """Backward-compatible property: whether the player is asleep."""
+        return self.state_machine.is_asleep()
+
+    @player_asleep.setter
+    def player_asleep(self, value: bool) -> None:
+        if value and not self.state_machine.is_asleep():
+            self.state_machine.transition_to(GameState.PLAYER_ASLEEP)
+        elif not value and self.state_machine.is_asleep():
+            self.state_machine.transition_to(GameState.PLAYING)
     
-    def _handle_3d_movement(self, direction):
-        """
-        Handle 3D movement and sync with character.
-
-        Uses PositionSynchronizer to keep character synced with camera.
-        """
-        # Move camera
-        if direction == "forward":
-            success = self.camera_controller.move_forward()
-        elif direction == "backward":
-            success = self.camera_controller.move_backward()
-        elif direction == "strafe_left":
-            success = self.camera_controller.strafe_left()
-        elif direction == "strafe_right":
-            success = self.camera_controller.strafe_right()
-        else:
-            return False
-
-        if not success:
-            self.message = "Can't move there - blocked!"
-            return False
-
-        # Sync character to new camera position
-        new_x, new_y = self.camera.grid_position
-        self.character.move_to(new_x, new_y)
-
-        if self.should_use_fog_of_war():
-            self.fog_of_war.update_visibility(self.character.position)
-
-        self.stats.record_movement()
-
-        # Check for level exit
-        if self.level.exit_position == (new_x, new_y):
-            self.advance_level()
-            return True
-
-        self._check_automatic_pickup()
-        self._process_enemy_turns()
-        return True
-    
-    def _handle_3d_interact(self):
-        """Handle smart interaction in 3D mode."""
-        entity, entity_type, distance = self.camera_controller.get_entity_in_front(self.level)
-        
-        if entity_type == 'enemy':
-            return self._handle_3d_attack()
-        elif entity_type == 'item':
-            return self._handle_3d_pickup()
-        elif entity_type == 'exit':
-            return self._handle_3d_movement('forward')
-        else:
-            success, message = self.camera_controller.try_open_door(self.character)
-            self.message = message
-            return success
-    
-    def _handle_3d_attack(self):
-        """Handle attack in 3D mode."""
-        success, message, result = self.camera_controller.attack_entity_in_front(
-            self.character, self.level
-        )
-        
-        self.message = message
-        
-        if success and result:
-            self.stats.record_attack(result['hit'], result.get('damage', 0))
-            
-            if result['killed'] and result.get('treasure'):
-                self.stats.record_enemy_defeated(result['treasure'])
-            
-            if not self.state_machine.is_terminal():
-                self._process_enemy_turns()
-        
-        return success
-    
-    def _handle_3d_pickup(self):
-        """Handle item pickup in 3D mode."""
-        success, message, item = self.camera_controller.pickup_item_in_front(
-            self.character, self.level
-        )
-        
-        self.message = message
-        
-        if success:
-            self.stats.record_item_collected()
-        
-        return success
+    # 2D/3D action handlers moved to `ActionProcessor` (Step 2.4)
     
     def _check_automatic_pickup(self):
         """Check and pick up items on current tile."""
@@ -514,88 +354,7 @@ class GameSession:
     
     def _handle_movement(self, direction):
         """Handle movement in 2D mode."""
-        
-        dx, dy = direction
-        current_x, current_y = self.character.position
-        new_x = current_x + dx
-        new_y = current_y + dy
-        
-        door = self.level.get_door_at(new_x, new_y)
-        if door and door.is_locked:
-            from domain.key_door_system import unlock_door_if_possible
-            
-            if unlock_door_if_possible(door, self.character):
-                self.message = f"Unlocked {door.color.value} door!"
-                return True
-            else:
-                self.message = f"Locked {door.color.value} door - need {door.color.value} key!"
-                return False
-        
-        if not self.level.is_walkable(new_x, new_y):
-            self.message = "You can't move there - it's a wall!"
-            return False
-        
-        mimic_at_pos = self._get_disguised_mimic_at(new_x, new_y)
-        if mimic_at_pos:
-            mimic_at_pos.reveal()
-            mimic_at_pos.is_chasing = True
-            self.message = "It's a MIMIC! The item was a trap!"
-            
-            combat_result = self._handle_combat(mimic_at_pos)
-            
-            if combat_result and not mimic_at_pos.is_alive():
-                self.character.move_to(new_x, new_y)
-                
-                if self.is_3d_mode():
-                    self.camera.x = new_x
-                    self.camera.y = new_y
-                
-                if self.should_use_fog_of_war():
-                    self.fog_of_war.update_visibility(self.character.position)
-                
-                self.stats.record_movement()
-                
-                item = self._get_item_at(new_x, new_y)
-                if item:
-                    pickup_message = self._pickup_item(item)
-                    if pickup_message:
-                        self.message += " | " + pickup_message
-            
-            if not self.state_machine.is_terminal():
-                self._process_enemy_turns()
-            
-            return combat_result
-        
-        enemy = self._get_revealed_enemy_at(new_x, new_y)
-        if enemy:
-            combat_result = self._handle_combat(enemy)
-            if combat_result and not self.state_machine.is_terminal():
-                self._process_enemy_turns()
-            return combat_result
-        
-        item = self._get_item_at(new_x, new_y)
-        if item:
-            pickup_message = self._pickup_item(item)
-            if pickup_message:
-                self.message = pickup_message
-        
-        self.character.move_to(new_x, new_y)
-        
-        if self.is_3d_mode():
-            self.camera.x = new_x
-            self.camera.y = new_y
-        
-        if self.should_use_fog_of_war():
-            self.fog_of_war.update_visibility(self.character.position)
-        
-        self.stats.record_movement()
-        
-        if self.level.exit_position == (new_x, new_y):
-            self._advance_level()
-            return True
-        
-        self._process_enemy_turns()
-        return True
+        return self.movement_handler.handle_2d_movement(direction)
     
     def _get_disguised_mimic_at(self, x, y):
         """Get DISGUISED mimic at the specified position."""
@@ -632,364 +391,48 @@ class GameSession:
         return None
     
     def _process_enemy_turns(self):
-        """Process all enemy turns after player action."""
-        from utils.pathfinding import get_distance
-        from domain.combat import get_combat_message
-        from domain.enemy_ai import (
-            get_enemy_movement, 
-            get_special_attack_effects, 
-            handle_post_attack, 
-            should_enemy_attack
-        )
-        
-        elixir_messages = self.character.update_elixirs()
-        if elixir_messages:
-            if self.message:
-                self.message += " | " + " ".join(elixir_messages)
-            else:
-                self.message = " ".join(elixir_messages)
-        
-        combat_messages = []
-        enemies = [e for e in self.level.get_all_enemies() if e.is_alive()]
-        
-        player_pos = (int(self.character.position[0]), int(self.character.position[1]))
-        
-        for enemy in enemies:
-            enemy_pos = enemy.position
-            distance = get_distance(enemy_pos, player_pos)
-            
-            if distance == 1:
-                if enemy.enemy_type == EnemyType.MIMIC and hasattr(enemy, 'is_disguised') and enemy.is_disguised:
-                    continue
-                
-                if should_enemy_attack(enemy):
-                    result = self.combat_system.resolve_enemy_attack(enemy, self.character)
-                    special_effects = get_special_attack_effects(enemy, result)
-                    combat_messages.append(get_combat_message(result))
-
-                    if result.get('hit'):
-                        # health steal / sleep / counterattack effects
-                        if special_effects['health_steal'] > 0:
-                            self.character.max_health -= special_effects['health_steal']
-                            if self.character.max_health < 1:
-                                self.character.max_health = 1
-                            if self.character.health > self.character.max_health:
-                                self.character.health = self.character.max_health
-                            combat_messages.append(f"Vampire stole {special_effects['health_steal']} max health!")
-
-                        if special_effects['sleep']:
-                            self.set_player_asleep()
-                            combat_messages.append("Snake Mage puts you to sleep!")
-
-                        if special_effects['counterattack']:
-                            combat_messages.append("Ogre counterattacks!")
-
-                    handle_post_attack(enemy, result)
-
-                    if result.get('killed'):
-                        self.set_game_over(f"Killed by {enemy.enemy_type}")
-                        combat_messages.append("You have died!")
-                        break
-                else:
-                    if enemy.enemy_type == EnemyType.OGRE:
-                        enemy.is_resting = False
-                        enemy.will_counterattack = True
-            else:
-                new_pos = get_enemy_movement(enemy, player_pos, self.level, enemies)
-                if new_pos:
-                    enemy.move_to(new_pos[0], new_pos[1])
-        
-        if combat_messages:
-            if self.message:
-                self.message += " | " + " ".join(combat_messages)
-            else:
-                self.message = " ".join(combat_messages)
+        return self.enemy_turn_processor.process_enemy_turns()
     
     def _request_food_selection(self):
-        """Request food selection from presentation layer."""
-        
-        food_items = self.character.backpack.get_items(ItemType.FOOD)
-        if not food_items:
-            self.message = "No food in backpack!"
-            return False
-        
-        self.pending_selection = {
-            'type': 'food',
-            'items': food_items,
-            'title': 'Select Food to Consume',
-            'allow_zero': False
-        }
-        self.request_item_selection()
-        return True
+        return self.inventory_manager.request_food_selection()
     
     def _request_weapon_selection(self):
-        """Request weapon selection from presentation layer."""
-        
-        weapon_items = self.character.backpack.get_items(ItemType.WEAPON)
-        
-        if not weapon_items and not self.character.current_weapon:
-            self.message = "No weapons available!"
-            return False
-        
-        self.pending_selection = {
-            'type': 'weapon',
-            'items': weapon_items,
-            'title': 'Select Weapon to Equip (0 to unequip current)',
-            'allow_zero': True
-        }
-        self.request_item_selection()
-        return True
+        return self.inventory_manager.request_weapon_selection()
     
     def _request_elixir_selection(self):
-        """Request elixir selection from presentation layer."""
-        
-        elixir_items = self.character.backpack.get_items(ItemType.ELIXIR)
-        if not elixir_items:
-            self.message = "No elixirs in backpack!"
-            return False
-        
-        self.pending_selection = {
-            'type': 'elixir',
-            'items': elixir_items,
-            'title': 'Select Elixir to Drink',
-            'allow_zero': False
-        }
-        self.request_item_selection()
-        return True
+        return self.inventory_manager.request_elixir_selection()
     
     def _request_scroll_selection(self):
-        """Request scroll selection from presentation layer."""
-        
-        scroll_items = self.character.backpack.get_items(ItemType.SCROLL)
-        if not scroll_items:
-            self.message = "No scrolls in backpack!"
-            return False
-        
-        self.pending_selection = {
-            'type': 'scroll',
-            'items': scroll_items,
-            'title': 'Select Scroll to Read',
-            'allow_zero': False
-        }
-        self.request_item_selection()
-        return True
+        return self.inventory_manager.request_scroll_selection()
     
     def complete_item_selection(self, selected_idx):
-        """Complete a pending item selection."""
-        if self.pending_selection is None:
-            return False
-        
-        selection_type = self.pending_selection['type']
-        
-        if selected_idx is None:
-            self.message = f"Cancelled {selection_type} selection."
-            self.pending_selection = None
-            self.return_from_selection()
-            return False
-        
-        if selection_type == 'food':
-            result = self._complete_food_selection(selected_idx)
-        elif selection_type == 'weapon':
-            result = self._complete_weapon_selection(selected_idx)
-        elif selection_type == 'elixir':
-            result = self._complete_elixir_selection(selected_idx)
-        elif selection_type == 'scroll':
-            result = self._complete_scroll_selection(selected_idx)
-        else:
-            result = False
-        
-        self.pending_selection = None
-        self.return_from_selection()
-        
-        if result and not self.state_machine.is_terminal():
-            self._process_enemy_turns()
-        
-        return result
+        return self.inventory_manager.complete_item_selection(selected_idx)
     
     def _complete_food_selection(self, selected_idx):
-        """Complete food usage."""
-        
-        food_items = self.character.backpack.get_items(ItemType.FOOD)
-        if selected_idx >= len(food_items):
-            self.message = "Invalid selection!"
-            return False
-        
-        food = food_items[selected_idx]
-        message = self.character.use_food(food)
-        self.character.backpack.remove_item(ItemType.FOOD, selected_idx)
-        self.stats.record_food_used()
-        self.message = message
-        return True
+        return self.inventory_manager._complete_food_selection(selected_idx)
     
     def _complete_weapon_selection(self, selected_idx):
-        """Complete weapon equipping with drop logic."""
-        
-        weapon_items = self.character.backpack.get_items(ItemType.WEAPON)
-        
-        if selected_idx == -1:
-            old_weapon, message, should_drop = self.character.unequip_weapon()
-            
-            if old_weapon and should_drop:
-                drop_success = self._drop_weapon_on_ground(old_weapon)
-                if drop_success:
-                    self.message = f"{message} - dropped on ground"
-                else:
-                    self.message = f"{message} - no space to drop!"
-            else:
-                self.message = message
-            
-            return True
-        
-        if selected_idx < 0 or selected_idx >= len(weapon_items):
-            self.message = "Invalid weapon selection!"
-            return False
-        
-        weapon = weapon_items[selected_idx]
-        old_weapon, message = self.character.equip_weapon(weapon)
-        self.character.backpack.remove_item(ItemType.WEAPON, selected_idx)
-        
-        if old_weapon:
-            success = self.character.backpack.add_item(old_weapon)
-            if not success:
-                drop_success = self._drop_weapon_on_ground(old_weapon)
-                if drop_success:
-                    self.message = f"{message} - old weapon dropped (backpack full)"
-                else:
-                    self.message = f"{message} - old weapon vanished (no space)!"
-            else:
-                self.message = message
-        else:
-            self.message = message
-        
-        self.stats.record_weapon_equipped()
-        return True
+        return self.inventory_manager._complete_weapon_selection(selected_idx)
     
     def _drop_weapon_on_ground(self, weapon):
-        """Drop a weapon onto a neighboring tile."""
-        player_x, player_y = int(self.character.position[0]), int(self.character.position[1])
-        
-        player_room, player_room_idx = self.level.get_room_at(player_x, player_y)
-        
-        for dx, dy in ADJACENT_OFFSETS:
-            pos_x, pos_y = player_x + dx, player_y + dy
-            
-            if not self.level.is_walkable(pos_x, pos_y):
-                continue
-            
-            if self._get_revealed_enemy_at(pos_x, pos_y):
-                continue
-            
-            if self._get_item_at(pos_x, pos_y):
-                continue
-            
-            weapon.position = (pos_x, pos_y)
-            
-            drop_room, drop_room_idx = self.level.get_room_at(pos_x, pos_y)
-            
-            if drop_room:
-                drop_room.add_item(weapon)
-            else:
-                if player_room:
-                    player_room.add_item(weapon)
-            
-            return True
-        
-        return False
+        return self.inventory_manager._drop_weapon_on_ground(weapon)
     
     def _complete_elixir_selection(self, selected_idx):
-        """Complete elixir usage."""
-        
-        elixir_items = self.character.backpack.get_items(ItemType.ELIXIR)
-        if selected_idx >= len(elixir_items):
-            self.message = "Invalid selection!"
-            return False
-        
-        elixir = elixir_items[selected_idx]
-        message = self.character.use_elixir(elixir)
-        self.character.backpack.remove_item(ItemType.ELIXIR, selected_idx)
-        self.stats.record_elixir_used()
-        self.message = message
-        return True
+        return self.inventory_manager._complete_elixir_selection(selected_idx)
     
     def _complete_scroll_selection(self, selected_idx):
-        """Complete scroll usage."""
-        
-        scroll_items = self.character.backpack.get_items(ItemType.SCROLL)
-        if selected_idx >= len(scroll_items):
-            self.message = "Invalid selection!"
-            return False
-        
-        scroll = scroll_items[selected_idx]
-        message = self.character.use_scroll(scroll)
-        self.character.backpack.remove_item(ItemType.SCROLL, selected_idx)
-        self.stats.record_scroll_used()
-        self.message = message
-        return True
+        return self.inventory_manager._complete_scroll_selection(selected_idx)
     
     def has_pending_selection(self):
         """Check if there's a pending item selection."""
-        return self.pending_selection is not None
+        return self.inventory_manager.has_pending_selection()
     
     def get_pending_selection(self):
         """Get the pending selection request."""
-        return self.pending_selection
+        return self.inventory_manager.get_pending_selection()
     
     def _handle_combat(self, enemy):
-        """Handle combat with an enemy."""
-        from domain.combat import resolve_attack, calculate_treasure_reward, get_combat_message
-        
-        messages = []
-        
-        player_will_miss = False
-        if enemy.enemy_type == EnemyType.VAMPIRE and getattr(enemy, 'first_attack_against', True):
-            player_will_miss = True
-            enemy.first_attack_against = False
-        
-        if player_will_miss:
-            player_result = {
-                'hit': False,
-                'damage': 0,
-                'killed': False,
-                'attacker_name': 'You',
-                'defender_name': enemy.enemy_type.capitalize()
-            }
-            messages.append("Your first attack against the vampire misses! (Vampire ability)")
-        else:
-            player_result = self.combat_system.resolve_player_attack(self.character, enemy, self.character.current_weapon)
-            messages.append(get_combat_message(player_result))
-        
-        self.stats.record_attack(player_result['hit'], player_result.get('damage', 0))
-        
-        if player_result['killed']:
-            treasure = calculate_treasure_reward(enemy, self.current_level_number)
-            self.character.backpack.treasure_value += treasure
-            self.stats.record_enemy_defeated(treasure)
-            messages.append(f"Gained {treasure} treasure!")
-            
-            enemy_room = self._get_enemy_room(enemy)
-            if enemy_room:
-                enemy_room.remove_enemy(enemy)
-            
-            self.character.move_to(enemy.position[0], enemy.position[1])
-            
-            if self.is_3d_mode():
-                self.camera.x = enemy.position[0]
-                self.camera.y = enemy.position[1]
-            
-            if self.should_use_fog_of_war():
-                self.fog_of_war.update_visibility(self.character.position)
-            
-            item = self._get_item_at(enemy.position[0], enemy.position[1])
-            if item:
-                pickup_message = self._pickup_item(item)
-                if pickup_message:
-                    messages.append(pickup_message)
-            
-            self.message = " ".join(messages)
-            return True
-        
-        self.message = " ".join(messages)
-        return True
+        return self.combat_system.process_player_attack(self, enemy)
     
     def _get_enemy_room(self, enemy):
         """Get the room that contains the specified enemy."""
@@ -999,40 +442,10 @@ class GameSession:
         return None
     
     def _pickup_item(self, item):
-        """Pick up an item and add it to the backpack."""
-        
-        success = self.character.backpack.add_item(item)
-        
-        if success:
-            self.stats.record_item_collected()
-            
-            item_room = self._get_item_room(item)
-            if item_room:
-                item_room.remove_item(item)
-            
-            if item.item_type == ItemType.TREASURE:
-                return f"Picked up {item.value} treasure!"
-            elif item.item_type == ItemType.FOOD:
-                return f"Picked up food (heals {item.health_restoration} HP)"
-            elif item.item_type == ItemType.WEAPON:
-                return f"Picked up {item.name}"
-            elif item.item_type == ItemType.ELIXIR:
-                return f"Picked up elixir ({item.stat_type} +{item.bonus})"
-            elif item.item_type == ItemType.SCROLL:
-                return f"Picked up scroll ({item.stat_type} +{item.bonus})"
-            elif item.item_type == ItemType.KEY:
-                return f"Picked up {item.color.value} key!"
-            else:
-                return "Picked up item"
-        else:
-            return f"Backpack full! Can't pick up item."
+        return self.inventory_manager.pickup_item(item)
     
     def _get_item_room(self, item):
-        """Get the room that contains the specified item."""
-        for room in self.level.rooms:
-            if item in room.items:
-                return room
-        return None
+        return self.inventory_manager.get_item_room(item)
     
     def _advance_level(self):
         """Advance to the next level."""
