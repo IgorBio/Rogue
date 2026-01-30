@@ -62,7 +62,7 @@ class LevelManager:
         except Exception:
             # Backwards-compat: ItemType.KEY may be used as mapping key
             try:
-                from utils.constants import ItemType
+                from config.game_config import ItemType
                 session.character.backpack.items[ItemType.KEY] = []
             except Exception:
                 pass

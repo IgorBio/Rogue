@@ -9,15 +9,10 @@ REFACTORING NOTE (Step 1.2):
 """
 
 from domain.entities.position import Position
-from utils.constants import (
-    INITIAL_PLAYER_HEALTH,
-    INITIAL_PLAYER_MAX_HEALTH,
-    INITIAL_PLAYER_STRENGTH,
-    INITIAL_PLAYER_DEXTERITY,
-    MAX_ITEMS_PER_TYPE,
-    MIN_HEALTH_AFTER_ELIXIR_EXPIRY,
+from config.game_config import (
     ItemType,
-    StatType
+    StatType,
+    PlayerConfig,
 )
 
 
@@ -52,7 +47,7 @@ class Backpack:
             self.treasure_value += item.value
             return True
 
-        if len(self.items[item_type]) < MAX_ITEMS_PER_TYPE:
+        if len(self.items[item_type]) < PlayerConfig.MAX_ITEMS_PER_TYPE:
             self.items[item_type].append(item)
             return True
 
@@ -135,10 +130,10 @@ class Character:
         # ✅ CHANGED: Use Position object instead of tuple
         self._position = Position(x, y)
 
-        self.health = INITIAL_PLAYER_HEALTH
-        self.max_health = INITIAL_PLAYER_MAX_HEALTH
-        self.strength = INITIAL_PLAYER_STRENGTH
-        self.dexterity = INITIAL_PLAYER_DEXTERITY
+        self.health = PlayerConfig.INITIAL_HEALTH
+        self.max_health = PlayerConfig.INITIAL_MAX_HEALTH
+        self.strength = PlayerConfig.INITIAL_STRENGTH
+        self.dexterity = PlayerConfig.INITIAL_DEXTERITY
         self.current_weapon = None
         self.backpack = Backpack()
         self.active_elixirs = []
@@ -414,7 +409,7 @@ class Character:
                     if self.health > self.max_health:
                         self.health = self.max_health
                     if self.health <= 0:
-                        self.health = MIN_HEALTH_AFTER_ELIXIR_EXPIRY
+                        self.health = PlayerConfig.MIN_HEALTH_AFTER_ELIXIR_EXPIRY
                     messages.append(f"Elixir wore off: Max Health -{bonus}")
 
         for i in reversed(expired):

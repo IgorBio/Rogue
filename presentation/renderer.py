@@ -24,7 +24,7 @@ from presentation.colors import (
     COLOR_UI_TEXT,
     COLOR_UI_HIGHLIGHT
 )
-from utils.constants import MAP_WIDTH, MAP_HEIGHT, ItemType, EnemyType
+from config.game_config import GameConfig, ItemType, EnemyType
 from presentation.ui_components import MessageLog, render_status_panel, render_message_log
 
 
@@ -51,8 +51,8 @@ class Renderer:
             stdscr: Curses standard screen object
         """
         self.stdscr = stdscr
-        self.map_height = MAP_HEIGHT
-        self.map_width = MAP_WIDTH
+        self.map_height = GameConfig.MAP_HEIGHT
+        self.map_width = GameConfig.MAP_WIDTH
         self.message_log = MessageLog(max_messages=5)
         
         # Configure curses for game display

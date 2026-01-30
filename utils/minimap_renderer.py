@@ -79,8 +79,9 @@ class MiniMapRenderer:
                 curses.color_pair(COLOR_UI_TEXT)
             )
         except:
-            pass
-        
+            from config.game_config import GameConfig
+            self.map_width = GameConfig.MAP_WIDTH
+            self.map_height = GameConfig.MAP_HEIGHT
         # Side borders
         for y in range(self.minimap_size):
             try:
@@ -325,13 +326,13 @@ def test_minimap():
     print("MINI-MAP RENDERER TEST")
     print("=" * 60)
     
-    from utils.constants import MAP_WIDTH, MAP_HEIGHT
-    
+    from config.game_config import GameConfig
+
     # Create mini-map renderer
-    minimap = MiniMapRenderer(MAP_WIDTH, MAP_HEIGHT, minimap_size=12)
-    
+    minimap = MiniMapRenderer(GameConfig.MAP_WIDTH, GameConfig.MAP_HEIGHT, minimap_size=12)
+
     print(f"\nMini-map Configuration:")
-    print(f"  Full map size: {MAP_WIDTH}x{MAP_HEIGHT}")
+    print(f"  Full map size: {GameConfig.MAP_WIDTH}x{GameConfig.MAP_HEIGHT}")
     print(f"  Mini-map size: {minimap.minimap_size}x{minimap.minimap_size}")
     print(f"  Scale X: {minimap.scale_x:.2f}")
     print(f"  Scale Y: {minimap.scale_y:.2f}")
@@ -343,8 +344,8 @@ def test_minimap():
     
     test_coords = [
         (0, 0, "Top-left corner"),
-        (MAP_WIDTH // 2, MAP_HEIGHT // 2, "Center"),
-        (MAP_WIDTH - 1, MAP_HEIGHT - 1, "Bottom-right corner"),
+        (GameConfig.MAP_WIDTH // 2, GameConfig.MAP_HEIGHT // 2, "Center"),
+        (GameConfig.MAP_WIDTH - 1, GameConfig.MAP_HEIGHT - 1, "Bottom-right corner"),
         (10, 10, "Room position"),
     ]
     

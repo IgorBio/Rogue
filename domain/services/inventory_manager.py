@@ -3,7 +3,7 @@
 This manager owns pending selections and pickup/drop logic so the
 `GameSession` can delegate and remain small.
 """
-from utils.constants import ItemType
+from config.game_config import ItemType
 
 
 class InventoryManager:

@@ -9,9 +9,9 @@ def test_level_manager_generate_and_advance():
     assert lm.current_level_number == 1
 
     # Advance to next level (assuming LEVEL_COUNT >= 2)
-    from utils.constants import LEVEL_COUNT
-    new_num = lm.advance_to_next_level(LEVEL_COUNT)
-    if LEVEL_COUNT > 1:
+    from config.game_config import GameConfig
+    new_num = lm.advance_to_next_level(GameConfig.TOTAL_LEVELS)
+    if GameConfig.TOTAL_LEVELS > 1:
         assert new_num == 2
         assert lm.current_level_number == 2
     else:

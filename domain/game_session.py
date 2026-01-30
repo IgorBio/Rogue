@@ -15,9 +15,8 @@ from domain.fog_of_war import FogOfWar
 from domain.dynamic_difficulty import DifficultyManager
 from domain.services.position_synchronizer import PositionSynchronizer
 from domain.services.game_states import GameState, StateMachine
-from utils.constants import LEVEL_COUNT, EnemyType, ItemType
-from utils.raycasting import Camera
-from utils.camera_controller import CameraController
+from config.game_config import GameConfig, EnemyType, ItemType
+# Presentation dependencies (Camera / CameraController) are injected via factories
 
 # Test mode constants
 TEST_MODE_HEALTH = 999
@@ -60,7 +59,9 @@ class GameSession:
         state_machine: Replaces game_over, victory, player_asleep flags
     """
     
-    def __init__(self, test_mode=False, test_level=1, test_fog_of_war=False):
+    def __init__(self, test_mode=False, test_level=1, test_fog_of_war=False,
+                 statistics_factory=None, save_manager_factory=None,
+                 camera_factory=None, camera_controller_factory=None):
         """
         Initialize a new game session.
         
@@ -73,7 +74,7 @@ class GameSession:
         self.test_fog_of_war_enabled = test_fog_of_war
         
         if test_mode:
-            self.current_level_number = max(1, min(LEVEL_COUNT, test_level))
+            self.current_level_number = max(1, min(GameConfig.TOTAL_LEVELS, test_level))
         else:
             self.current_level_number = 1
         
@@ -95,9 +96,31 @@ class GameSession:
         self.position_sync = PositionSynchronizer(center_offset=0.5)
         
         self.difficulty_manager = DifficultyManager()
-        
-        from data.statistics import Statistics
-        self.stats = Statistics()
+
+        # Dependency factories injected from outer layer to avoid direct
+        # domain -> data/presentation imports.
+        self._statistics_factory = statistics_factory
+        self._save_manager_factory = save_manager_factory
+        self._camera_factory = camera_factory
+        self._camera_controller_factory = camera_controller_factory
+
+        # Create statistics instance if factory provided
+        self.stats = None
+        if callable(self._statistics_factory):
+            try:
+                self.stats = self._statistics_factory()
+            except Exception:
+                self.stats = None
+
+        # Backwards-compatible fallback: if no factory provided, try to
+        # lazily import the Statistics implementation from data layer.
+        if self.stats is None:
+            try:
+                from data.statistics import Statistics  # lazy import
+                self.stats = Statistics()
+            except Exception:
+                self.stats = None
+
         # Combat system service (extract combat resolution)
         from domain.services.combat_system import CombatSystem
         self.combat_system = CombatSystem(self.stats)
@@ -199,23 +222,52 @@ class GameSession:
         else:
             self.character.move_to(start_x, start_y)
 
-        # Initialize or update camera
-        if self.camera is None:
-            self.camera = Camera(
-                start_x + 0.5, 
-                start_y + 0.5,
-                angle=DEFAULT_CAMERA_ANGLE,
-                fov=DEFAULT_CAMERA_FOV
-            )
-            self.camera_controller = CameraController(self.camera, self.level)
+        # Initialize or update camera via injected factories (presentation
+        # layer objects are created outside the domain layer). If no
+        # factory is provided, attempt a lazy import of the presentation
+        # Camera/Controller to preserve backwards compatibility.
+        if self.camera is None and not callable(self._camera_factory):
+            try:
+                from utils.raycasting import Camera  # lazy import
+                from utils.camera_controller import CameraController  # lazy import
+                # create default camera/controller
+                try:
+                    self.camera = Camera(start_x + 0.5, start_y + 0.5,
+                                          angle=DEFAULT_CAMERA_ANGLE,
+                                          fov=DEFAULT_CAMERA_FOV)
+                    self.camera_controller = CameraController(self.camera, self.level)
+                except Exception:
+                    self.camera = None
+                    self.camera_controller = None
+            except Exception:
+                # no presentation available
+                self.camera = None
+                self.camera_controller = None
+
+        if self.camera is None and callable(self._camera_factory):
+            try:
+                self.camera = self._camera_factory(
+                    start_x + 0.5,
+                    start_y + 0.5,
+                    angle=DEFAULT_CAMERA_ANGLE,
+                    fov=DEFAULT_CAMERA_FOV,
+                )
+            except Exception:
+                self.camera = None
+
+        # Create or update camera controller if factory provided
+        if self.camera is not None and callable(self._camera_controller_factory):
+            try:
+                self.camera_controller = self._camera_controller_factory(self.camera, self.level)
+            except Exception:
+                self.camera_controller = None
         else:
-            # Sync camera to new character position
-            self.position_sync.sync_camera_to_character(
-                self.camera, 
-                self.character, 
-                preserve_angle=True
-            )
-            self.camera_controller.level = self.level
+            # If camera exists but controller wasn't recreated, attempt to sync
+            try:
+                if self.camera is not None:
+                    self.position_sync.sync_camera_to_character(self.camera, self.character, preserve_angle=True)
+            except Exception:
+                pass
 
         self.fog_of_war.update_visibility(self.character.position)
 
@@ -249,22 +301,22 @@ class GameSession:
         Uses PositionSynchronizer for type-safe coordinate conversion.
         """
         if self.rendering_mode == "2d":
-            # Switching to 3D: sync camera to character
+            # Switching to 3D: sync camera to character (only if camera available)
             self.rendering_mode = "3d"
-            self.position_sync.sync_camera_to_character(
-                self.camera, 
-                self.character, 
-                preserve_angle=True
-            )
+            if self.camera is not None:
+                try:
+                    self.position_sync.sync_camera_to_character(self.camera, self.character, preserve_angle=True)
+                except Exception:
+                    pass
             self.message = "Switched to 3D view"
         else:
-            # Switching to 2D: sync character to camera
+            # Switching to 2D: sync character to camera (only if camera available)
             self.rendering_mode = "2d"
-            self.position_sync.sync_character_to_camera(
-                self.character, 
-                self.camera, 
-                snap_to_grid=True
-            )
+            if self.camera is not None:
+                try:
+                    self.position_sync.sync_character_to_camera(self.character, self.camera, snap_to_grid=True)
+                except Exception:
+                    pass
             self.message = "Switched to 2D view"
 
         return self.rendering_mode
@@ -421,7 +473,7 @@ class GameSession:
         return self.inventory_manager.get_item_room(item)
     
     def _advance_level(self):
-        return self.level_manager.advance_and_setup(self, LEVEL_COUNT)
+        return self.level_manager.advance_and_setup(self, GameConfig.TOTAL_LEVELS)
     
     def advance_level(self):
         """Public method to advance to next level."""
@@ -429,9 +481,14 @@ class GameSession:
     
     def save_to_file(self, filename=None):
         """Save the current game state to file."""
-        from data.save_manager import SaveManager
-        save_manager = SaveManager()
-        return save_manager.save_game(self, filename)
+        # Use injected save manager factory if available to avoid domain -> data import.
+        if callable(self._save_manager_factory):
+            try:
+                save_manager = self._save_manager_factory()
+                return save_manager.save_game(self, filename)
+            except Exception:
+                return False
+        return False
     
     def get_game_stats(self):
         """Get game statistics for display."""
@@ -463,13 +520,19 @@ class GameSession:
     
     def reset_game(self):
         """Reset the game to start a new run."""
-        from data.statistics import Statistics
+        # Recreate statistics via injected factory if available
         
         self.current_level_number = 1
         self.message = ""
         self.death_reason = ""
         self.character = None
-        self.stats = Statistics()
+        if callable(self._statistics_factory):
+            try:
+                self.stats = self._statistics_factory()
+            except Exception:
+                self.stats = None
+        else:
+            self.stats = None
         self.difficulty_manager = DifficultyManager()
         self.camera = None
         self.camera_controller = None

@@ -82,12 +82,18 @@ class GameConfig:
     # === КОМНАТЫ И КОРИДОРЫ ===
     ROOM_COUNT = 9
     ROOMS_PER_ROW = 3
-    SECTION_WIDTH = 30
-    SECTION_HEIGHT = 20
     MIN_ROOM_WIDTH = 8
     MAX_ROOM_WIDTH = 20
-    MIN_ROOM_HEIGHT = 6
-    MAX_ROOM_HEIGHT = 15
+    MIN_ROOM_HEIGHT = 5
+    MAX_ROOM_HEIGHT = 7
+
+    # Map dimensions
+    MAP_WIDTH = 80
+    MAP_HEIGHT = 24
+
+    # Section dimensions for 3x3 grid
+    SECTION_WIDTH = MAP_WIDTH // ROOMS_PER_ROW
+    SECTION_HEIGHT = MAP_HEIGHT // ROOMS_PER_ROW
 
 
 class ItemConfig:
@@ -217,3 +223,85 @@ if __name__ == "__main__":
         print(f"📊 Summary: {get_config_summary()}")
     except ValueError as e:
         print(f"❌ Configuration error: {e}")
+
+
+# Legacy type classes (kept for compatibility)
+class ItemType:
+    TREASURE = "treasure"
+    FOOD = "food"
+    ELIXIR = "elixir"
+    SCROLL = "scroll"
+    WEAPON = "weapon"
+    KEY = "key"
+
+
+class StatType:
+    STRENGTH = "strength"
+    DEXTERITY = "dexterity"
+    MAX_HEALTH = "max_health"
+
+
+class EnemyType:
+    ZOMBIE = "zombie"
+    VAMPIRE = "vampire"
+    GHOST = "ghost"
+    OGRE = "ogre"
+    SNAKE_MAGE = "snake_mage"
+    MIMIC = "mimic"
+
+
+# Enemy stats compatibility (kept from legacy constants)
+ENEMY_STATS = {
+    EnemyType.ZOMBIE: {
+        'health': 40,
+        'strength': 8,
+        'dexterity': 4,
+        'hostility': 5,
+        'char': 'z',
+        'color': 'green'
+    },
+    EnemyType.VAMPIRE: {
+        'health': 50,
+        'strength': 7,
+        'dexterity': 12,
+        'hostility': 8,
+        'char': 'v',
+        'color': 'red'
+    },
+    EnemyType.GHOST: {
+        'health': 20,
+        'strength': 5,
+        'dexterity': 13,
+        'hostility': 3,
+        'char': 'g',
+        'color': 'white'
+    },
+    EnemyType.OGRE: {
+        'health': 80,
+        'strength': 15,
+        'dexterity': 3,
+        'hostility': 6,
+        'char': 'o',
+        'color': 'yellow'
+    },
+    EnemyType.SNAKE_MAGE: {
+        'health': 35,
+        'strength': 6,
+        'dexterity': 15,
+        'hostility': 7,
+        'char': 's',
+        'color': 'white'
+    },
+    EnemyType.MIMIC: {
+        'health': 60,
+        'strength': 4,
+        'dexterity': 14,
+        'hostility': 2,
+        'char': 'm',
+        'color': 'white'
+    }
+}
+
+
+# Compatibility aliases removed — use PlayerConfig, ItemConfig, EnemyConfig, GameConfig directly
+

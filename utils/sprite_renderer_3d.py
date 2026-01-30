@@ -142,7 +142,7 @@ class SpriteRenderer:
     
     def _get_item_char(self, item):
         """Get character for item."""
-        from utils.constants import ItemType
+        from config.game_config import ItemType
         
         item_chars = {
             ItemType.FOOD: '%',

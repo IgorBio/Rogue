@@ -8,7 +8,7 @@ Keys do NOT persist across levels.
 import random
 from enum import Enum
 from collections import deque
-from utils.constants import ItemType
+from config.game_config import ItemType
 
 
 # Level tier configuration for key distribution

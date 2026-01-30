@@ -12,69 +12,77 @@ from domain.entities.corridor import Corridor
 from domain.entities.item import Food, Weapon, Elixir, Scroll
 from domain.entities.enemy import create_enemy
 from domain.key_door_system import place_keys_and_doors
-from utils.constants import (
-    ROOM_COUNT,
-    ROOMS_PER_ROW,
-    SECTION_WIDTH,
-    SECTION_HEIGHT,
-    MIN_ROOM_WIDTH,
-    MAX_ROOM_WIDTH,
-    MIN_ROOM_HEIGHT,
-    MAX_ROOM_HEIGHT,
-    ENEMY_COUNT_BASE,
-    ENEMY_COUNT_PER_LEVEL,
-    MAX_ENEMIES_PER_LEVEL,
-    ENEMY_STAT_SCALING,
-    EnemyType,
-    FOOD_SPAWN_RATE,
-    ELIXIR_SPAWN_RATE,
-    SCROLL_SPAWN_RATE,
-    WEAPON_SPAWN_RATE,
-    MIMIC_SPAWN_RATE,
-    StatType
-)
+from config.game_config import GameConfig, ItemConfig, EnemyConfig
+from config.game_config import EnemyType, StatType
 
 
-# Level generation constants
-MIN_STARTING_LEVEL = 1
-MIN_ENEMIES_PER_LEVEL = 2
-MIN_FOOD_ITEMS = 2
-MIN_WEAPON_ITEMS = 1
-MAX_ENEMIES_PER_ROOM = 4
+# Room/map layout constants (use GameConfig directly)
+ROOM_COUNT = GameConfig.ROOM_COUNT
+ROOMS_PER_ROW = GameConfig.ROOMS_PER_ROW
+SECTION_WIDTH = GameConfig.SECTION_WIDTH
+SECTION_HEIGHT = GameConfig.SECTION_HEIGHT
+MIN_ROOM_WIDTH = GameConfig.MIN_ROOM_WIDTH
+MAX_ROOM_WIDTH = GameConfig.MAX_ROOM_WIDTH
+MIN_ROOM_HEIGHT = GameConfig.MIN_ROOM_HEIGHT
+MAX_ROOM_HEIGHT = GameConfig.MAX_ROOM_HEIGHT
+
+
+# Level generation constants (migrated to GameConfig/ItemConfig/EnemyConfig)
+MIN_STARTING_LEVEL = GameConfig.MIN_STARTING_LEVEL if hasattr(GameConfig, 'MIN_STARTING_LEVEL') else 1
+MIN_ENEMIES_PER_LEVEL = GameConfig.MIN_ENEMIES_PER_LEVEL if hasattr(GameConfig, 'MIN_ENEMIES_PER_LEVEL') else 2
+MIN_FOOD_ITEMS = GameConfig.MIN_FOOD_ITEMS if hasattr(GameConfig, 'MIN_FOOD_ITEMS') else 2
+MIN_WEAPON_ITEMS = GameConfig.MIN_WEAPON_ITEMS if hasattr(GameConfig, 'MIN_WEAPON_ITEMS') else 1
+MAX_ENEMIES_PER_ROOM = GameConfig.MAX_ENEMIES_PER_ROOM if hasattr(GameConfig, 'MAX_ENEMIES_PER_ROOM') else 4
+
+# Enemy spawn / scaling (from EnemyConfig)
+ENEMY_COUNT_BASE = EnemyConfig.ENEMY_COUNT_BASE
+ENEMY_COUNT_PER_LEVEL = EnemyConfig.ENEMY_COUNT_PER_LEVEL
+MAX_ENEMIES_PER_LEVEL = EnemyConfig.MAX_ENEMIES_PER_LEVEL
+ENEMY_STAT_SCALING = EnemyConfig.ENEMY_STAT_SCALING
+
+# Item spawn rates (from ItemConfig)
+FOOD_SPAWN_RATE = ItemConfig.FOOD_SPAWN_RATE
+WEAPON_SPAWN_RATE = ItemConfig.WEAPON_SPAWN_RATE
+ELIXIR_SPAWN_RATE = ItemConfig.ELIXIR_SPAWN_RATE
+SCROLL_SPAWN_RATE = ItemConfig.SCROLL_SPAWN_RATE
+MIMIC_SPAWN_RATE = ItemConfig.MIMIC_SPAWN_RATE
+
+# Legacy treasure multiplier (kept for compatibility)
+TREASURE_LEVEL_MULTIPLIER = 0.1
 
 # Enemy distribution by level tier
-TIER_1_LEVEL = 7
-TIER_2_LEVEL = 14
-MIMIC_MIN_LEVEL = 5
+TIER_1_LEVEL = EnemyConfig.TIER_1_LEVEL
+TIER_2_LEVEL = EnemyConfig.TIER_2_LEVEL
+MIMIC_MIN_LEVEL = ItemConfig.MIMIC_MIN_LEVEL
 
 # Weapon generation
-WEAPON_BASE_BONUS_MIN = 3
-WEAPON_BASE_BONUS_MAX = 8
-WEAPON_BONUS_PER_THREE_LEVELS = 1
+WEAPON_BASE_BONUS_MIN = ItemConfig.WEAPON_BASE_BONUS_MIN
+WEAPON_BASE_BONUS_MAX = ItemConfig.WEAPON_BASE_BONUS_MAX
+WEAPON_BONUS_PER_THREE_LEVELS = ItemConfig.WEAPON_BONUS_PER_THREE_LEVELS
 
 # Food generation
-FOOD_BASE_HEALING_MIN = 15
-FOOD_BASE_HEALING_MAX = 30
-FOOD_HEALING_PER_LEVEL = 2
+FOOD_BASE_HEALING_MIN = ItemConfig.FOOD_BASE_HEALING_MIN
+FOOD_BASE_HEALING_MAX = ItemConfig.FOOD_BASE_HEALING_MAX
+FOOD_HEALING_PER_LEVEL = ItemConfig.FOOD_HEALING_PER_LEVEL
 
 # Elixir generation
-ELIXIR_BASE_BONUS_MIN = 3
-ELIXIR_BASE_BONUS_MAX = 8
-ELIXIR_BONUS_PER_FOUR_LEVELS = 1
-ELIXIR_DURATION_MIN = 5
-ELIXIR_DURATION_MAX = 15
+ELIXIR_BASE_BONUS_MIN = ItemConfig.ELIXIR_BASE_BONUS_MIN
+ELIXIR_BASE_BONUS_MAX = ItemConfig.ELIXIR_BASE_BONUS_MAX
+ELIXIR_BONUS_PER_FOUR_LEVELS = ItemConfig.ELIXIR_BONUS_PER_FOUR_LEVELS
+ELIXIR_DURATION_MIN = ItemConfig.ELIXIR_DURATION_MIN
+ELIXIR_DURATION_MAX = ItemConfig.ELIXIR_DURATION_MAX
 
 # Scroll generation
-SCROLL_BASE_BONUS_MIN = 2
-SCROLL_BASE_BONUS_MAX = 5
-SCROLL_BONUS_PER_FIVE_LEVELS = 1
+SCROLL_BASE_BONUS_MIN = ItemConfig.SCROLL_BASE_BONUS_MIN
+SCROLL_BASE_BONUS_MAX = ItemConfig.SCROLL_BASE_BONUS_MAX
+SCROLL_BONUS_PER_FIVE_LEVELS = ItemConfig.SCROLL_BONUS_PER_FIVE_LEVELS
 
 # Weapon names
-WEAPON_NAMES = ["Dagger", "Sword", "Axe", "Mace", "Spear", "Hammer"]
+WEAPON_NAMES = ItemConfig.WEAPON_NAMES
 
 # Level factor calculation
-LEVEL_FACTOR_DIVISOR = 30
-MIN_LEVEL_FACTOR = 0.3
+LEVEL_FACTOR_DIVISOR = GameConfig.LEVEL_FACTOR_DIVISOR
+MIN_LEVEL_FACTOR = GameConfig.MIN_LEVEL_FACTOR
 
 
 def generate_level(level_number, difficulty_adjustments=None):

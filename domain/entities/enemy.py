@@ -4,7 +4,7 @@ Enemy entities with unique behaviors and attributes.
 This module defines the Enemy base class and all enemy types,
 including their special mechanics and AI behaviors.
 """
-from utils.constants import EnemyType, ENEMY_STATS
+from config.game_config import EnemyType, ENEMY_STATS
 
 
 class Enemy:

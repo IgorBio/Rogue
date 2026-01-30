@@ -10,7 +10,7 @@ This module provides reusable UI components including:
 """
 import curses
 from collections import deque
-from utils.constants import ItemType
+from config.game_config import ItemType
 from presentation.colors import COLOR_UI_TEXT, COLOR_UI_HIGHLIGHT
 
 

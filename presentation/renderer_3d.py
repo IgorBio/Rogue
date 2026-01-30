@@ -15,7 +15,7 @@ from presentation.colors import (
     COLOR_CORRIDOR,
     COLOR_UI_TEXT,
 )
-from utils.constants import MAP_WIDTH, MAP_HEIGHT
+from config.game_config import GameConfig
 
 
 class Renderer3D:
@@ -57,7 +57,7 @@ class Renderer3D:
         self.textured_renderer = TexturedRenderer(self.texture_manager)
         
         # Initialize mini-map
-        self.minimap = MiniMapRenderer(MAP_WIDTH, MAP_HEIGHT, minimap_size=12)
+        self.minimap = MiniMapRenderer(GameConfig.MAP_WIDTH, GameConfig.MAP_HEIGHT, minimap_size=12)
         
         # Initialize sprite renderer
         self.sprite_renderer = SpriteRenderer(viewport_width, viewport_height, fov=60.0)

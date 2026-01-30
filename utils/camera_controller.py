@@ -240,7 +240,7 @@ class CameraController:
                     room.remove_item(entity)
                     break
             
-            from utils.constants import ItemType
+            from config.game_config import ItemType
             
             if entity.item_type == ItemType.TREASURE:
                 message = f"Picked up {entity.value} treasure!"

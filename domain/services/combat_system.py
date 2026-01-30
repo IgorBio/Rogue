@@ -5,7 +5,6 @@ provides a single place to extend combat behaviour (logging, stats,
 effects) without changing callers.
 """
 from typing import Optional
-from data import statistics as _stats_module  # type: ignore
 
 from domain import combat as _combat
 

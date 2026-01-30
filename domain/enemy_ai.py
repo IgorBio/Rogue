@@ -5,7 +5,7 @@ This module implements unique movement patterns and special abilities
 for each enemy type, providing varied and challenging gameplay.
 """
 import random
-from utils.constants import EnemyType
+from config.game_config import EnemyType
 from utils.pathfinding import (
     get_distance,
     get_next_step,

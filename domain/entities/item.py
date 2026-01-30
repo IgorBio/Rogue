@@ -4,7 +4,7 @@ Item entities for the game.
 This module defines all item types that can be found and used by the player,
 including consumables, equipment, and collectibles.
 """
-from utils.constants import ItemType
+from config.game_config import ItemType
 
 
 class Item:

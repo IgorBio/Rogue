@@ -4,7 +4,7 @@ Small, focused service to keep `GameSession` thin while keeping lookup
 logic testable and reusable by other services (movement, combat).
 """
 from typing import Optional, Tuple
-from utils.constants import EnemyType
+from config.game_config import EnemyType
 
 # Normalize constant name for robust comparisons (supports Enum or raw string)
 MIMIC_NAME = getattr(EnemyType.MIMIC, 'name', str(EnemyType.MIMIC))

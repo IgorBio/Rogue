@@ -23,7 +23,7 @@ from domain.key_door_system import Key, Door, KeyColor
 from domain.fog_of_war import FogOfWar
 from domain.dynamic_difficulty import DifficultyManager
 from data.statistics import Statistics
-from utils.constants import ItemType
+from config.game_config import ItemType
 from utils.raycasting import Camera
 
 # Save file configuration

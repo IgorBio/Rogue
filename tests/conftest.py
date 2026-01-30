@@ -35,7 +35,7 @@ def character_damaged():
 def zombie_enemy():
     """Фикстура для создания зомби врага"""
     from domain.entities.enemy import create_enemy
-    from utils.constants import EnemyType
+    from config.game_config import EnemyType
     return create_enemy(EnemyType.ZOMBIE, x=15, y=15)
 
 
@@ -43,7 +43,7 @@ def zombie_enemy():
 def vampire_enemy():
     """Фикстура для создания вампира врага"""
     from domain.entities.enemy import create_enemy
-    from utils.constants import EnemyType
+    from config.game_config import EnemyType
     return create_enemy(EnemyType.VAMPIRE, x=15, y=15)
 
 
@@ -51,7 +51,7 @@ def vampire_enemy():
 def mimic_enemy():
     """Фикстура для создания мимика врага"""
     from domain.entities.enemy import create_enemy
-    from utils.constants import EnemyType
+    from config.game_config import EnemyType
     return create_enemy(EnemyType.MIMIC, x=15, y=15, disguise_type='%')
 
 
@@ -77,7 +77,7 @@ def weapon_item():
 def elixir_item():
     """Фикстура для эликсира"""
     from domain.entities.item import Elixir
-    from utils.constants import StatType
+    from config.game_config import StatType
     elixir = Elixir(stat_type=StatType.STRENGTH, bonus=5, duration=10)
     elixir.position = (10, 10)
     return elixir
@@ -87,7 +87,7 @@ def elixir_item():
 def scroll_item():
     """Фикстура для свитка"""
     from domain.entities.item import Scroll
-    from utils.constants import StatType
+    from config.game_config import StatType
     scroll = Scroll(stat_type=StatType.STRENGTH, bonus=3)
     scroll.position = (10, 10)
     return scroll

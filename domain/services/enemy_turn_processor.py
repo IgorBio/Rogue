@@ -13,7 +13,7 @@ from domain.enemy_ai import (
 )
 from domain.combat import get_combat_message
 from utils.pathfinding import get_distance
-from utils.constants import EnemyType
+from config.game_config import EnemyType
 
 
 class EnemyTurnProcessor:

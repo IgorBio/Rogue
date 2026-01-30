@@ -17,7 +17,9 @@ def main(stdscr):
     from domain.game_session import GameSession
     from presentation.game_ui import GameUI
     from data.save_manager import SaveManager
-    from data.statistics import StatisticsManager
+    from data.statistics import StatisticsManager, Statistics
+    from utils.raycasting import Camera
+    from utils.camera_controller import CameraController
     
     # Initialize managers and UI
     save_manager = SaveManager()
@@ -43,17 +45,26 @@ def main(stdscr):
                 if test_config is None:
                     continue
                 
-                # Create test game session
+                # Create test game session (inject presentation/data factories)
                 game_session = GameSession(
                     test_mode=True,
                     test_level=test_config['level'],
-                    test_fog_of_war=test_config['fog_of_war']
+                    test_fog_of_war=test_config['fog_of_war'],
+                    statistics_factory=Statistics,
+                    save_manager_factory=lambda: save_manager,
+                    camera_factory=lambda x, y, angle=0.0, fov=60.0: Camera(x, y, angle=angle, fov=fov),
+                    camera_controller_factory=lambda cam, lvl: CameraController(cam, lvl)
                 )
                 ui.display_message(f"TEST MODE: Level {test_config['level']}, Fog of War: {test_config['fog_of_war']}")
             
             elif selection == 'new':
-                # Create new game
-                game_session = GameSession()
+                # Create new game (inject presentation/data factories)
+                game_session = GameSession(
+                    statistics_factory=Statistics,
+                    save_manager_factory=lambda: save_manager,
+                    camera_factory=lambda x, y, angle=0.0, fov=60.0: Camera(x, y, angle=angle, fov=fov),
+                    camera_controller_factory=lambda cam, lvl: CameraController(cam, lvl)
+                )
                 ui.display_message("Welcome to the dungeon! Find the exit to proceed.")
             
             elif selection == 'continue':
