@@ -56,7 +56,7 @@ def test_3d_mode_delegates(monkeypatch):
     session = _make_session(test_mode=True)
     ap = ActionProcessor(session)
 
-    # Set 3D mode and monkeypatch the 3D handler
+    # Set 3D mode and monkeypatch the ActionProcessor's 3D handler
     session.rendering_mode = '3d'
     called = {"args": None}
 
@@ -64,7 +64,7 @@ def test_3d_mode_delegates(monkeypatch):
         called['args'] = (a_type, a_data)
         return True
 
-    monkeypatch.setattr(session, '_process_action_3d', fake_3d)
+    monkeypatch.setattr(ap, '_process_action_3d', fake_3d)
 
     res = ap.process_action('attack', None)
     assert res is True

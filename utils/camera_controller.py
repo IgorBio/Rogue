@@ -172,44 +172,25 @@ class CameraController:
     
     def attack_entity_in_front(self, character, level):
         """
-        Attack an enemy directly in front of the camera.
-        
-        Args:
-            character: Character object (for combat stats)
-            level: Level object
-        
+        Detect an enemy directly in front of the camera.
+
+        This method no longer executes combat. It merely reports the enemy
+        object (if present) and a short message; the domain-level combat
+        system is responsible for resolving the attack and applying effects.
+
         Returns:
-            Tuple of (success, message, combat_result)
+            Tuple of (success, message, enemy) where enemy is the Enemy instance
         """
         entity, entity_type, distance = self.get_entity_in_front(level)
-        
+
         if entity_type != 'enemy':
             return (False, "No enemy in front", None)
-        
+
         if distance > self.interaction_range:
             return (False, "Enemy too far away", None)
-        
-        # Trigger combat via CombatSystem wrapper to centralize logic
-        from domain.services.combat_system import CombatSystem
-        from domain.combat import get_combat_message
 
-        combat_system = CombatSystem()  # lightweight instance; no stats available here
-        result = combat_system.resolve_player_attack(character, entity, character.current_weapon)
-        message = get_combat_message(result)
-
-        # If enemy died, remove from room and append treasure message
-        if result.get('killed'):
-            treasure = result.get('treasure')
-
-            for room in level.rooms:
-                if entity in room.enemies:
-                    room.remove_enemy(entity)
-                    break
-
-            if treasure is not None:
-                message += f" Gained {treasure} treasure!"
-
-        return (True, message, result)
+        # Report the enemy; actual combat will be performed by the session's CombatSystem
+        return (True, f"Enemy spotted: {getattr(entity, 'enemy_type', 'enemy')}", entity)
     
     def pickup_item_in_front(self, character, level):
         """

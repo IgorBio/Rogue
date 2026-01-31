@@ -55,18 +55,10 @@ class ActionProcessor:
         # Clear transient message
         self.session.message = ""
 
-        # Delegate to internal 3D or 2D processor. Prefer session-level
-        # handlers when present to preserve compatibility with tests
-        # or external monkeypatching.
+        # Delegate to internal 3D or 2D processor (direct calls).
         if self.session.is_3d_mode():
-            handler = getattr(self.session, '_process_action_3d', None)
-            if handler is not None:
-                return handler(action_type, action_data)
             return self._process_action_3d(action_type, action_data)
         else:
-            handler = getattr(self.session, '_process_action_2d', None)
-            if handler is not None:
-                return handler(action_type, action_data)
             return self._process_action_2d(action_type, action_data)
 
     def _process_action_2d(self, action_type, action_data):
@@ -151,34 +143,23 @@ class ActionProcessor:
 
     def _handle_3d_attack(self):
         """Handle attack in 3D mode."""
-        success, message, result = self.session.camera_controller.attack_entity_in_front(
+        success, message, enemy = self.session.camera_controller.attack_entity_in_front(
             self.session.character, self.session.level
         )
 
         self.session.message = message
 
-        if success and result:
-            # Delegate recording and post-attack flow to CombatSystem
+        if success and enemy:
+            # Use session's CombatSystem which carries statistics and full handling
             try:
-                self.session.combat_system.finalize_attack_result(self.session, result)
+                return self.session.combat_system.process_player_attack(self.session, enemy)
             except Exception:
-                # Fallback conservatively to prior inline behavior
+                # As a conservative fallback, signal failure but avoid duplicating
+                # statistics or side-effects that may be handled elsewhere.
                 try:
-                    self.session.stats.record_attack(result.get('hit', False), result.get('damage', 0))
+                    return False
                 except Exception:
-                    pass
-
-                if result.get('killed') and result.get('treasure'):
-                    try:
-                        self.session.stats.record_enemy_defeated(result.get('treasure'))
-                    except Exception:
-                        pass
-
-                try:
-                    if not self.session.state_machine.is_terminal():
-                        self.session._process_enemy_turns()
-                except Exception:
-                    pass
+                    return False
 
         return success
 

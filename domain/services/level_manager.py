@@ -56,15 +56,16 @@ class LevelManager:
         This centralizes the level-advance flow previously in GameSession so
         callers can remain thin coordinators.
         """
-        # Clear keys
+        # Clear keys (support both old/new mapping keys)
         try:
             session.character.backpack.items[session.character.backpack.KEY] = []
-        except Exception:
+        except (AttributeError, KeyError, TypeError):
             # Backwards-compat: ItemType.KEY may be used as mapping key
             try:
                 from config.game_config import ItemType
                 session.character.backpack.items[ItemType.KEY] = []
-            except Exception:
+            except (ImportError, AttributeError, KeyError, TypeError):
+                # If the structure isn't present, continue; this is non-fatal.
                 pass
 
         new_level_num = self.advance_to_next_level(max_levels)
@@ -76,32 +77,36 @@ class LevelManager:
         session.current_level_number = new_level_num
         try:
             session.stats.record_level_reached(session.current_level_number)
-        except Exception:
+        except AttributeError:
+            # No stats attached to session; continue.
             pass
 
         # Begin level transition state before generating the new level
-        try:
-            session.begin_level_transition()
-        except Exception:
-            # If session doesn't support begin_level_transition for any reason,
-            # continue conservatively without failing.
-            pass
+        if hasattr(session, 'begin_level_transition'):
+            try:
+                session.begin_level_transition()
+            except AttributeError:
+                # Older session implementations may not support this method; ignore.
+                pass
 
         # Generate and place character
         session._generate_new_level()
 
         # Only complete transition if session entered LEVEL_TRANSITION
-        try:
+        if hasattr(session, 'complete_level_transition'):
             session.complete_level_transition()
-        except Exception:
-            # If complete_level_transition raises (it shouldn't), ignore to avoid stopping flow
-            pass
 
         if not session.test_mode:
-            try:
-                difficulty_desc = session.difficulty_manager.get_difficulty_description()
+            difficulty_desc = None
+            if getattr(session, 'difficulty_manager', None) is not None:
+                try:
+                    difficulty_desc = session.difficulty_manager.get_difficulty_description()
+                except Exception:
+                    # If difficulty manager fails to provide a description, fall back.
+                    difficulty_desc = None
+            if difficulty_desc:
                 session.message = f"Advanced to level {session.current_level_number}! (Difficulty: {difficulty_desc})"
-            except Exception:
+            else:
                 session.message = f"Advanced to level {session.current_level_number}!"
         else:
             session.message = f"Advanced to level {session.current_level_number}!"
@@ -109,7 +114,8 @@ class LevelManager:
         if not session.test_mode:
             try:
                 session.save_to_file()
-            except Exception:
+            except (OSError, IOError):
+                # Persist failures shouldn't stop the game flow in normal operation.
                 pass
 
         return new_level_num

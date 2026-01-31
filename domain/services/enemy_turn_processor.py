@@ -55,7 +55,7 @@ class EnemyTurnProcessor:
                     combat_messages.append(get_combat_message(result))
 
                     if result.get('hit'):
-                        session.stats.record_hit_taken(result.get('damage', 0))
+                        # CombatSystem.resolve_enemy_attack already records hits via statistics
 
                         if special_effects['health_steal'] > 0:
                             session.character.max_health -= special_effects['health_steal']

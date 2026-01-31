@@ -23,7 +23,7 @@ from domain.combat import (
     get_combat_message
 )
 
-from domain.fog_of_war import FogOfWar, get_visible_tiles
+from domain.fog_of_war import FogOfWar
 
 from domain.enemy_ai import (
     get_enemy_movement,
@@ -39,7 +39,6 @@ __all__ = [
     'calculate_treasure_reward',
     'get_combat_message',
     'FogOfWar',
-    'get_visible_tiles',
     'get_enemy_movement',
     'should_enemy_attack',
     'get_special_attack_effects',

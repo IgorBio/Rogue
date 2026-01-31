@@ -330,14 +330,6 @@ class GameSession:
         # Delegate to the action processor service
         return self.action_processor.process_action(action_type, action_data)
 
-    # Backwards-compatible delegators used during refactor transition.
-    # Tests and older call sites may patch these on the session, so keep
-    # thin wrappers that forward to the ActionProcessor implementation.
-    def _process_action_2d(self, action_type, action_data):
-        return self.action_processor._process_action_2d(action_type, action_data)
-
-    def _process_action_3d(self, action_type, action_data):
-        return self.action_processor._process_action_3d(action_type, action_data)
 
     @property
     def game_over(self) -> bool:
