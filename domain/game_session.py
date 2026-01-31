@@ -180,9 +180,14 @@ class GameSession:
         self.state_machine.transition_to(GameState.LEVEL_TRANSITION)
     
     def complete_level_transition(self) -> None:
-        """Complete level transition, return to playing."""
-        self.state_machine.transition_to(GameState.PLAYING)
-    
+        """Complete level transition, return to playing.
+
+        Only performs the transition if the session is currently in
+        `LEVEL_TRANSITION` to avoid invalid or unexpected transitions
+        caused by out-of-order calls (e.g., during restore or corrupted saves).
+        """
+        if self.state_machine.is_transitioning_level():
+            self.state_machine.transition_to(GameState.PLAYING)    
     # ============================================================================
     # CORE GAME METHODS
     # ============================================================================

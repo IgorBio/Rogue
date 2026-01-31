@@ -196,6 +196,17 @@ class StateMachine:
         self._previous_state = self._state
         self._state = GameState.INITIALIZING
     
+    def restore_state(self, state: GameState) -> None:
+        """
+        Restore the internal state without validating transitions.
+
+        This is intended for use during deserialization/loading only. It will
+        set the current state directly and clear the previous state to avoid
+        triggering transition validation logic.
+        """
+        self._previous_state = None
+        self._state = state
+
     def __repr__(self) -> str:
-        """String representation of state machine."""
+        """String representation of state machine including current and previous states."""
         return f"StateMachine(current={self._state.name}, previous={self._previous_state.name if self._previous_state else 'None'})"

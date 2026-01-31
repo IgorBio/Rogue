@@ -79,9 +79,23 @@ class LevelManager:
         except Exception:
             pass
 
+        # Begin level transition state before generating the new level
+        try:
+            session.begin_level_transition()
+        except Exception:
+            # If session doesn't support begin_level_transition for any reason,
+            # continue conservatively without failing.
+            pass
+
         # Generate and place character
         session._generate_new_level()
-        session.complete_level_transition()
+
+        # Only complete transition if session entered LEVEL_TRANSITION
+        try:
+            session.complete_level_transition()
+        except Exception:
+            # If complete_level_transition raises (it shouldn't), ignore to avoid stopping flow
+            pass
 
         if not session.test_mode:
             try:

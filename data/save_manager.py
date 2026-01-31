@@ -236,31 +236,45 @@ class SaveManager:
 
         # Restore fog of war
         fog_of_war = FogOfWar(level)
-        if 'fog_of_war' in save_data:
+        if 'fog_of_war' in save_data and save_data['fog_of_war'] is not None:
             self._restore_fog_of_war(fog_of_war, save_data['fog_of_war'])
         game_session.fog_of_war = fog_of_war
 
         # Restore statistics
         game_session.stats = Statistics.from_dict(save_data['statistics'])
 
-        # ✅ NEW (Step 1.3): Restore game flow state
+        # ✅ NEW (Step 1.3): Restore game flow state (safely)
         game_session.rendering_mode = save_data.get('rendering_mode', '2d')
-        game_session.player_asleep = save_data.get('player_asleep', False)
-        game_session.game_over = save_data.get('game_over', False)
-        game_session.victory = save_data.get('victory', False)
+        # Do not assign via property setters that trigger transitions. Instead
+        # determine saved state and restore it directly at the end of restoration.
+        saved_player_asleep = save_data.get('player_asleep', False)
+        saved_game_over = save_data.get('game_over', False)
+        saved_victory = save_data.get('victory', False)
         game_session.message = save_data.get('message', '')
         game_session.death_reason = save_data.get('death_reason', '')
 
         # ✅ NEW (Step 1.3): Restore pending selection
         game_session.pending_selection = save_data.get('pending_selection', None)
 
+        # Determine final saved GameState (priority: VICTORY > GAME_OVER > PLAYER_ASLEEP > ITEM_SELECTION > PLAYING)
+        from domain.services.game_states import GameState
+        if saved_victory:
+            _saved_state = GameState.VICTORY
+        elif saved_game_over:
+            _saved_state = GameState.GAME_OVER
+        elif saved_player_asleep:
+            _saved_state = GameState.PLAYER_ASLEEP
+        elif game_session.pending_selection is not None:
+            _saved_state = GameState.ITEM_SELECTION
+        else:
+            _saved_state = GameState.PLAYING
         # ✅ NEW (Step 1.3): Restore difficulty manager
-        if 'difficulty_manager' in save_data:
+        if 'difficulty_manager' in save_data and save_data['difficulty_manager'] is not None:
             game_session.difficulty_manager = self._deserialize_difficulty_manager(
                 save_data['difficulty_manager']
             )
         else:
-            # Fallback for old saves
+            # Fallback for old saves or explicit None
             game_session.difficulty_manager = DifficultyManager()
 
         # ✅ NEW (Step 1.3): Restore camera
@@ -283,6 +297,16 @@ class SaveManager:
             # Create camera if needed (e.g., switching to 3D after load)
             game_session.camera = None
             game_session.camera_controller = None
+
+        # Finally: restore state machine to saved state without validating transitions
+        try:
+            game_session.state_machine.restore_state(_saved_state)
+        except Exception:
+            # As a final safety net, leave session in PLAYING if restore fails
+            try:
+                game_session.state_machine.restore_state(GameState.PLAYING)
+            except Exception:
+                pass
 
         return game_session
 
