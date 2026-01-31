@@ -8,10 +8,10 @@ REFACTORING NOTE (Step 1.4):
 - Provides bidirectional synchronization: Character → Camera and Camera → Character
 """
 
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Any
 from domain.entities.position import Position
 from domain.entities.character import Character
-from utils.raycasting import Camera
+# Note: Camera is a presentation-layer object; avoid importing it at module level to keep domain layer decoupled.
 
 
 class PositionSynchronizer:
@@ -43,7 +43,7 @@ class PositionSynchronizer:
         self._last_character_pos: Optional[Tuple[int, int]] = None
         self._last_camera_pos: Optional[Tuple[float, float]] = None
 
-    def sync_camera_to_character(self, camera: Camera, character: Character, 
+    def sync_camera_to_character(self, camera: Any, character: Character, 
                                  preserve_angle: bool = True) -> None:
         """
         Synchronize Camera position to Character position.
@@ -77,7 +77,7 @@ class PositionSynchronizer:
         self._last_character_pos = (char_x, char_y)
         self._last_camera_pos = (cam_x, cam_y)
 
-    def sync_character_to_camera(self, character: Character, camera: Camera,
+    def sync_character_to_camera(self, character: Character, camera: Any,
                                 snap_to_grid: bool = True) -> None:
         """
         Synchronize Character position to Camera position.
@@ -125,7 +125,7 @@ class PositionSynchronizer:
 
         return character.position != self._last_character_pos
 
-    def is_camera_moved(self, camera: Camera) -> bool:
+    def is_camera_moved(self, camera: Any) -> bool:
         """
         Check if camera has moved since last sync.
 
@@ -141,7 +141,7 @@ class PositionSynchronizer:
         current_pos = (camera.x, camera.y)
         return current_pos != self._last_camera_pos
 
-    def auto_sync_if_needed(self, character: Character, camera: Camera,
+    def auto_sync_if_needed(self, character: Character, camera: Any,
                            mode: str = 'character_to_camera') -> bool:
         """
         Automatically sync if position changed.
@@ -165,7 +165,7 @@ class PositionSynchronizer:
 
         return False
 
-    def get_sync_offset(self, character: Character, camera: Camera) -> Tuple[float, float]:
+    def get_sync_offset(self, character: Character, camera: Any) -> Tuple[float, float]:
         """
         Calculate current offset between character and camera.
 
@@ -184,7 +184,7 @@ class PositionSynchronizer:
 
         return (offset_x, offset_y)
 
-    def are_positions_synced(self, character: Character, camera: Camera,
+    def are_positions_synced(self, character: Character, camera: Any,
                             tolerance: float = 0.1) -> bool:
         """
         Check if character and camera are on the same grid cell.
@@ -212,14 +212,22 @@ class PositionSyncValidator:
     Provides utility methods to validate sync operations and detect issues.
     """
 
+
+class PositionSyncValidator:
+    """
+    Validator for position synchronization operations.
+
+    Provides utility methods to validate sync operations and detect issues.
+    """
+
     @staticmethod
-    def validate_sync(character: Character, camera: Camera) -> dict:
+    def validate_sync(character: Character, camera: Any) -> dict:
         """
         Validate current sync state between character and camera.
 
         Args:
             character: Character instance
-            camera: Camera instance
+            camera: Any duck-typed camera-like object (expects .x, .y, .grid_position)
 
         Returns:
             dict: Validation results with keys:
@@ -257,13 +265,13 @@ class PositionSyncValidator:
         }
 
     @staticmethod
-    def suggest_sync_direction(character: Character, camera: Camera) -> str:
+    def suggest_sync_direction(character: Character, camera: Any) -> str:
         """
         Suggest which sync direction to use based on current state.
 
         Args:
             character: Character instance
-            camera: Camera instance
+            camera: Any duck-typed camera-like object (expects .x, .y, .grid_position)
 
         Returns:
             str: Suggested direction ('character_to_camera', 'camera_to_character', or 'none')
@@ -287,7 +295,7 @@ class PositionSyncValidator:
 
 # Convenience functions for common operations
 def create_synced_pair(character_pos: Tuple[int, int], angle: float = 0.0,
-                      fov: float = 60.0, center_offset: float = 0.5) -> Tuple[Character, Camera]:
+                      fov: float = 60.0, center_offset: float = 0.5) -> Tuple[Character, Any]:
     """
     Create a synchronized Character and Camera pair.
 
@@ -303,6 +311,9 @@ def create_synced_pair(character_pos: Tuple[int, int], angle: float = 0.0,
     char_x, char_y = character_pos
 
     character = Character(char_x, char_y)
+    # Local import to keep domain layer decoupled from presentation implementations
+    from utils.raycasting import Camera
+
     camera = Camera(
         char_x + center_offset,
         char_y + center_offset,
@@ -313,7 +324,7 @@ def create_synced_pair(character_pos: Tuple[int, int], angle: float = 0.0,
     return character, camera
 
 
-def quick_sync_to_2d(character: Character, camera: Camera) -> None:
+def quick_sync_to_2d(character: Character, camera: Any) -> None:
     """
     Quick sync for switching to 2D view (Camera → Character).
 
@@ -325,7 +336,7 @@ def quick_sync_to_2d(character: Character, camera: Camera) -> None:
     sync.sync_character_to_camera(character, camera, snap_to_grid=True)
 
 
-def quick_sync_to_3d(camera: Camera, character: Character) -> None:
+def quick_sync_to_3d(camera: Any, character: Character) -> None:
     """
     Quick sync for switching to 3D view (Character → Camera).
 

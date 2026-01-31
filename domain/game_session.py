@@ -15,22 +15,13 @@ from domain.fog_of_war import FogOfWar
 from domain.dynamic_difficulty import DifficultyManager
 from domain.services.position_synchronizer import PositionSynchronizer
 from domain.services.game_states import GameState, StateMachine
-from config.game_config import GameConfig, EnemyType, ItemType
+from config.game_config import GameConfig, PlayerConfig
 # Presentation dependencies (Camera / CameraController) are injected via factories
 
-# Test mode constants
-TEST_MODE_HEALTH = 999
-TEST_MODE_MAX_HEALTH = 999
-TEST_MODE_STRENGTH = 999
-TEST_MODE_DEXTERITY = 999
-
-# Adjacent tile offsets for item dropping
-ADJACENT_OFFSETS = [(-1, 0), (1, 0), (0, -1), (0, 1),
-                   (-1, -1), (1, -1), (-1, 1), (1, 1)]
-
-# Camera defaults
-DEFAULT_CAMERA_ANGLE = 0.0
-DEFAULT_CAMERA_FOV = 60.0
+# Local constants removed — use centralized configuration from config/game_config.py
+# - Test mode: GameConfig.TEST_MODE_STATS
+# - Adjacent offsets: PlayerConfig.ADJACENT_OFFSETS
+# - Camera defaults: GameConfig.DEFAULT_CAMERA_ANGLE / GameConfig.DEFAULT_CAMERA_FOV
 
 
 class GameSession:
@@ -214,10 +205,11 @@ class GameSession:
         if self.character is None:
             self.character = Character(start_x, start_y)
             if self.test_mode:
-                self.character.health = TEST_MODE_HEALTH
-                self.character.max_health = TEST_MODE_MAX_HEALTH
-                self.character.strength = TEST_MODE_STRENGTH
-                self.character.dexterity = TEST_MODE_DEXTERITY
+                tm = GameConfig.TEST_MODE_STATS
+                self.character.health = tm['health']
+                self.character.max_health = tm['max_health']
+                self.character.strength = tm['strength']
+                self.character.dexterity = tm['dexterity']
         else:
             self.character.move_to(start_x, start_y)
 
@@ -228,8 +220,8 @@ class GameSession:
             self.camera = self._camera_factory(
                 start_x + 0.5,
                 start_y + 0.5,
-                angle=DEFAULT_CAMERA_ANGLE,
-                fov=DEFAULT_CAMERA_FOV,
+                angle=GameConfig.DEFAULT_CAMERA_ANGLE,
+                fov=GameConfig.DEFAULT_CAMERA_FOV,
             )
         except Exception:
             self.camera = None

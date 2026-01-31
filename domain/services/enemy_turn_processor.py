@@ -12,7 +12,7 @@ from domain.enemy_ai import (
     should_enemy_attack,
 )
 from domain.combat import get_combat_message
-from utils.pathfinding import get_distance
+from domain.entities.position import Position
 from config.game_config import EnemyType
 
 
@@ -37,7 +37,13 @@ class EnemyTurnProcessor:
 
         for enemy in enemies:
             enemy_pos = enemy.position
-            distance = get_distance(enemy_pos, player_pos)
+            # Use Position.manhattan_distance_to to avoid dependency on utils.pathfinding
+            if isinstance(enemy_pos, tuple):
+                enemy_pos_obj = Position(enemy_pos[0], enemy_pos[1])
+            else:
+                enemy_pos_obj = enemy_pos
+
+            distance = enemy_pos_obj.manhattan_distance_to(player_pos)
 
             if distance == 1:
                 if enemy.enemy_type == EnemyType.MIMIC and hasattr(enemy, 'is_disguised') and enemy.is_disguised:

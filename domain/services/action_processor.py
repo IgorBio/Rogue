@@ -7,6 +7,26 @@ from domain.services.game_states import GameState
 
 
 class ActionProcessor:
+    # 2D action constants (decoupled from presentation layer)
+    ACTION_MOVE = "move"
+    ACTION_USE_FOOD = "use_food"
+    ACTION_USE_WEAPON = "use_weapon"
+    ACTION_USE_ELIXIR = "use_elixir"
+    ACTION_USE_SCROLL = "use_scroll"
+    ACTION_QUIT = "quit"
+    ACTION_NONE = "none"
+
+    # 3D action constants
+    ACTION_MOVE_FORWARD = "move_forward"
+    ACTION_MOVE_BACKWARD = "move_backward"
+    ACTION_STRAFE_LEFT = "strafe_left"
+    ACTION_STRAFE_RIGHT = "strafe_right"
+    ACTION_ROTATE_LEFT = "rotate_left"
+    ACTION_ROTATE_RIGHT = "rotate_right"
+    ACTION_INTERACT = "interact"
+    ACTION_ATTACK = "attack"
+    ACTION_PICKUP = "pickup"
+
     def __init__(self, session):
         self.session = session
     def process_action(self, action_type, action_data):
@@ -51,23 +71,22 @@ class ActionProcessor:
 
     def _process_action_2d(self, action_type, action_data):
         """Process actions in 2D mode."""
-        from presentation.input_handler import InputHandler
 
-        if action_type == InputHandler.ACTION_MOVE:
+        if action_type == self.ACTION_MOVE:
             return self.session.movement_handler.handle_2d_movement(action_data)
-        elif action_type == InputHandler.ACTION_USE_FOOD:
+        elif action_type == self.ACTION_USE_FOOD:
             return self.session.inventory_manager.request_food_selection()
-        elif action_type == InputHandler.ACTION_USE_WEAPON:
+        elif action_type == self.ACTION_USE_WEAPON:
             return self.session.inventory_manager.request_weapon_selection()
-        elif action_type == InputHandler.ACTION_USE_ELIXIR:
+        elif action_type == self.ACTION_USE_ELIXIR:
             return self.session.inventory_manager.request_elixir_selection()
-        elif action_type == InputHandler.ACTION_USE_SCROLL:
+        elif action_type == self.ACTION_USE_SCROLL:
             return self.session.inventory_manager.request_scroll_selection()
-        elif action_type == InputHandler.ACTION_QUIT:
+        elif action_type == self.ACTION_QUIT:
             self.session.set_game_over("Game quit by player")
             self.session.message = "Game quit by player."
             return True
-        elif action_type == InputHandler.ACTION_NONE:
+        elif action_type == self.ACTION_NONE:
             return False
         else:
             self.session.message = "Action not yet implemented."
@@ -75,43 +94,42 @@ class ActionProcessor:
 
     def _process_action_3d(self, action_type, action_data):
         """Process actions in 3D mode."""
-        from utils.input_handler_3d import InputHandler3D
 
-        if action_type == InputHandler3D.ACTION_MOVE_FORWARD:
+        if action_type == self.ACTION_MOVE_FORWARD:
             return self.session.movement_handler.handle_3d_movement('forward')
-        elif action_type == InputHandler3D.ACTION_MOVE_BACKWARD:
+        elif action_type == self.ACTION_MOVE_BACKWARD:
             return self.session.movement_handler.handle_3d_movement('backward')
-        elif action_type == InputHandler3D.ACTION_STRAFE_LEFT:
+        elif action_type == self.ACTION_STRAFE_LEFT:
             return self.session.movement_handler.handle_3d_movement('strafe_left')
-        elif action_type == InputHandler3D.ACTION_STRAFE_RIGHT:
+        elif action_type == self.ACTION_STRAFE_RIGHT:
             return self.session.movement_handler.handle_3d_movement('strafe_right')
-        elif action_type == InputHandler3D.ACTION_ROTATE_LEFT:
+        elif action_type == self.ACTION_ROTATE_LEFT:
             self.session.camera_controller.rotate_left()
             self.session.message = f"Facing {self.session.camera_controller.get_direction_name()}"
             return True
-        elif action_type == InputHandler3D.ACTION_ROTATE_RIGHT:
+        elif action_type == self.ACTION_ROTATE_RIGHT:
             self.session.camera_controller.rotate_right()
             self.session.message = f"Facing {self.session.camera_controller.get_direction_name()}"
             return True
-        elif action_type == InputHandler3D.ACTION_INTERACT:
+        elif action_type == self.ACTION_INTERACT:
             return self._handle_3d_interact()
-        elif action_type == InputHandler3D.ACTION_ATTACK:
+        elif action_type == self.ACTION_ATTACK:
             return self._handle_3d_attack()
-        elif action_type == InputHandler3D.ACTION_PICKUP:
+        elif action_type == self.ACTION_PICKUP:
             return self._handle_3d_pickup()
-        elif action_type == InputHandler3D.ACTION_USE_FOOD:
+        elif action_type == self.ACTION_USE_FOOD:
             return self.session.inventory_manager.request_food_selection()
-        elif action_type == InputHandler3D.ACTION_USE_WEAPON:
+        elif action_type == self.ACTION_USE_WEAPON:
             return self.session.inventory_manager.request_weapon_selection()
-        elif action_type == InputHandler3D.ACTION_USE_ELIXIR:
+        elif action_type == self.ACTION_USE_ELIXIR:
             return self.session.inventory_manager.request_elixir_selection()
-        elif action_type == InputHandler3D.ACTION_USE_SCROLL:
+        elif action_type == self.ACTION_USE_SCROLL:
             return self.session.inventory_manager.request_scroll_selection()
-        elif action_type == InputHandler3D.ACTION_QUIT:
+        elif action_type == self.ACTION_QUIT:
             self.session.set_game_over("Game quit by player")
             self.session.message = "Game quit by player."
             return True
-        elif action_type == InputHandler3D.ACTION_NONE:
+        elif action_type == self.ACTION_NONE:
             return False
         else:
             return False

@@ -34,81 +34,9 @@ MAX_ITEMS_PER_TYPE = 9
 # Minimum health if elixir expiry would kill player
 MIN_HEALTH_AFTER_ELIXIR_EXPIRY = 1  
 
-# Item types
-class ItemType:
-    TREASURE = "treasure"
-    FOOD = "food"
-    ELIXIR = "elixir"
-    SCROLL = "scroll"
-    WEAPON = "weapon"
-    KEY = "key"
-
-# Elixir/Scroll stat types
-class StatType:
-    STRENGTH = "strength"
-    DEXTERITY = "dexterity"
-    MAX_HEALTH = "max_health"
-
-# Enemy types
-class EnemyType:
-    ZOMBIE = "zombie"
-    VAMPIRE = "vampire"
-    GHOST = "ghost"
-    OGRE = "ogre"
-    SNAKE_MAGE = "snake_mage"
-    MIMIC = "mimic"  # Stage 26: Added Mimic
-
-# Enemy base stats (health, strength, dexterity, hostility)
-ENEMY_STATS = {
-    EnemyType.ZOMBIE: {
-        'health': 40,
-        'strength': 8,
-        'dexterity': 4,
-        'hostility': 5,
-        'char': 'z',
-        'color': 'green'
-    },
-    EnemyType.VAMPIRE: {
-        'health': 50,
-        'strength': 7,
-        'dexterity': 12,
-        'hostility': 8,
-        'char': 'v',
-        'color': 'red'
-    },
-    EnemyType.GHOST: {
-        'health': 20,
-        'strength': 5,
-        'dexterity': 13,
-        'hostility': 3,
-        'char': 'g',
-        'color': 'white'
-    },
-    EnemyType.OGRE: {
-        'health': 80,
-        'strength': 15,
-        'dexterity': 3,
-        'hostility': 6,
-        'char': 'o',
-        'color': 'yellow'
-    },
-    EnemyType.SNAKE_MAGE: {
-        'health': 35,
-        'strength': 6,
-        'dexterity': 15,
-        'hostility': 7,
-        'char': 's',
-        'color': 'white'
-    },
-    EnemyType.MIMIC: {
-        'health': 60,
-        'strength': 4,
-        'dexterity': 14,
-        'hostility': 2,
-        'char': 'm',
-        'color': 'white'
-    }
-}
+# Item/Enemy/Stat constants moved to config/game_config.py
+# Removed here to avoid duplication — use:
+#   from config.game_config import ItemType, StatType, EnemyType, ENEMY_STATS
 
 # Difficulty scaling
 ENEMY_COUNT_BASE = 3
