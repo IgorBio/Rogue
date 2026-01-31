@@ -98,28 +98,27 @@ class GameSession:
         self.difficulty_manager = DifficultyManager()
 
         # Dependency factories injected from outer layer to avoid direct
-        # domain -> data/presentation imports.
+        # domain -> data/presentation imports. These factories are required
+        # to enforce decoupling between domain and data/presentation.
+        if not callable(statistics_factory):
+            raise TypeError("statistics_factory is required and must be callable")
+        if not callable(save_manager_factory):
+            raise TypeError("save_manager_factory is required and must be callable")
+        if not callable(camera_factory):
+            raise TypeError("camera_factory is required and must be callable")
+        if not callable(camera_controller_factory):
+            raise TypeError("camera_controller_factory is required and must be callable")
+
         self._statistics_factory = statistics_factory
         self._save_manager_factory = save_manager_factory
         self._camera_factory = camera_factory
         self._camera_controller_factory = camera_controller_factory
 
-        # Create statistics instance if factory provided
-        self.stats = None
-        if callable(self._statistics_factory):
-            try:
-                self.stats = self._statistics_factory()
-            except Exception:
-                self.stats = None
-
-        # Backwards-compatible fallback: if no factory provided, try to
-        # lazily import the Statistics implementation from data layer.
-        if self.stats is None:
-            try:
-                from data.statistics import Statistics  # lazy import
-                self.stats = Statistics()
-            except Exception:
-                self.stats = None
+        # Create statistics instance via factory
+        try:
+            self.stats = self._statistics_factory()
+        except Exception:
+            self.stats = None
 
         # Combat system service (extract combat resolution)
         from domain.services.combat_system import CombatSystem
@@ -223,51 +222,35 @@ class GameSession:
             self.character.move_to(start_x, start_y)
 
         # Initialize or update camera via injected factories (presentation
-        # layer objects are created outside the domain layer). If no
-        # factory is provided, attempt a lazy import of the presentation
-        # Camera/Controller to preserve backwards compatibility.
-        if self.camera is None and not callable(self._camera_factory):
-            try:
-                from utils.raycasting import Camera  # lazy import
-                from utils.camera_controller import CameraController  # lazy import
-                # create default camera/controller
-                try:
-                    self.camera = Camera(start_x + 0.5, start_y + 0.5,
-                                          angle=DEFAULT_CAMERA_ANGLE,
-                                          fov=DEFAULT_CAMERA_FOV)
-                    self.camera_controller = CameraController(self.camera, self.level)
-                except Exception:
-                    self.camera = None
-                    self.camera_controller = None
-            except Exception:
-                # no presentation available
-                self.camera = None
-                self.camera_controller = None
+        # layer objects are created outside the domain layer). Factories are
+        # required, so always attempt creation through them.
+        try:
+            self.camera = self._camera_factory(
+                start_x + 0.5,
+                start_y + 0.5,
+                angle=DEFAULT_CAMERA_ANGLE,
+                fov=DEFAULT_CAMERA_FOV,
+            )
+        except Exception:
+            self.camera = None
 
-        if self.camera is None and callable(self._camera_factory):
-            try:
-                self.camera = self._camera_factory(
-                    start_x + 0.5,
-                    start_y + 0.5,
-                    angle=DEFAULT_CAMERA_ANGLE,
-                    fov=DEFAULT_CAMERA_FOV,
-                )
-            except Exception:
-                self.camera = None
-
-        # Create or update camera controller if factory provided
-        if self.camera is not None and callable(self._camera_controller_factory):
-            try:
+        # Create or update camera controller via provided factory
+        try:
+            if self.camera is not None:
                 self.camera_controller = self._camera_controller_factory(self.camera, self.level)
-            except Exception:
+            else:
                 self.camera_controller = None
-        else:
-            # If camera exists but controller wasn't recreated, attempt to sync
-            try:
-                if self.camera is not None:
-                    self.position_sync.sync_camera_to_character(self.camera, self.character, preserve_angle=True)
-            except Exception:
-                pass
+        except Exception:
+            # If controller creation fails, keep camera but set controller None
+            self.camera_controller = None
+
+        # If camera exists but controller wasn't recreated and camera is present,
+        # attempt to sync positions as a best-effort (non-fatal)
+        try:
+            if self.camera is not None and self.camera_controller is None:
+                self.position_sync.sync_camera_to_character(self.camera, self.character, preserve_angle=True)
+        except Exception:
+            pass
 
         self.fog_of_war.update_visibility(self.character.position)
 
@@ -482,13 +465,11 @@ class GameSession:
     def save_to_file(self, filename=None):
         """Save the current game state to file."""
         # Use injected save manager factory if available to avoid domain -> data import.
-        if callable(self._save_manager_factory):
-            try:
-                save_manager = self._save_manager_factory()
-                return save_manager.save_game(self, filename)
-            except Exception:
-                return False
-        return False
+        try:
+            save_manager = self._save_manager_factory()
+            return save_manager.save_game(self, filename)
+        except Exception:
+            return False
     
     def get_game_stats(self):
         """Get game statistics for display."""
@@ -526,12 +507,9 @@ class GameSession:
         self.message = ""
         self.death_reason = ""
         self.character = None
-        if callable(self._statistics_factory):
-            try:
-                self.stats = self._statistics_factory()
-            except Exception:
-                self.stats = None
-        else:
+        try:
+            self.stats = self._statistics_factory()
+        except Exception:
             self.stats = None
         self.difficulty_manager = DifficultyManager()
         self.camera = None

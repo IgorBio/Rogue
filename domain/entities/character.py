@@ -9,11 +9,7 @@ REFACTORING NOTE (Step 1.2):
 """
 
 from domain.entities.position import Position
-from config.game_config import (
-    ItemType,
-    StatType,
-    PlayerConfig,
-)
+from config.game_config import ItemType, StatType, PlayerConfig
 
 
 class Backpack:

@@ -162,17 +162,39 @@ def save_manager(tmp_path):
 # === ФИКСТУРА ИГРОВОЙ СЕССИИ ===
 
 @pytest.fixture
-def game_session():
+def game_session(statistics, save_manager):
     """Фикстура для игровой сессии в тестовом режиме"""
     from domain.game_session import GameSession
-    return GameSession(test_mode=True, test_level=1, test_fog_of_war=False)
+    from utils.raycasting import Camera
+    from utils.camera_controller import CameraController
+
+    return GameSession(
+        test_mode=True,
+        test_level=1,
+        test_fog_of_war=False,
+        statistics_factory=lambda: statistics,
+        save_manager_factory=lambda: save_manager,
+        camera_factory=lambda x, y, angle=0.0, fov=60.0: Camera(x, y, angle=angle, fov=fov),
+        camera_controller_factory=lambda cam, lvl: CameraController(cam, lvl),
+    )
 
 
 @pytest.fixture
-def game_session_with_fog():
+def game_session_with_fog(statistics, save_manager):
     """Фикстура для игровой сессии с туманом войны"""
     from domain.game_session import GameSession
-    return GameSession(test_mode=True, test_level=1, test_fog_of_war=True)
+    from utils.raycasting import Camera
+    from utils.camera_controller import CameraController
+
+    return GameSession(
+        test_mode=True,
+        test_level=1,
+        test_fog_of_war=True,
+        statistics_factory=lambda: statistics,
+        save_manager_factory=lambda: save_manager,
+        camera_factory=lambda x, y, angle=0.0, fov=60.0: Camera(x, y, angle=angle, fov=fov),
+        camera_controller_factory=lambda cam, lvl: CameraController(cam, lvl),
+    )
 
 
 # === ФИКСТУРЫ КАМЕРЫ ===

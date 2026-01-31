@@ -4,10 +4,25 @@ from domain.services.action_processor import ActionProcessor
 from domain.services.game_states import GameState
 from presentation.input_handler import InputHandler
 
+from data.statistics import Statistics
+from data.save_manager import SaveManager
+from utils.raycasting import Camera
+from utils.camera_controller import CameraController
+
+
+def _make_session(**kwargs):
+    from domain.game_session import GameSession
+    return GameSession(
+        statistics_factory=Statistics,
+        save_manager_factory=lambda: SaveManager(),
+        camera_factory=lambda x, y, angle=0.0, fov=60.0: Camera(x, y, angle=angle, fov=fov),
+        camera_controller_factory=lambda cam, lvl: CameraController(cam, lvl),
+        **kwargs,
+    )
+
 
 def test_action_none_returns_false():
-    from domain.game_session import GameSession
-    session = GameSession(test_mode=True)
+    session = _make_session(test_mode=True)
     ap = ActionProcessor(session)
 
     # ACTION_NONE should return False
@@ -16,8 +31,7 @@ def test_action_none_returns_false():
 
 
 def test_asleep_wakes_and_processes_enemy_turns(monkeypatch):
-    from domain.game_session import GameSession
-    session = GameSession(test_mode=True)
+    session = _make_session(test_mode=True)
     ap = ActionProcessor(session)
 
     # Put player to sleep
@@ -39,8 +53,7 @@ def test_asleep_wakes_and_processes_enemy_turns(monkeypatch):
 
 
 def test_3d_mode_delegates(monkeypatch):
-    from domain.game_session import GameSession
-    session = GameSession(test_mode=True)
+    session = _make_session(test_mode=True)
     ap = ActionProcessor(session)
 
     # Set 3D mode and monkeypatch the 3D handler

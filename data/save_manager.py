@@ -25,6 +25,7 @@ from domain.dynamic_difficulty import DifficultyManager
 from data.statistics import Statistics
 from config.game_config import ItemType
 from utils.raycasting import Camera
+from utils.camera_controller import CameraController
 
 # Save file configuration
 DEFAULT_SAVE_DIR = 'saves'
@@ -171,10 +172,17 @@ class SaveManager:
         Returns:
             GameSession: Restored game session instance
         """
-        # Create new session with test mode flags
+        # Create new session with test mode flags and required factories
         test_mode = save_data.get('test_mode', False)
         test_fog = save_data.get('test_fog_of_war_enabled', False)
-        game_session = GameSession(test_mode=test_mode, test_fog_of_war=test_fog)
+        game_session = GameSession(
+            test_mode=test_mode,
+            test_fog_of_war=test_fog,
+            statistics_factory=Statistics,
+            save_manager_factory=lambda: self,
+            camera_factory=lambda x, y, angle=0.0, fov=60.0: Camera(x, y, angle=angle, fov=fov),
+            camera_controller_factory=lambda cam, lvl: CameraController(cam, lvl),
+        )
 
         # Restore level number
         game_session.current_level_number = save_data['current_level_number']

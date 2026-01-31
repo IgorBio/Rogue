@@ -225,7 +225,8 @@ if __name__ == "__main__":
         print(f"❌ Configuration error: {e}")
 
 
-# Legacy type classes (kept for compatibility)
+# Enemy stats compatibility (kept from legacy constants)
+# Legacy type classes (restored)
 class ItemType:
     TREASURE = "treasure"
     FOOD = "food"
