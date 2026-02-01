@@ -122,25 +122,20 @@ class GameSession:
         except Exception:
             self.stats = None
 
-        # Combat system service (extract combat resolution)
-        from domain.services.combat_system import CombatSystem
-        self.combat_system = CombatSystem(self.stats)
-
-        # Action processor (extract player action handling)
-        from domain.services.action_processor import ActionProcessor
-        self.action_processor = ActionProcessor(self)
-
-        # Level manager service (extract level generation/progression)
-        from domain.services.level_manager import LevelManager
-        self.level_manager = LevelManager(self.difficulty_manager)
-        from domain.services.movement_handler import MovementHandler
-        self.movement_handler = MovementHandler(self)
-        from domain.services.enemy_turn_processor import EnemyTurnProcessor
-        self.enemy_turn_processor = EnemyTurnProcessor(self)
-        from domain.services.inventory_manager import InventoryManager
-        self.inventory_manager = InventoryManager(self)
-        from domain.services.enemy_locator import EnemyLocator
-        self.enemy_locator = EnemyLocator()
+        # PHASE 3 REFACTORING: SessionCoordinator manages all services
+        from domain.session_coordinator import SessionCoordinator
+        self._coordinator = SessionCoordinator(self, self.stats, self.difficulty_manager)
+        self._coordinator.initialize_services()
+        
+        # DEPRECATED: Individual service access - use coordinator instead
+        # Kept for backward compatibility during transition
+        self.combat_system = self._coordinator.combat_system
+        self.action_processor = self._coordinator.action_processor
+        self.level_manager = self._coordinator.level_manager
+        self.movement_handler = self._coordinator.movement_handler
+        self.enemy_turn_processor = self._coordinator.enemy_turn_processor
+        self.inventory_manager = self._coordinator.inventory_manager
+        self.enemy_locator = self._coordinator.enemy_locator
         
         self._generate_new_level()
         
@@ -205,11 +200,10 @@ class GameSession:
     
     def _generate_new_level(self):
         """Generate a new level and place the character."""
-        # Delegate generation to LevelManager to centralize generation logic
-        self.level = self.level_manager.generate_level(
+        # Delegate generation to LevelManager via coordinator
+        self.level = self._coordinator.generate_level(
             self.current_level_number,
             character=self.character,
-            stats=self.stats,
             test_mode=self.test_mode,
         )
         self.fog_of_war = FogOfWar(self.level)
@@ -341,9 +335,8 @@ class GameSession:
         Returns:
             bool: Whether the action was successful
         """
-        
-        # Delegate to the action processor service
-        return self.action_processor.process_action(action_type, action_data)
+        # Delegate to the coordinator
+        return self._coordinator.process_action(action_type, action_data)
 
 
     @property
@@ -395,72 +388,72 @@ class GameSession:
     
     def _handle_movement(self, direction):
         """Handle movement in 2D mode."""
-        return self.movement_handler.handle_2d_movement(direction)
+        return self._coordinator.handle_movement(direction)
     
     def _get_disguised_mimic_at(self, x, y):
-        return self.enemy_locator.get_disguised_mimic_at(self.level, x, y)
+        return self._coordinator.get_disguised_mimic_at(self.level, x, y)
     
     def _get_revealed_enemy_at(self, x, y):
-        return self.enemy_locator.get_revealed_enemy_at(self.level, x, y)
+        return self._coordinator.get_revealed_enemy_at(self.level, x, y)
     
     def _get_item_at(self, x, y):
-        return self.enemy_locator.get_item_at(self.level, x, y)
+        return self._coordinator.get_item_at(self.level, x, y)
     
     def _process_enemy_turns(self):
-        return self.enemy_turn_processor.process_enemy_turns()
+        return self._coordinator.process_enemy_turns()
     
     def _request_food_selection(self):
-        return self.inventory_manager.request_food_selection()
+        return self._coordinator.request_food_selection()
     
     def _request_weapon_selection(self):
-        return self.inventory_manager.request_weapon_selection()
+        return self._coordinator.request_weapon_selection()
     
     def _request_elixir_selection(self):
-        return self.inventory_manager.request_elixir_selection()
+        return self._coordinator.request_elixir_selection()
     
     def _request_scroll_selection(self):
-        return self.inventory_manager.request_scroll_selection()
+        return self._coordinator.request_scroll_selection()
     
     def complete_item_selection(self, selected_idx):
-        return self.inventory_manager.complete_item_selection(selected_idx)
+        return self._coordinator.complete_item_selection(selected_idx)
     
     def _complete_food_selection(self, selected_idx):
-        return self.inventory_manager._complete_food_selection(selected_idx)
+        return self._coordinator.complete_food_selection(selected_idx)
     
     def _complete_weapon_selection(self, selected_idx):
-        return self.inventory_manager._complete_weapon_selection(selected_idx)
+        return self._coordinator.complete_weapon_selection(selected_idx)
     
     def _drop_weapon_on_ground(self, weapon):
-        return self.inventory_manager._drop_weapon_on_ground(weapon)
+        return self._coordinator.drop_weapon_on_ground(weapon)
     
     def _complete_elixir_selection(self, selected_idx):
-        return self.inventory_manager._complete_elixir_selection(selected_idx)
+        return self._coordinator.complete_elixir_selection(selected_idx)
     
     def _complete_scroll_selection(self, selected_idx):
-        return self.inventory_manager._complete_scroll_selection(selected_idx)
+        return self._coordinator.complete_scroll_selection(selected_idx)
     
     def has_pending_selection(self):
         """Check if there's a pending item selection."""
-        return self.inventory_manager.has_pending_selection()
+        return self._coordinator.has_pending_selection()
     
     def get_pending_selection(self):
         """Get the pending selection request."""
-        return self.inventory_manager.get_pending_selection()
+        return self._coordinator.get_pending_selection()
     
     def _handle_combat(self, enemy):
-        return self.combat_system.process_player_attack(self, enemy)
+        return self._coordinator.handle_combat(enemy)
     
     def _get_enemy_room(self, enemy):
-        return self.enemy_locator.get_enemy_room(self.level, enemy)
+        return self._coordinator.get_enemy_room(self.level, enemy)
     
     def _pickup_item(self, item):
-        return self.inventory_manager.pickup_item(item)
+        return self._coordinator.pickup_item(item)
     
     def _get_item_room(self, item):
-        return self.inventory_manager.get_item_room(item)
+        return self._coordinator.get_item_room(item)
     
     def _advance_level(self):
-        return self.level_manager.advance_and_setup(self, GameConfig.TOTAL_LEVELS)
+        return self._coordinator.advance_level(self, GameConfig.TOTAL_LEVELS)
     
     def advance_level(self):
         """Public method to advance to next level."""
