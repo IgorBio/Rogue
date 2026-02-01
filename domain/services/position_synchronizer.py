@@ -13,9 +13,26 @@ REFACTORING NOTE (Phase 2):
 - Use Position.to_camera_coords() and Position.from_camera_coords() for coordinate conversion
 """
 
+import warnings
 from typing import Tuple, Optional, Any
 from domain.entities.position import Position
 from domain.entities.character import Character
+
+
+def _deprecated(msg):
+    """Simple deprecation decorator using warnings."""
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            warnings.warn(
+                f"{func.__name__} is deprecated: {msg}",
+                DeprecationWarning,
+                stacklevel=2
+            )
+            return func(*args, **kwargs)
+        wrapper.__doc__ = func.__doc__
+        wrapper.__name__ = func.__name__
+        return wrapper
+    return decorator
 
 
 class PositionSynchronizer:
@@ -124,6 +141,7 @@ class PositionSynchronizer:
     # DEPRECATED METHODS - Use presentation.camera_sync.CameraSync instead
     # ========================================================================
     
+    @_deprecated("Use presentation.camera_sync.CameraSync.sync_camera_to_character")
     def sync_camera_to_character(self, camera: Any, character: Character,
                                  preserve_angle: bool = True) -> None:
         """
@@ -139,6 +157,7 @@ class PositionSynchronizer:
         self._last_character_pos = character.position
         self._last_camera_pos = (camera.x, camera.y)
     
+    @_deprecated("Use presentation.camera_sync.CameraSync.sync_character_from_camera")
     def sync_character_to_camera(self, character: Character, camera: Any,
                                 snap_to_grid: bool = True) -> None:
         """
@@ -155,6 +174,7 @@ class PositionSynchronizer:
         self._last_character_pos = character.position
         self._last_camera_pos = (camera.x, camera.y)
     
+    @_deprecated("Camera tracking moved to presentation layer")
     def is_camera_moved(self, camera: Any) -> bool:
         """
         DEPRECATED: Camera tracking moved to presentation layer
@@ -166,6 +186,7 @@ class PositionSynchronizer:
         current_pos = (camera.x, camera.y)
         return current_pos != self._last_camera_pos
     
+    @_deprecated("Use presentation.camera_sync.CameraSync methods directly")
     def auto_sync_if_needed(self, character: Character, camera: Any,
                            mode: str = 'character_to_camera') -> bool:
         """
@@ -182,6 +203,7 @@ class PositionSynchronizer:
         
         return False
     
+    @_deprecated("Use presentation.camera_sync.CameraSync.calculate_offset")
     def get_sync_offset(self, character: Character, camera: Any) -> Tuple[float, float]:
         """
         DEPRECATED: Use presentation.camera_sync.CameraSync.calculate_offset
@@ -190,6 +212,7 @@ class PositionSynchronizer:
         cam_x, cam_y = camera.x, camera.y
         return (cam_x - char_x, cam_y - char_y)
     
+    @_deprecated("Use presentation.camera_sync.CameraSync.is_camera_at_position")
     def are_positions_synced(self, character: Character, camera: Any,
                             tolerance: float = 0.1) -> bool:
         """
@@ -349,6 +372,7 @@ def quick_sync_camera_coords_to_position(camera_coords: Tuple[float, float],
 
 
 # Backward compatibility wrappers (delegate to presentation layer)
+@_deprecated("Use presentation.camera_sync.CameraSync.sync_character_from_camera")
 def quick_sync_to_2d(character, camera):
     """
     DEPRECATED: Use presentation.camera_sync.CameraSync.sync_character_from_camera
@@ -365,6 +389,7 @@ def quick_sync_to_2d(character, camera):
     sync.sync_character_from_camera(character, camera)
 
 
+@_deprecated("Use presentation.camera_sync.CameraSync.sync_camera_to_character")
 def quick_sync_to_3d(camera, character):
     """
     DEPRECATED: Use presentation.camera_sync.CameraSync.sync_camera_to_character

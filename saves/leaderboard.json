@@ -82,5 +82,26 @@
     "final_strength": 0,
     "final_dexterity": 0,
     "timestamp": null
+  },
+  {
+    "treasure_collected": 0,
+    "level_reached": 2,
+    "enemies_defeated": 4,
+    "food_consumed": 1,
+    "elixirs_used": 0,
+    "scrolls_read": 1,
+    "weapons_equipped": 1,
+    "attacks_made": 20,
+    "hits_taken": 5,
+    "damage_dealt": 176,
+    "damage_received": 35,
+    "tiles_moved": 362,
+    "items_collected": 10,
+    "deaths": 0,
+    "victory": false,
+    "final_health": 0,
+    "final_strength": 0,
+    "final_dexterity": 0,
+    "timestamp": null
   }
 ]

@@ -46,7 +46,7 @@ class ActionProcessor:
             self.session.state_machine.transition_to(GameState.PLAYING)
             # process enemy turns after being asleep
             try:
-                self.session._process_enemy_turns()
+                self.session._coordinator.process_enemy_turns()
             except Exception:
                 pass
             return False
@@ -69,15 +69,15 @@ class ActionProcessor:
         """Process actions in 2D mode."""
 
         if action_type == self.ACTION_MOVE:
-            return self.session.movement_handler.handle_2d_movement(action_data)
+            return self.session._coordinator.handle_movement(action_data)
         elif action_type == self.ACTION_USE_FOOD:
-            return self.session.inventory_manager.request_food_selection()
+            return self.session._coordinator.request_food_selection()
         elif action_type == self.ACTION_USE_WEAPON:
-            return self.session.inventory_manager.request_weapon_selection()
+            return self.session._coordinator.request_weapon_selection()
         elif action_type == self.ACTION_USE_ELIXIR:
-            return self.session.inventory_manager.request_elixir_selection()
+            return self.session._coordinator.request_elixir_selection()
         elif action_type == self.ACTION_USE_SCROLL:
-            return self.session.inventory_manager.request_scroll_selection()
+            return self.session._coordinator.request_scroll_selection()
         elif action_type == self.ACTION_QUIT:
             self.session.set_game_over("Game quit by player")
             self.session.message = "Game quit by player."
@@ -92,20 +92,22 @@ class ActionProcessor:
         """Process actions in 3D mode."""
 
         if action_type == self.ACTION_MOVE_FORWARD:
-            return self.session.movement_handler.handle_3d_movement('forward')
+            return self.session._coordinator.handle_movement('forward')
         elif action_type == self.ACTION_MOVE_BACKWARD:
-            return self.session.movement_handler.handle_3d_movement('backward')
+            return self.session._coordinator.handle_movement('backward')
         elif action_type == self.ACTION_STRAFE_LEFT:
-            return self.session.movement_handler.handle_3d_movement('strafe_left')
+            return self.session._coordinator.handle_movement('strafe_left')
         elif action_type == self.ACTION_STRAFE_RIGHT:
-            return self.session.movement_handler.handle_3d_movement('strafe_right')
+            return self.session._coordinator.handle_movement('strafe_right')
         elif action_type == self.ACTION_ROTATE_LEFT:
-            self.session.camera_controller.rotate_left()
-            self.session.message = f"Facing {self.session.camera_controller.get_direction_name()}"
+            if self.session.camera_controller:
+                self.session.camera_controller.rotate_left()
+                self.session.message = f"Facing {self.session.camera_controller.get_direction_name()}"
             return True
         elif action_type == self.ACTION_ROTATE_RIGHT:
-            self.session.camera_controller.rotate_right()
-            self.session.message = f"Facing {self.session.camera_controller.get_direction_name()}"
+            if self.session.camera_controller:
+                self.session.camera_controller.rotate_right()
+                self.session.message = f"Facing {self.session.camera_controller.get_direction_name()}"
             return True
         elif action_type == self.ACTION_INTERACT:
             return self._handle_3d_interact()
@@ -114,13 +116,13 @@ class ActionProcessor:
         elif action_type == self.ACTION_PICKUP:
             return self._handle_3d_pickup()
         elif action_type == self.ACTION_USE_FOOD:
-            return self.session.inventory_manager.request_food_selection()
+            return self.session._coordinator.request_food_selection()
         elif action_type == self.ACTION_USE_WEAPON:
-            return self.session.inventory_manager.request_weapon_selection()
+            return self.session._coordinator.request_weapon_selection()
         elif action_type == self.ACTION_USE_ELIXIR:
-            return self.session.inventory_manager.request_elixir_selection()
+            return self.session._coordinator.request_elixir_selection()
         elif action_type == self.ACTION_USE_SCROLL:
-            return self.session.inventory_manager.request_scroll_selection()
+            return self.session._coordinator.request_scroll_selection()
         elif action_type == self.ACTION_QUIT:
             self.session.set_game_over("Game quit by player")
             self.session.message = "Game quit by player."
@@ -132,6 +134,9 @@ class ActionProcessor:
 
     def _handle_3d_interact(self):
         """Handle smart interaction in 3D mode."""
+        if not self.session.camera_controller:
+            return False
+
         entity, entity_type, distance = self.session.camera_controller.get_entity_in_front(self.session.level)
 
         if entity_type == 'enemy':
@@ -139,7 +144,7 @@ class ActionProcessor:
         elif entity_type == 'item':
             return self._handle_3d_pickup()
         elif entity_type == 'exit':
-            return self.session.movement_handler.handle_3d_movement('forward')
+            return self.session._coordinator.handle_movement('forward')
         else:
             success, message = self.session.camera_controller.try_open_door(self.session.character)
             self.session.message = message
@@ -147,6 +152,9 @@ class ActionProcessor:
 
     def _handle_3d_attack(self):
         """Handle attack in 3D mode."""
+        if not self.session.camera_controller:
+            return False
+
         success, message, enemy = self.session.camera_controller.attack_entity_in_front(
             self.session.character, self.session.level
         )
@@ -154,9 +162,9 @@ class ActionProcessor:
         self.session.message = message
 
         if success and enemy:
-            # Use session's CombatSystem which carries statistics and full handling
+            # Use coordinator's CombatSystem which carries statistics and full handling
             try:
-                return self.session.combat_system.process_player_attack(self.session, enemy)
+                return self.session._coordinator.handle_combat(enemy)
             except Exception:
                 # As a conservative fallback, signal failure but avoid duplicating
                 # statistics or side-effects that may be handled elsewhere.
@@ -169,6 +177,9 @@ class ActionProcessor:
 
     def _handle_3d_pickup(self):
         """Handle item pickup in 3D mode."""
+        if not self.session.camera_controller:
+            return False
+
         success, message, item = self.session.camera_controller.pickup_item_in_front(
             self.session.character, self.session.level
         )

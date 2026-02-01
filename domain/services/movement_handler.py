@@ -8,6 +8,7 @@ Statistics are now tracked via events published to the EventBus.
 """
 from domain.event_bus import event_bus
 from domain.events import PlayerMovedEvent
+from config.game_config import GameConfig
 
 
 class MovementHandler:
@@ -37,13 +38,13 @@ class MovementHandler:
             session.message = "You can't move there - it's a wall!"
             return False
 
-        mimic_at_pos = session._get_disguised_mimic_at(new_x, new_y)
+        mimic_at_pos = session._coordinator.get_disguised_mimic_at(session.level, new_x, new_y)
         if mimic_at_pos:
             mimic_at_pos.reveal()
             mimic_at_pos.is_chasing = True
             session.message = "It's a MIMIC! The item was a trap!"
 
-            combat_result = session._handle_combat(mimic_at_pos)
+            combat_result = session._coordinator.handle_combat(mimic_at_pos)
 
             # Check terminal state immediately after combat (e.g., player died)
             if session.state_machine.is_terminal():
@@ -68,32 +69,32 @@ class MovementHandler:
                 except Exception:
                     pass
 
-                item = session._get_item_at(new_x, new_y)
+                item = session._coordinator.get_item_at(session.level, new_x, new_y)
                 if item:
-                    pickup_message = session._pickup_item(item)
+                    pickup_message = session._coordinator.pickup_item(item)
                     if pickup_message:
                         session.message += " | " + pickup_message
 
             if not session.state_machine.is_terminal():
-                session._process_enemy_turns()
+                session._coordinator.process_enemy_turns()
 
             return combat_result
 
-        enemy = session._get_revealed_enemy_at(new_x, new_y)
+        enemy = session._coordinator.get_revealed_enemy_at(session.level, new_x, new_y)
         if enemy:
-            combat_result = session._handle_combat(enemy)
+            combat_result = session._coordinator.handle_combat(enemy)
 
             # Check terminal state immediately after combat (e.g., player died)
             if session.state_machine.is_terminal():
                 return combat_result
 
             if combat_result and not session.state_machine.is_terminal():
-                session._process_enemy_turns()
+                session._coordinator.process_enemy_turns()
             return combat_result
 
-        item = session._get_item_at(new_x, new_y)
+        item = session._coordinator.get_item_at(session.level, new_x, new_y)
         if item:
-            pickup_message = session._pickup_item(item)
+            pickup_message = session._coordinator.pickup_item(item)
             if pickup_message:
                 session.message = pickup_message
 
@@ -116,10 +117,10 @@ class MovementHandler:
             pass
 
         if session.level.exit_position == (new_x, new_y):
-            session._advance_level()
+            session._coordinator.advance_level(session, GameConfig.TOTAL_LEVELS)
             return True
 
-        session._process_enemy_turns()
+        session._coordinator.process_enemy_turns()
         return True
 
     def handle_3d_movement(self, direction):
@@ -150,22 +151,17 @@ class MovementHandler:
 
         # Publish movement event for statistics tracking
         try:
-            old_pos = (current_x, current_y)
-        except NameError:
-            old_pos = (0, 0)
-        try:
             event_bus.publish(PlayerMovedEvent(
-                from_pos=old_pos,
+                from_pos=session.character.position,
                 to_pos=(new_x, new_y)
             ))
         except Exception:
             pass
 
-        # Check for level exit
-        if session.level.exit_position == (new_x, new_y):
-            session._advance_level()
-            return True
+        session._coordinator.process_enemy_turns()
+        return True
 
-        session._check_automatic_pickup()
-        session._process_enemy_turns()
+    def wait(self):
+        session = self.session
+        session._coordinator.process_enemy_turns()
         return True

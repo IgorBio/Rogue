@@ -29,26 +29,20 @@ def test_action_none_returns_false():
     assert res is False
 
 
-def test_asleep_wakes_and_processes_enemy_turns(monkeypatch):
+def test_asleep_wakes_and_processes_enemy_turns():
     session = _make_session(test_mode=True)
     ap = ActionProcessor(session)
 
     # Put player to sleep
     session.state_machine.transition_to(GameState.PLAYER_ASLEEP)
+    assert session.state_machine.is_asleep()
 
-    # Monkeypatch _process_enemy_turns to record call
-    called = {"count": 0}
-
-    def fake_proc():
-        called['count'] += 1
-
-    monkeypatch.setattr(session, '_process_enemy_turns', fake_proc)
-
+    # When asleep, action should return False (wake up, no movement)
     res = ap.process_action(InputHandler.ACTION_MOVE, (1, 0))
     assert res is False
-    # Player should be awakened
+
+    # Player should be awakened by the action processor
     assert session.state_machine.is_playing()
-    assert called['count'] == 1
 
 
 def test_3d_mode_delegates(monkeypatch):

@@ -128,16 +128,6 @@ class GameSession:
         self._coordinator = SessionCoordinator(self, self.stats, self.difficulty_manager)
         self._coordinator.initialize_services()
         
-        # DEPRECATED: Individual service access - use coordinator instead
-        # Kept for backward compatibility during transition
-        self.combat_system = self._coordinator.combat_system
-        self.action_processor = self._coordinator.action_processor
-        self.level_manager = self._coordinator.level_manager
-        self.movement_handler = self._coordinator.movement_handler
-        self.enemy_turn_processor = self._coordinator.enemy_turn_processor
-        self.inventory_manager = self._coordinator.inventory_manager
-        self.enemy_locator = self._coordinator.enemy_locator
-        
         self._generate_new_level()
         
         # Transition to PLAYING after initialization
@@ -369,63 +359,6 @@ class GameSession:
     
     # 2D/3D action handlers moved to `ActionProcessor` (Step 2.4)
     
-    def _check_automatic_pickup(self):
-        """Check and pick up items on current tile."""
-        item = self._get_item_at(int(self.camera.x), int(self.camera.y))
-        if item:
-            pickup_message = self._pickup_item(item)
-            if pickup_message:
-                if self.message:
-                    self.message += " | " + pickup_message
-                else:
-                    self.message = pickup_message
-    
-    def _handle_movement(self, direction):
-        """Handle movement in 2D mode."""
-        return self._coordinator.handle_movement(direction)
-    
-    def _get_disguised_mimic_at(self, x, y):
-        return self._coordinator.get_disguised_mimic_at(self.level, x, y)
-    
-    def _get_revealed_enemy_at(self, x, y):
-        return self._coordinator.get_revealed_enemy_at(self.level, x, y)
-    
-    def _get_item_at(self, x, y):
-        return self._coordinator.get_item_at(self.level, x, y)
-    
-    def _process_enemy_turns(self):
-        return self._coordinator.process_enemy_turns()
-    
-    def _request_food_selection(self):
-        return self._coordinator.request_food_selection()
-    
-    def _request_weapon_selection(self):
-        return self._coordinator.request_weapon_selection()
-    
-    def _request_elixir_selection(self):
-        return self._coordinator.request_elixir_selection()
-    
-    def _request_scroll_selection(self):
-        return self._coordinator.request_scroll_selection()
-    
-    def complete_item_selection(self, selected_idx):
-        return self._coordinator.complete_item_selection(selected_idx)
-    
-    def _complete_food_selection(self, selected_idx):
-        return self._coordinator.complete_food_selection(selected_idx)
-    
-    def _complete_weapon_selection(self, selected_idx):
-        return self._coordinator.complete_weapon_selection(selected_idx)
-    
-    def _drop_weapon_on_ground(self, weapon):
-        return self._coordinator.drop_weapon_on_ground(weapon)
-    
-    def _complete_elixir_selection(self, selected_idx):
-        return self._coordinator.complete_elixir_selection(selected_idx)
-    
-    def _complete_scroll_selection(self, selected_idx):
-        return self._coordinator.complete_scroll_selection(selected_idx)
-    
     def has_pending_selection(self):
         """Check if there's a pending item selection."""
         return self._coordinator.has_pending_selection()
@@ -434,24 +367,13 @@ class GameSession:
         """Get the pending selection request."""
         return self._coordinator.get_pending_selection()
     
-    def _handle_combat(self, enemy):
-        return self._coordinator.handle_combat(enemy)
-    
-    def _get_enemy_room(self, enemy):
-        return self._coordinator.get_enemy_room(self.level, enemy)
-    
-    def _pickup_item(self, item):
-        return self._coordinator.pickup_item(item)
-    
-    def _get_item_room(self, item):
-        return self._coordinator.get_item_room(item)
-    
-    def _advance_level(self):
-        return self._coordinator.advance_level(self, GameConfig.TOTAL_LEVELS)
+    def complete_item_selection(self, selected_idx):
+        """Complete item selection with chosen index."""
+        return self._coordinator.complete_item_selection(selected_idx)
     
     def advance_level(self):
-        """Public method to advance to next level."""
-        self._advance_level()
+        """Advance to the next dungeon level."""
+        return self._coordinator.advance_level(self, GameConfig.TOTAL_LEVELS)
     
     def save_to_file(self, filename=None):
         """Save the current game state to file."""

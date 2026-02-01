@@ -129,14 +129,24 @@ class TestSessionCoordinatorDelegation:
         
         coordinator._enemy_turn_processor.process_enemy_turns.assert_called_once()
     
-    def test_handle_movement_delegates(self, coordinator):
-        """Test handle_movement delegates to movement_handler."""
+    def test_handle_movement_delegates_2d(self, coordinator):
+        """Test handle_movement delegates to handle_2d_movement for tuple directions."""
         coordinator._movement_handler = Mock()
         coordinator._movement_handler.handle_2d_movement.return_value = True
-        
-        result = coordinator.handle_movement('north')
-        
-        coordinator._movement_handler.handle_2d_movement.assert_called_once_with('north')
+
+        result = coordinator.handle_movement((0, -1))  # north as tuple
+
+        coordinator._movement_handler.handle_2d_movement.assert_called_once_with((0, -1))
+        assert result is True
+
+    def test_handle_movement_delegates_3d(self, coordinator):
+        """Test handle_movement delegates to handle_3d_movement for string directions."""
+        coordinator._movement_handler = Mock()
+        coordinator._movement_handler.handle_3d_movement.return_value = True
+
+        result = coordinator.handle_movement('forward')
+
+        coordinator._movement_handler.handle_3d_movement.assert_called_once_with('forward')
         assert result is True
     
     def test_handle_combat_delegates(self, coordinator):
