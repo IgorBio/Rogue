@@ -3,7 +3,12 @@ Canonical MovementHandler: single-class, instance-bound to a GameSession.
 
 This file deliberately contains a single, unambiguous definition of
 `MovementHandler` with a constructor that accepts the owning `session`.
+
+Statistics are now tracked via events published to the EventBus.
 """
+from domain.event_bus import event_bus
+from domain.events import PlayerMovedEvent
+
 
 class MovementHandler:
     def __init__(self, session):
@@ -54,7 +59,14 @@ class MovementHandler:
                 if session.should_use_fog_of_war():
                     session.fog_of_war.update_visibility(session.character.position)
 
-                session.stats.record_movement()
+                # Publish movement event for statistics tracking
+                try:
+                    event_bus.publish(PlayerMovedEvent(
+                        from_pos=(current_x, current_y),
+                        to_pos=(new_x, new_y)
+                    ))
+                except Exception:
+                    pass
 
                 item = session._get_item_at(new_x, new_y)
                 if item:
@@ -94,7 +106,14 @@ class MovementHandler:
         if session.should_use_fog_of_war():
             session.fog_of_war.update_visibility(session.character.position)
 
-        session.stats.record_movement()
+        # Publish movement event for statistics tracking
+        try:
+            event_bus.publish(PlayerMovedEvent(
+                from_pos=(current_x, current_y),
+                to_pos=(new_x, new_y)
+            ))
+        except Exception:
+            pass
 
         if session.level.exit_position == (new_x, new_y):
             session._advance_level()
@@ -129,7 +148,18 @@ class MovementHandler:
         if session.should_use_fog_of_war():
             session.fog_of_war.update_visibility(session.character.position)
 
-        session.stats.record_movement()
+        # Publish movement event for statistics tracking
+        try:
+            old_pos = (current_x, current_y)
+        except NameError:
+            old_pos = (0, 0)
+        try:
+            event_bus.publish(PlayerMovedEvent(
+                from_pos=old_pos,
+                to_pos=(new_x, new_y)
+            ))
+        except Exception:
+            pass
 
         # Check for level exit
         if session.level.exit_position == (new_x, new_y):

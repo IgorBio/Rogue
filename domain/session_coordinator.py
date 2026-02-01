@@ -74,6 +74,9 @@ class SessionCoordinator:
         self._enemy_turn_processor: Optional[Any] = None
         self._inventory_manager: Optional[Any] = None
         self._enemy_locator: Optional[Any] = None
+        
+        # Statistics tracker for event-based stats
+        self._statistics_tracker: Optional[Any] = None
     
     def initialize_services(self) -> None:
         """
@@ -89,6 +92,8 @@ class SessionCoordinator:
         from domain.services.enemy_turn_processor import EnemyTurnProcessor
         from domain.services.inventory_manager import InventoryManager
         from domain.services.enemy_locator import EnemyLocator
+        from domain.services.statistics_tracker import StatisticsTracker
+        from domain.event_bus import event_bus
         
         self._combat_system = CombatSystem(self.stats)
         self._action_processor = ActionProcessor(self.session)
@@ -97,6 +102,10 @@ class SessionCoordinator:
         self._enemy_turn_processor = EnemyTurnProcessor(self.session)
         self._inventory_manager = InventoryManager(self.session)
         self._enemy_locator = EnemyLocator()
+        
+        # Initialize and start statistics tracker
+        self._statistics_tracker = StatisticsTracker(self.stats, event_bus)
+        self._statistics_tracker.start_tracking()
     
     # ========================================================================
     # Service Access

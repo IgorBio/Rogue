@@ -2,8 +2,12 @@
 
 This service delegates to GameSession's 2D/3D handlers and enforces
 state checks (sleep, terminal states) so the session stays thin.
+
+Statistics are now tracked via events published to the EventBus.
 """
 from domain.services.game_states import GameState
+from domain.event_bus import event_bus
+from domain.events import ItemCollectedEvent
 
 
 class ActionProcessor:
@@ -172,8 +176,13 @@ class ActionProcessor:
         self.session.message = message
 
         if success:
+            # Publish event for statistics tracking
             try:
-                self.session.stats.record_item_collected()
+                event_bus.publish(ItemCollectedEvent(
+                    item_type=getattr(item, 'item_type', 'unknown'),
+                    item=item,
+                    position=getattr(item, 'position', (0, 0))
+                ))
             except Exception:
                 pass
 

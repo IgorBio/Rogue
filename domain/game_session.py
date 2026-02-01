@@ -20,7 +20,7 @@ from domain.fog_of_war import FogOfWar
 from domain.dynamic_difficulty import DifficultyManager
 from domain.services.position_synchronizer import PositionSynchronizer
 from domain.services.game_states import GameState, StateMachine
-from domain.events import LevelGeneratedEvent, CharacterMovedEvent
+from domain.events import LevelGeneratedEvent, CharacterMovedEvent, GameEndedEvent
 from domain.event_bus import event_bus
 from config.game_config import GameConfig, PlayerConfig
 # Presentation dependencies (Camera / CameraController) are now managed
@@ -156,12 +156,32 @@ class GameSession:
         """
         self.death_reason = reason
         self.state_machine.transition_to(GameState.GAME_OVER)
-        self.stats.record_game_end(self.character, victory=False)
+        # Publish game ended event for statistics tracking
+        try:
+            event_bus.publish(GameEndedEvent(
+                victory=False,
+                final_health=self.character.health,
+                final_strength=self.character.strength,
+                final_dexterity=self.character.dexterity,
+                level_reached=self.current_level_number
+            ))
+        except Exception:
+            pass
     
     def set_victory(self) -> None:
         """Set victory state (won the game)."""
         self.state_machine.transition_to(GameState.VICTORY)
-        self.stats.record_game_end(self.character, victory=True)
+        # Publish game ended event for statistics tracking
+        try:
+            event_bus.publish(GameEndedEvent(
+                victory=True,
+                final_health=self.character.health,
+                final_strength=self.character.strength,
+                final_dexterity=self.character.dexterity,
+                level_reached=self.current_level_number
+            ))
+        except Exception:
+            pass
     
     def set_player_asleep(self) -> None:
         """Put player to sleep (snake mage effect)."""

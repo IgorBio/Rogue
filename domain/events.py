@@ -178,3 +178,46 @@ class WeaponEquippedEvent:
     """
     weapon_name: str
     damage_bonus: int
+
+
+@dataclass(frozen=True)
+class DamageTakenEvent:
+    """
+    Published when the player takes damage from an enemy.
+    
+    Attributes:
+        damage: Amount of damage taken
+        enemy_type: Type of enemy that dealt the damage
+    """
+    damage: int
+    enemy_type: str = 'unknown'
+
+
+@dataclass(frozen=True)
+class LevelReachedEvent:
+    """
+    Published when the player reaches a new dungeon level.
+    
+    Attributes:
+        level_number: The dungeon level number reached
+    """
+    level_number: int
+
+
+@dataclass(frozen=True)
+class GameEndedEvent:
+    """
+    Published when the game ends (victory or defeat).
+    
+    Attributes:
+        victory: Whether the player won
+        final_health: Player's health at game end
+        final_strength: Player's strength at game end
+        final_dexterity: Player's dexterity at game end
+        level_reached: Deepest level reached
+    """
+    victory: bool
+    final_health: int
+    final_strength: int
+    final_dexterity: int
+    level_reached: int

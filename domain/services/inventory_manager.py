@@ -2,9 +2,19 @@
 
 This manager owns pending selections and pickup/drop logic so the
 `GameSession` can delegate and remain small.
+
+Statistics are now tracked via events published to the EventBus.
 """
 from config.game_config import ItemType, PlayerConfig
 from domain.services.item_selection import SelectionRequest
+from domain.event_bus import event_bus
+from domain.events import (
+    FoodConsumedEvent,
+    ElixirUsedEvent,
+    ScrollReadEvent,
+    WeaponEquippedEvent,
+    ItemCollectedEvent,
+)
 
 
 class InventoryManager:
@@ -118,7 +128,14 @@ class InventoryManager:
         food = food_items[selected_idx]
         message = session.character.use_food(food)
         session.character.backpack.remove_item(ItemType.FOOD, selected_idx)
-        session.stats.record_food_used()
+        # Publish event for statistics tracking
+        try:
+            event_bus.publish(FoodConsumedEvent(
+                health_restored=getattr(food, 'health_restoration', 0),
+                food_item=food
+            ))
+        except Exception:
+            pass
         session.message = message
         return True
 
@@ -161,7 +178,14 @@ class InventoryManager:
         else:
             session.message = message
 
-        session.stats.record_weapon_equipped()
+        # Publish event for statistics tracking
+        try:
+            event_bus.publish(WeaponEquippedEvent(
+                weapon_name=getattr(weapon, 'name', 'unknown'),
+                damage_bonus=getattr(weapon, 'damage_bonus', 0)
+            ))
+        except Exception:
+            pass
         return True
 
     def _drop_weapon_on_ground(self, weapon):
@@ -206,7 +230,17 @@ class InventoryManager:
         elixir = elixir_items[selected_idx]
         message = session.character.use_elixir(elixir)
         session.character.backpack.remove_item(ItemType.ELIXIR, selected_idx)
-        session.stats.record_elixir_used()
+        # Publish event for statistics tracking
+        try:
+            # Determine which stat was boosted
+            stat_boosted = 'strength' if hasattr(elixir, 'strength_boost') and elixir.strength_boost > 0 else 'dexterity'
+            boost_amount = getattr(elixir, f'{stat_boosted}_boost', 0)
+            event_bus.publish(ElixirUsedEvent(
+                stat_boosted=stat_boosted,
+                boost_amount=boost_amount
+            ))
+        except Exception:
+            pass
         session.message = message
         return True
 
@@ -220,7 +254,14 @@ class InventoryManager:
         scroll = scroll_items[selected_idx]
         message = session.character.use_scroll(scroll)
         session.character.backpack.remove_item(ItemType.SCROLL, selected_idx)
-        session.stats.record_scroll_used()
+        # Publish event for statistics tracking
+        try:
+            event_bus.publish(ScrollReadEvent(
+                scroll_type=getattr(scroll, 'scroll_type', 'unknown'),
+                effect_description=getattr(scroll, 'description', '')
+            ))
+        except Exception:
+            pass
         session.message = message
         return True
 
@@ -235,7 +276,15 @@ class InventoryManager:
         success = session.character.backpack.add_item(item)
 
         if success:
-            session.stats.record_item_collected()
+            # Publish event for statistics tracking
+            try:
+                event_bus.publish(ItemCollectedEvent(
+                    item_type=getattr(item, 'item_type', 'unknown'),
+                    item=item,
+                    position=getattr(item, 'position', (0, 0))
+                ))
+            except Exception:
+                pass
 
             item_room = self.get_item_room(item)
             if item_room:

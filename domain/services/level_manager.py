@@ -2,10 +2,14 @@
 
 This service delegates to `domain.level_generator.generate_level` and
 coordinates level-number tracking and difficulty adjustments.
+
+Statistics are now tracked via events published to the EventBus.
 """
 from typing import Optional
 
 from domain.level_generator import generate_level
+from domain.event_bus import event_bus
+from domain.events import LevelReachedEvent
 
 
 class LevelManager:
@@ -75,10 +79,12 @@ class LevelManager:
             return None
 
         session.current_level_number = new_level_num
+        # Publish event for statistics tracking
         try:
-            session.stats.record_level_reached(session.current_level_number)
-        except AttributeError:
-            # No stats attached to session; continue.
+            event_bus.publish(LevelReachedEvent(
+                level_number=session.current_level_number
+            ))
+        except Exception:
             pass
 
         # Begin level transition state before generating the new level

@@ -3,29 +3,52 @@
 This module wraps the procedural functions in `domain.combat` and
 provides a single place to extend combat behaviour (logging, stats,
 effects) without changing callers.
+
+Statistics are now tracked via events published to the EventBus,
+eliminating direct coupling between CombatSystem and Statistics.
 """
-from typing import Optional
+from typing import Optional, Any
 
 from domain import combat as _combat
+from domain.event_bus import event_bus
+from domain.events import (
+    AttackPerformedEvent,
+    EnemyDefeatedEvent,
+    DamageTakenEvent,
+)
 
 
 class CombatSystem:
     def __init__(self, statistics: Optional[object] = None):
+        """
+        Initialize CombatSystem.
+        
+        Args:
+            statistics: Deprecated, kept for backward compatibility.
+                       Statistics are now tracked via EventBus events.
+        """
+        # Statistics parameter is deprecated - tracking now done via events
         self.statistics = statistics
 
     def resolve_player_attack(self, player, enemy, attacker_weapon=None):
         """Resolve an attack initiated by the player against an enemy.
 
         Returns a dict compatible with `domain.combat.resolve_attack`.
+        Publishes AttackPerformedEvent for statistics tracking.
         """
         result = _combat.resolve_attack(player, enemy, attacker_weapon)
 
-        # Record stats if available (attack count and damage)
-        if self.statistics is not None:
-            try:
-                self.statistics.record_attack(result.get('hit', False), result.get('damage', 0))
-            except Exception:
-                pass
+        # Publish attack event for statistics tracking
+        try:
+            event_bus.publish(AttackPerformedEvent(
+                attacker_type='player',
+                target_type='enemy',
+                hit=result.get('hit', False),
+                damage=result.get('damage', 0),
+                killed=result.get('killed', False)
+            ))
+        except Exception:
+            pass
 
         # If enemy died, attach treasure value for convenience
         if result.get('killed', False):
@@ -41,14 +64,18 @@ class CombatSystem:
         """Resolve an attack initiated by an enemy against the player.
 
         Returns a dict compatible with `domain.combat.resolve_attack`.
+        Publishes DamageTakenEvent when player is hit.
         """
         result = _combat.resolve_attack(enemy, player, attacker_weapon)
 
-        # Record damage taken / hits if statistics present
-        if self.statistics is not None:
+        # Publish damage taken event for statistics tracking
+        if result.get('hit', False):
             try:
-                if result.get('hit', False):
-                    self.statistics.record_hit_taken(result.get('damage', 0))
+                enemy_type = getattr(enemy, 'enemy_type', 'unknown')
+                event_bus.publish(DamageTakenEvent(
+                    damage=result.get('damage', 0),
+                    enemy_type=str(enemy_type)
+                ))
             except Exception:
                 pass
 
@@ -86,9 +113,16 @@ class CombatSystem:
                     session.character.backpack.treasure_value += treasure
                 except Exception:
                     pass
+                # Publish enemy defeated event for statistics tracking
                 try:
-                    if self.statistics is not None:
-                        self.statistics.record_enemy_defeated(treasure)
+                    enemy_type = getattr(enemy, 'enemy_type', 'unknown')
+                    enemy_level = getattr(enemy, 'level', 1)
+                    position = getattr(enemy, 'position', (0, 0))
+                    event_bus.publish(EnemyDefeatedEvent(
+                        enemy_type=str(enemy_type),
+                        enemy_level=enemy_level,
+                        position=position if isinstance(position, tuple) else (0, 0)
+                    ))
                 except Exception:
                     pass
 
