@@ -12,11 +12,10 @@ from utils.camera_controller import CameraController
 
 def _make_session(**kwargs):
     from domain.game_session import GameSession
+    # Camera factories removed - ViewManager handles camera creation via events
     return GameSession(
         statistics_factory=Statistics,
         save_manager_factory=lambda: SaveManager(),
-        camera_factory=lambda x, y, angle=0.0, fov=60.0: Camera(x, y, angle=angle, fov=fov),
-        camera_controller_factory=lambda cam, lvl: CameraController(cam, lvl),
         **kwargs,
     )
 

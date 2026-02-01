@@ -1,6 +1,11 @@
 """
 Main entry point for the roguelike game.
 Stage 9: Enhanced with 3D rendering mode support.
+
+REFACTORING NOTE (Phase 1):
+- Camera/CameraController creation moved to presentation.view_manager.ViewManager
+- Domain layer publishes events, ViewManager subscribes and creates presentation objects
+- This maintains Clean Architecture by preventing domain → presentation dependencies
 """
 import curses
 import sys
@@ -16,6 +21,7 @@ def main(stdscr):
     """
     from domain.game_session import GameSession
     from presentation.game_ui import GameUI
+    from presentation.view_manager import create_view_manager
     from data.save_manager import SaveManager
     from data.statistics import StatisticsManager, Statistics
     from utils.raycasting import Camera
@@ -25,6 +31,13 @@ def main(stdscr):
     save_manager = SaveManager()
     stats_manager = StatisticsManager()
     ui = GameUI(stdscr)
+    
+    # PHASE 1: Create ViewManager to handle Camera/CameraController
+    # Domain layer publishes events, ViewManager subscribes and creates presentation objects
+    view_manager = create_view_manager(
+        camera_factory=lambda x, y, angle=0.0, fov=60.0: Camera(x, y, angle=angle, fov=fov),
+        camera_controller_factory=lambda cam, lvl: CameraController(cam, lvl)
+    )
     
     try:
         while True:  # Main menu loop
@@ -45,25 +58,23 @@ def main(stdscr):
                 if test_config is None:
                     continue
                 
-                # Create test game session (inject presentation/data factories)
+                # Create test game session (inject data factories only)
+                # Camera factories removed - ViewManager now handles camera creation via events
                 game_session = GameSession(
                     test_mode=True,
                     test_level=test_config['level'],
                     test_fog_of_war=test_config['fog_of_war'],
                     statistics_factory=Statistics,
-                    save_manager_factory=lambda: save_manager,
-                    camera_factory=lambda x, y, angle=0.0, fov=60.0: Camera(x, y, angle=angle, fov=fov),
-                    camera_controller_factory=lambda cam, lvl: CameraController(cam, lvl)
+                    save_manager_factory=lambda: save_manager
                 )
                 ui.display_message(f"TEST MODE: Level {test_config['level']}, Fog of War: {test_config['fog_of_war']}")
             
             elif selection == 'new':
-                # Create new game (inject presentation/data factories)
+                # Create new game (inject data factories only)
+                # Camera factories removed - ViewManager now handles camera creation via events
                 game_session = GameSession(
                     statistics_factory=Statistics,
-                    save_manager_factory=lambda: save_manager,
-                    camera_factory=lambda x, y, angle=0.0, fov=60.0: Camera(x, y, angle=angle, fov=fov),
-                    camera_controller_factory=lambda cam, lvl: CameraController(cam, lvl)
+                    save_manager_factory=lambda: save_manager
                 )
                 ui.display_message("Welcome to the dungeon! Find the exit to proceed.")
             

@@ -178,13 +178,12 @@ class SaveManager:
         # Create new session with test mode flags and required factories
         test_mode = save_data.get('test_mode', False)
         test_fog = save_data.get('test_fog_of_war_enabled', False)
+        # Camera factories removed - ViewManager now handles camera creation via events
         game_session = GameSession(
             test_mode=test_mode,
             test_fog_of_war=test_fog,
             statistics_factory=Statistics,
-            save_manager_factory=lambda: self,
-            camera_factory=lambda x, y, angle=0.0, fov=60.0: Camera(x, y, angle=angle, fov=fov),
-            camera_controller_factory=lambda cam, lvl: CameraController(cam, lvl),
+            save_manager_factory=lambda: self
         )
 
         # Restore level number

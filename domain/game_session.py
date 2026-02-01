@@ -12,6 +12,7 @@ REFACTORING NOTE (Phase 1 - EventBus):
 - Camera/CameraController creation moved to presentation layer (ViewManager)
 - GameSession publishes events via EventBus for layer decoupling
 - Domain no longer directly creates presentation objects
+- Camera factories removed from __init__, use ViewManager instead
 """
 
 from domain.level_generator import generate_level, spawn_emergency_healing
@@ -47,8 +48,8 @@ class GameSession:
         death_reason (str): Cause of death if game over
         pending_selection: Pending item selection data
         rendering_mode (str): Current rendering mode ('2d' or '3d')
-        camera: Camera instance for 3D mode
-        camera_controller: CameraController instance for 3D mode
+        camera: Camera instance for 3D mode (managed by ViewManager)
+        camera_controller: CameraController instance for 3D mode (managed by ViewManager)
         difficulty_manager: DifficultyManager instance
         stats: Statistics instance
         state_machine: StateMachine for explicit state management
@@ -56,11 +57,16 @@ class GameSession:
     
     NEW in Step 2.1:
         state_machine: Replaces game_over, victory, player_asleep flags
+    
+    NOTE on Camera:
+        Camera and CameraController are managed by presentation.view_manager.ViewManager.
+        Domain layer publishes events (LevelGeneratedEvent, CharacterMovedEvent) and
+        ViewManager subscribes to create and sync camera. This maintains Clean Architecture
+        by preventing domain from depending on presentation layer.
     """
     
     def __init__(self, test_mode=False, test_level=1, test_fog_of_war=False,
-                 statistics_factory=None, save_manager_factory=None,
-                 camera_factory=None, camera_controller_factory=None):
+                 statistics_factory=None, save_manager_factory=None):
         """
         Initialize a new game session.
         
@@ -68,8 +74,8 @@ class GameSession:
             test_mode (bool): Enable test mode with boosted stats
             test_level (int): Starting level for test mode
             test_fog_of_war (bool): Enable fog of war in test mode
-            camera_factory: Deprecated - camera creation moved to ViewManager
-            camera_controller_factory: Deprecated - controller creation moved to ViewManager
+            statistics_factory: Factory for creating Statistics instance
+            save_manager_factory: Factory for creating SaveManager instance
         """
         self.test_mode = test_mode
         self.test_fog_of_war_enabled = test_fog_of_war
@@ -110,11 +116,6 @@ class GameSession:
 
         self._statistics_factory = statistics_factory
         self._save_manager_factory = save_manager_factory
-        
-        # Camera factories are deprecated - cameras now created in presentation layer
-        # via ViewManager. Keep for backward compatibility during transition.
-        self._camera_factory = camera_factory
-        self._camera_controller_factory = camera_controller_factory
 
         # Create statistics instance via factory
         try:
@@ -250,33 +251,6 @@ class GameSession:
             character_position=(start_x, start_y),
             level_number=self.current_level_number
         ))
-        
-        # Backward compatibility: still create camera directly if factories provided
-        # This allows gradual migration - remove once ViewManager fully integrated
-        if self._camera_factory is not None:
-            try:
-                self.camera = self._camera_factory(
-                    start_x + 0.5,
-                    start_y + 0.5,
-                    angle=GameConfig.DEFAULT_CAMERA_ANGLE,
-                    fov=GameConfig.DEFAULT_CAMERA_FOV,
-                )
-            except Exception:
-                self.camera = None
-
-            try:
-                if self.camera is not None and self._camera_controller_factory is not None:
-                    self.camera_controller = self._camera_controller_factory(self.camera, self.level)
-                else:
-                    self.camera_controller = None
-            except Exception:
-                self.camera_controller = None
-
-            try:
-                if self.camera is not None and self.camera_controller is None:
-                    self.position_sync.sync_camera_to_character(self.camera, self.character, preserve_angle=True)
-            except Exception:
-                pass
 
         self.fog_of_war.update_visibility(self.character.position)
 
@@ -529,8 +503,8 @@ class GameSession:
         except Exception:
             self.stats = None
         self.difficulty_manager = DifficultyManager()
-        self.camera = None
-        self.camera_controller = None
+        # Camera and camera_controller are managed by ViewManager
+        # They will be reset via LevelGeneratedEvent when _generate_new_level is called
         self.rendering_mode = '2d'
         self.state_machine.reset_to_initial()
         self._generate_new_level()
