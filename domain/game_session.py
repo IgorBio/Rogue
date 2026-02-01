@@ -7,6 +7,11 @@ REFACTORING NOTE (Step 2.1):
 - Added helper properties for backward compatibility during refactoring
 - State is now explicit and type-safe
 - Integrated position synchronizer for 2D ↔ 3D coordinate synchronization
+
+REFACTORING NOTE (Phase 1 - EventBus):
+- Camera/CameraController creation moved to presentation layer (ViewManager)
+- GameSession publishes events via EventBus for layer decoupling
+- Domain no longer directly creates presentation objects
 """
 
 from domain.level_generator import generate_level, spawn_emergency_healing
@@ -15,8 +20,11 @@ from domain.fog_of_war import FogOfWar
 from domain.dynamic_difficulty import DifficultyManager
 from domain.services.position_synchronizer import PositionSynchronizer
 from domain.services.game_states import GameState, StateMachine
+from domain.events import LevelGeneratedEvent, CharacterMovedEvent
+from domain.event_bus import event_bus
 from config.game_config import GameConfig, PlayerConfig
-# Presentation dependencies (Camera / CameraController) are injected via factories
+# Presentation dependencies (Camera / CameraController) are now managed
+# by ViewManager in presentation layer via EventBus events
 
 # Local constants removed — use centralized configuration from config/game_config.py
 # - Test mode: GameConfig.TEST_MODE_STATS
@@ -60,6 +68,8 @@ class GameSession:
             test_mode (bool): Enable test mode with boosted stats
             test_level (int): Starting level for test mode
             test_fog_of_war (bool): Enable fog of war in test mode
+            camera_factory: Deprecated - camera creation moved to ViewManager
+            camera_controller_factory: Deprecated - controller creation moved to ViewManager
         """
         self.test_mode = test_mode
         self.test_fog_of_war_enabled = test_fog_of_war
@@ -77,6 +87,8 @@ class GameSession:
         self.pending_selection = None
         
         self.rendering_mode = '2d'
+        # Camera/Controller now managed by ViewManager in presentation layer
+        # These are kept for backward compatibility but populated via events
         self.camera = None
         self.camera_controller = None
 
@@ -95,13 +107,12 @@ class GameSession:
             raise TypeError("statistics_factory is required and must be callable")
         if not callable(save_manager_factory):
             raise TypeError("save_manager_factory is required and must be callable")
-        if not callable(camera_factory):
-            raise TypeError("camera_factory is required and must be callable")
-        if not callable(camera_controller_factory):
-            raise TypeError("camera_controller_factory is required and must be callable")
 
         self._statistics_factory = statistics_factory
         self._save_manager_factory = save_manager_factory
+        
+        # Camera factories are deprecated - cameras now created in presentation layer
+        # via ViewManager. Keep for backward compatibility during transition.
         self._camera_factory = camera_factory
         self._camera_controller_factory = camera_controller_factory
 
@@ -218,36 +229,40 @@ class GameSession:
         else:
             self.character.move_to(start_x, start_y)
 
-        # Initialize or update camera via injected factories (presentation
-        # layer objects are created outside the domain layer). Factories are
-        # required, so always attempt creation through them.
-        try:
-            self.camera = self._camera_factory(
-                start_x + 0.5,
-                start_y + 0.5,
-                angle=GameConfig.DEFAULT_CAMERA_ANGLE,
-                fov=GameConfig.DEFAULT_CAMERA_FOV,
-            )
-        except Exception:
-            self.camera = None
+        # PHASE 1 REFACTORING: Camera creation moved to presentation layer
+        # Domain publishes LevelGeneratedEvent - ViewManager subscribes and creates camera
+        event_bus.publish(LevelGeneratedEvent(
+            level=self.level,
+            character_position=(start_x, start_y),
+            level_number=self.current_level_number
+        ))
+        
+        # Backward compatibility: still create camera directly if factories provided
+        # This allows gradual migration - remove once ViewManager fully integrated
+        if self._camera_factory is not None:
+            try:
+                self.camera = self._camera_factory(
+                    start_x + 0.5,
+                    start_y + 0.5,
+                    angle=GameConfig.DEFAULT_CAMERA_ANGLE,
+                    fov=GameConfig.DEFAULT_CAMERA_FOV,
+                )
+            except Exception:
+                self.camera = None
 
-        # Create or update camera controller via provided factory
-        try:
-            if self.camera is not None:
-                self.camera_controller = self._camera_controller_factory(self.camera, self.level)
-            else:
+            try:
+                if self.camera is not None and self._camera_controller_factory is not None:
+                    self.camera_controller = self._camera_controller_factory(self.camera, self.level)
+                else:
+                    self.camera_controller = None
+            except Exception:
                 self.camera_controller = None
-        except Exception:
-            # If controller creation fails, keep camera but set controller None
-            self.camera_controller = None
 
-        # If camera exists but controller wasn't recreated and camera is present,
-        # attempt to sync positions as a best-effort (non-fatal)
-        try:
-            if self.camera is not None and self.camera_controller is None:
-                self.position_sync.sync_camera_to_character(self.camera, self.character, preserve_angle=True)
-        except Exception:
-            pass
+            try:
+                if self.camera is not None and self.camera_controller is None:
+                    self.position_sync.sync_camera_to_character(self.camera, self.character, preserve_angle=True)
+            except Exception:
+                pass
 
         self.fog_of_war.update_visibility(self.character.position)
 

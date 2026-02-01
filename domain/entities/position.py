@@ -134,6 +134,57 @@ class Position:
         """
         return Position(self._x, self._y)
 
+    def to_camera_coords(self, offset: float = 0.5) -> Tuple[float, float]:
+        """
+        Преобразовать grid позицию в camera координаты.
+
+        Camera использует float координаты с offset для центрирования
+        в ячейке сетки (например, 10.5 вместо 10).
+
+        Args:
+            offset: Смещение для центрирования (default 0.5)
+
+        Returns:
+            Tuple[float, float]: Camera координаты (x, y)
+
+        Example:
+            >>> pos = Position(10, 20)
+            >>> pos.to_camera_coords()
+            (10.5, 20.5)
+            >>> pos.to_camera_coords(offset=0.0)
+            (10.0, 20.0)
+        """
+        return (float(self._x) + offset, float(self._y) + offset)
+
+    @classmethod
+    def from_camera_coords(cls, x: float, y: float,
+                          snap_mode: str = 'floor') -> 'Position':
+        """
+        Создать Position из camera координат.
+
+        Args:
+            x: Camera X координата (float)
+            y: Camera Y координата (float)
+            snap_mode: Способ приведения к int:
+                      'floor' — округление вниз (int())
+                      'round' — округление к ближайшему
+
+        Returns:
+            Position: Новая позиция с int координатами
+
+        Example:
+            >>> Position.from_camera_coords(10.7, 20.3)
+            Position(10, 20)  # floor mode
+            >>> Position.from_camera_coords(10.7, 20.3, snap_mode='round')
+            Position(11, 20)  # round mode
+        """
+        if snap_mode == 'floor':
+            return cls(int(x), int(y))
+        elif snap_mode == 'round':
+            return cls(round(x), round(y))
+        else:
+            raise ValueError(f"Unknown snap_mode: {snap_mode}")
+
     def is_adjacent_to(self, other: Union['Position', Tuple[int, int]]) -> bool:
         """
         Проверить, является ли позиция соседней (включая диагонали).

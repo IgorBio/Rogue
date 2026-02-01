@@ -1,674 +1,496 @@
 
-# Аудит реализации рефакторинга domain-слоя
+# План рефакторинга domain-слоя проекта Rogue
 
-## 📋 Проверка выполнения исходного плана
+## 📋 Статус выполнения предыдущего плана
 
-### ✅ Этап 3: Пропущенный LEVEL_TRANSITION — ВЫПОЛНЕН
+### ✅ Выполнено (Phases 1-3)
 
-**Файл:** `level_manager.py`
+**Phase 1 — Critical Fixes:**
 
-* ✅ Добавлен вызов `session.begin_level_transition()` перед генерацией уровня
-* ✅ Обёрнут в `try/except AttributeError` для обратной совместимости
-* ✅ `complete_level_transition()` вызывается после генерации
+* ✅ Problem 6: Удалён метод `finalize_attack_result` (двойной вызов enemy turns)
+* ✅ Problem 4: Добавлена проверка terminal state после боя в `MovementHandler`
 
-### ✅ Этап 4: Unsafe-ресторация состояния — ВЫПОЛНЕН
+**Phase 2 — Original Plan:**
 
-**Файлы:** `save_manager.py`, `game_states.py`
+* ✅ Stage 1: Удалены дублирующие константы из `utils/constants.py`
+* ✅ Stage 2: Функция `create_synced_pair` перемещена из domain в `utils/sync_helpers.py`
 
-* ✅ Удалены присвоения через `session.game_over = ...`
-* ✅ Добавлен метод `StateMachine.restore_state(state)` без валидации
-* ✅ Определяется приоритет состояний (VICTORY > GAME_OVER > PLAYER_ASLEEP)
-* ✅ Вызывается `state_machine.restore_state(_saved_state)` в конце
+**Phase 3 — Technical Debt:**
 
-### ✅ Этап 5: Двойной подсчёт статистики — ВЫПОЛНЕН
-
-**Файлы:** `camera_controller.py`, `action_processor.py`, `enemy_turn_processor.py`
-
-* ✅ `attack_entity_in_front()` только обнаруживает врага, не выполняет бой
-* ✅ `_handle_3d_attack()` использует `session.combat_system.process_player_attack()`
-* ✅ `enemy_turn_processor` не вызывает `stats.record_hit_taken()` повторно
-
-### ✅ Этап 6: Удаление мёртвого кода — ВЫПОЛНЕН
-
-**Файлы:** `input_handler_3d.py`, `game_session.py`, `action_processor.py`, `domain/__init__.py`
-
-* ✅ Класс `InputMapper3D` удалён
-* ✅ Методы `_process_action_2d/_process_action_3d` удалены из `game_session.py`
-* ✅ `ActionProcessor` использует прямые вызовы без `getattr`
-* ✅ `get_visible_tiles` убран из экспорта `domain/__init__.py`
-
-### ✅ Этап 7: Замена bare-except — ВЫПОЛНЕН
-
-**Файл:** `level_manager.py`
-
-* ✅ Все `except` теперь имеют конкретные типы исключений
-* ✅ Критические операции (генерация уровня) не обёрнуты в try/except
-* ✅ Опциональные операции (автосохранение) обрабатывают `(OSError, IOError)`
-
-### ⚠️ Этап 2: Нарушения границ слоёв — ЧАСТИЧНО
-
-**Файлы:** `action_processor.py`, `enemy_turn_processor.py`, `position_synchronizer.py`
-
-* ✅ `enemy_turn_processor.py` — исправлен (использует `Position.manhattan_distance_to`)
-* ❓ `action_processor.py` — состояние неясно (нет секции imports в документе)
-* ❌ `position_synchronizer.py` — всё ещё импортирует `Camera` внутри `create_synced_pair()`
-
-**Проблема:**
-
-```python
-# position_synchronizer.py, строка 219
-from utils.raycasting import Camera  # ← presentation-объект в domain!
-```
-
-### ❌ Этап 1: Дубликаты констант — НЕ ВЫПОЛНЕН
-
-**Файлы:** `utils/constants.py`, `game_session.py`
-
-* ❌ `utils/constants.py` — добавлены комментарии, но типы НЕ удалены
-* ❌ `game_session.py` — добавлены комментарии, но константы НЕ удалены
-
-**Пример проблемы:**
-
-```python
-# utils/constants.py
-# Item/Enemy/Stat constants moved to config/game_config.py
-# Removed here to avoid duplication — use:
-#   from config.game_config import ItemType, StatType, EnemyType, ENEMY_STATS
-
-# ← Комментарий есть, но определения всё ещё ниже в файле!
-```
+* ✅ Problem 3: Использование `PlayerConfig.ADJACENT_OFFSETS` в `inventory_manager.py`
+* ✅ Problem 8: Упрощено сравнение с `EnemyType.MIMIC` в `enemy_locator.py`
+* ✅ Problem 2: Создан `@dataclass SelectionRequest` в `item_selection.py`
 
 ---
 
-## 🔍 Обнаруженные новые проблемы
+## 🔍 Обнаруженные проблемы
 
-### 🔴 КРИТИЧЕСКИЕ (требуют немедленного исправления)
+### 🔴 КРИТИЧЕСКИЕ
 
-#### ⚠️ ПРОБЛЕМА 6: Двойной вызов _process_enemy_turns
+#### PROBLEM A: Нарушение Single Responsibility в `GameSession`
 
-**Файл:** `combat_system.py`
-
-**Локация:** Строки 74 и 106
+**Файл:** `domain/game_session.py`
 
 **Описание:**
+`GameSession` содержит 700+ строк и нарушает принцип единственной ответственности:
 
-```python
-# combat_system.py, строка 51-76
-def process_player_attack(self, session, enemy):
-    # ... бой ...
-    if result and not session.state_machine.is_terminal():
-        session._process_enemy_turns()  # ← ПЕРВЫЙ ВЫЗОВ
-    return True
+* Управление состоянием игры
+* Создание и управление презентационными объектами (Camera, CameraController)
+* Логика генерации уровней
+* Логика движения (2D и 3D)
+* Логика инвентаря и предметов
+* Логика боя
+* Сохранение/загрузка
 
-# combat_system.py, строка 95-110
-def finalize_attack_result(self, session, result):
-    # ...
-    try:
-        if not session.state_machine.is_terminal():
-            session._process_enemy_turns()  # ← ВТОРОЙ ВЫЗОВ
-    except Exception:
-        pass
-```
+**Последствия:**
 
-**Эффект:**
+* Сложность тестирования
+* Высокая связанность с другими слоями
+* Нарушение архитектурных границ
 
-* Враги ходят/атакуют ДВАЖДЫ за каждый удар игрока в 3D-режиме
-* Баланс игры полностью нарушен
-* Игра становится несправедливо сложной
+**Решение:**
+Уже частично выполнено через сервисы:
 
-**Исправление:**
-Убрать вызов `session._process_enemy_turns()` из `finalize_attack_result()`, либо полностью удалить этот метод (он больше не нужен после этапа 5).
+* ✅ `ActionProcessor` — обработка действий игрока
+* ✅ `CombatSystem` — боевая система
+* ✅ `LevelManager` — управление уровнями
+* ✅ `MovementHandler` — обработка движения
+* ✅ `InventoryManager` — управление инвентарем
+* ✅ `EnemyTurnProcessor` — ходы врагов
+* ✅ `EnemyLocator` — поиск врагов/предметов
+
+**Оставшиеся задачи:**
+
+1. Переместить создание Camera/CameraController в presentation layer
+2. Создать `SessionCoordinator` для координации сервисов
+3. Оставить в `GameSession` только управление состоянием через `StateMachine`
 
 ---
 
-### 🟡 ВАЖНЫЕ (желательно исправить)
+#### PROBLEM B: Factory injection создаёт presentation-объекты в domain
 
-#### ⚠️ ПРОБЛЕМА 4: MovementHandler не проверяет game_over после боя
+**Файл:** `domain/game_session.py`, метод `_generate_new_level()`
 
-**Файл:** `movement_handler.py`
-
-**Локация:** Строки 38-56, 59-67
-
-**Описание:**
+**Код:**
 
 ```python
-# Если игрок атаковал mimic/enemy и умер в бою:
-combat_result = session._handle_combat(enemy)
-# session.state_machine уже в GAME_OVER
-
-# НО код продолжает:
-if combat_result and not enemy.is_alive():
-    session.character.move_to(new_x, new_y)  # ← движение мёртвого персонажа!
-    session.camera.x = new_x                 # ← обновление камеры
-    session.fog_of_war.update_visibility(...)  # ← обновление fog of war
-```
-
-**Эффект:**
-
-* Персонаж может "сделать ход" после смерти
-* State machine в GAME_OVER, но позиция/камера/fog изменились
-* На следующем кадре UI покажет game over, но состояние несогласованное
-
-**Исправление:**
-
-```python
-combat_result = session._handle_combat(enemy)
-
-# Сразу после боя проверить terminal state:
-if session.state_machine.is_terminal():
-    return False
-
-# Только если жив — продолжить движение
-if combat_result and not enemy.is_alive():
-    session.character.move_to(new_x, new_y)
-    # ...
-```
-
----
-
-### 🟢 НЕКРИТИЧНЫЕ (технический долг)
-
-#### ⚠️ ПРОБЛЕМА 1: domain создаёт presentation-объекты
-
-**Файл:** `game_session.py`
-
-**Метод:** `_generate_new_level()`
-
-**Описание:**
-Метод `_generate_new_level()` (domain-слой) создаёт `Camera` через factory:
-
-```python
+# Domain-слой создаёт presentation-объекты
 self.camera = self._camera_factory(
     start_x + 0.5,
     start_y + 0.5,
     angle=GameConfig.DEFAULT_CAMERA_ANGLE,
     fov=GameConfig.DEFAULT_CAMERA_FOV,
 )
+self.camera_controller = self._camera_controller_factory(self.camera, self.level)
 ```
 
 **Проблема:**
 
-* Формально границы не нарушены (factory инжектирован)
-* Но логика создания presentation-объекта находится в domain
-* Domain-код управляет параметрами создания Camera
+* Domain знает о параметрах создания Camera (углы, FOV, смещения)
+* Domain управляет lifecycle presentation-объектов
+* Нарушается инверсия зависимостей
 
-**Рекомендация:**
-Вынести создание камеры в coordinator или presentation-слой. Domain должен только уведомлять о смене уровня.
+**Решение:**
+Создать `ViewManager` в presentation-слое:
+
+```python
+# presentation/view_manager.py
+class ViewManager:
+    def create_camera_for_level(self, level, character, mode='2d'):
+        if mode == '3d':
+            start_room = level.get_starting_room()
+            center_x, center_y = start_room.get_center()
+            camera = Camera(center_x + 0.5, center_y + 0.5)
+            controller = CameraController(camera, level)
+            return camera, controller
+        return None, None
+  
+    def sync_camera_to_character(self, camera, character):
+        # Sync logic
+```
+
+Domain только уведомляет presentation через события:
+
+```python
+# domain/events.py
+@dataclass
+class LevelGeneratedEvent:
+    level: Level
+    character_position: Tuple[int, int]
+```
 
 ---
 
-#### ⚠️ ПРОБЛЕМА 2: pending_selection — неявная структура
+### 🟡 ВАЖНЫЕ
 
-**Файл:** `game_session.py`
+#### PROBLEM C: Смешивание координатных систем в `PositionSynchronizer`
 
-**Описание:**
+**Файл:** `domain/services/position_synchronizer.py`
+
+**Проблема:**
 
 ```python
-# Неявный контракт — легко сломать
-session.pending_selection = {
-    'type': 'food',
-    'items': [...],
-    'title': 'Select Food to Consume',
-    'allow_zero': False
-}
+# PositionSynchronizer находится в domain, но оперирует Camera
+def sync_camera_to_character(self, camera: Any, character: Character, ...):
+    cam_x = float(char_x) + self.center_offset
+    camera.set_position(cam_x, cam_y)  # Управляет presentation-объектом
 ```
 
-**Рекомендация:**
+**Последствия:**
+
+* Domain манипулирует presentation-объектами
+* `center_offset` — это presentation concern (где центрировать камеру)
+* Неявная зависимость от реализации Camera
+
+**Решение:**
+Разделить на две части:
+
+1. `domain/entities/position.py` — Position с методами преобразования координат
+2. `presentation/camera_sync.py` — CameraSync использует Position для синхронизации
+
+```python
+# domain/entities/position.py
+class Position:
+    def to_camera_coords(self, offset=0.5) -> Tuple[float, float]:
+        return (float(self.x) + offset, float(self.y) + offset)
+
+# presentation/camera_sync.py
+class CameraSync:
+    def sync_camera_to_position(self, camera, position: Position):
+        cam_x, cam_y = position.to_camera_coords()
+        camera.set_position(cam_x, cam_y)
+```
+
+---
+
+#### PROBLEM D: Statistics tracking разбросан по коду
+
+**Файлы:** Множество мест в domain и services
+
+**Проблема:**
+
+```python
+# В разных местах:
+session.stats.record_movement()
+session.stats.record_item_collected()
+session.stats.record_attack(hit, damage)
+# etc.
+```
+
+**Последствия:**
+
+* Легко забыть записать статистику
+* Дублирование кода учёта
+* Нет централизованного аудита статистики
+
+**Решение:**
+Использовать паттерн Observer через события:
+
+```python
+# domain/events.py
+@dataclass
+class PlayerMovedEvent:
+    from_pos: Tuple[int, int]
+    to_pos: Tuple[int, int]
+
+@dataclass
+class ItemCollectedEvent:
+    item_type: str
+    item: Any
+
+# domain/services/statistics_tracker.py
+class StatisticsTracker:
+    def __init__(self, stats: Statistics, event_bus: EventBus):
+        self.stats = stats
+        event_bus.subscribe(PlayerMovedEvent, self._on_player_moved)
+        event_bus.subscribe(ItemCollectedEvent, self._on_item_collected)
+  
+    def _on_player_moved(self, event: PlayerMovedEvent):
+        self.stats.record_movement()
+  
+    def _on_item_collected(self, event: ItemCollectedEvent):
+        self.stats.record_item_collected()
+```
+
+---
+
+### 🟢 НЕКРИТИЧНЫЕ (технический долг)
+
+#### PROBLEM E: Hardcoded magic strings для selection types
+
+**Файл:** `domain/services/item_selection.py`
+
+**Проблема:**
+
+```python
+selection_type='food'  # Магическая строка
+selection_type='weapon'
+selection_type='elixir'
+```
+
+**Решение:**
 
 ```python
 # domain/services/item_selection.py
-from dataclasses import dataclass
+class SelectionType:
+    FOOD = 'food'
+    WEAPON = 'weapon'
+    ELIXIR = 'elixir'
+    SCROLL = 'scroll'
 
-@dataclass
-class SelectionRequest:
-    selection_type: str
-    items: list
-    title: str
-    allow_zero: bool
+# Использование:
+selection_type=SelectionType.FOOD
 ```
 
 ---
 
-#### ⚠️ ПРОБЛЕМА 3: Дублирование ADJACENT_OFFSETS
+#### PROBLEM F: Избыточное использование getattr/hasattr
 
-**Файл:** `inventory_manager.py`
-
-**Метод:** `_drop_weapon_on_ground()`
-
-**Описание:**
-
-```python
-# Hardcoded список смещений:
-for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1), 
-               (-1, -1), (1, -1), (-1, 1), (1, 1)]:
-```
-
-**Исправление:**
-
-```python
-from config.game_config import PlayerConfig
-
-for dx, dy in PlayerConfig.ADJACENT_OFFSETS:
-```
-
----
-
-#### ⚠️ ПРОБЛЕМА 7: create_synced_pair в domain-слое
-
-**Файл:** `position_synchronizer.py`
-
-**Функция:** `create_synced_pair()`
-
-**Описание:**
-Функция создаёт и `Character` (domain), и `Camera` (presentation):
-
-```python
-def create_synced_pair(...):
-    character = Character(char_x, char_y)
-    from utils.raycasting import Camera  # ← презентация в domain!
-    camera = Camera(...)
-    return character, camera
-```
-
-**Рекомендация:**
-
-* Переместить в `utils/sync_helpers.py`
-* Или удалить полностью (используется только в тестах)
-
----
-
-#### ⚠️ ПРОБЛЕМА 8: Магическая строка для MIMIC
-
-**Файл:** `enemy_locator.py`
-
-**Описание:**
-
-```python
-MIMIC_NAME = getattr(EnemyType.MIMIC, 'name', str(EnemyType.MIMIC))
-
-def _enemy_type_name(enemy):
-    et = getattr(enemy, 'enemy_type', None)
-    if hasattr(et, 'name'):
-        return et.name
-    return str(et)
-
-# Сравнение через строку:
-if _enemy_type_name(enemy) == MIMIC_NAME:
-```
+**Файлы:** `enemy_ai.py`, `combat_system.py`
 
 **Проблема:**
 
-* Код зависит от implementation details `EnemyType`
-* Сломается при миграции на Enum
-* Излишне сложно
-
-**Исправление:**
-
 ```python
-if enemy.enemy_type == EnemyType.MIMIC:
+# Неявные проверки атрибутов
+if hasattr(enemy, 'is_resting'):
+    enemy.is_resting = False
+
+teleport_cooldown = getattr(enemy, 'teleport_cooldown', 0)
 ```
 
----
+**Последствия:**
 
-## ✅ Выполненные изменения (Phase 1 — Critical Fixes)
+* Нет явного контракта для атрибутов врагов
+* Ошибки видны только в runtime
+* Сложно понять, какие атрибуты требуются
 
-### 🔴 Problem 6: Удалён метод `finalize_attack_result` — ВЫПОЛНЕН
+**Решение:**
+Использовать @dataclass с default values:
 
-**Файл:** `domain/services/combat_system.py`
-
-**Изменение:** Полностью удалён метод `finalize_attack_result(self, session, result)`.
-
-**Причина:**
-- Метод никогда не вызывался ни в одном месте кодовой базы
-- Содержал вызов `session._process_enemy_turns()` который мог привести к двойному ходу врагов
-- Функциональность дублировалась в методе `process_player_attack()`
-
-**Детали удаления:**
-```python
-# УДАЛЕНО: Метод finalize_attack_result (строки 141-172)
-- def finalize_attack_result(self, session, result):
--     """Apply session-level effects for an attack result..."""
--     if not result:
--         return
--     # Record attack stats if available
--     ...
--     # Record enemy defeated / treasure
--     ...
--     # Allow session to progress enemy turns if still running
--     try:
--         if not session.state_machine.is_terminal():
--             session._process_enemy_turns()  # ← ПОТЕНЦИАЛЬНЫЙ ДВОЙНОЙ ВЫЗОВ
--     except Exception:
--         pass
-```
-
-**Результат:** Устранён риск двойного вызова `_process_enemy_turns()` при возможном будущем использовании метода.
-
----
-
-### 🔴 Problem 4: Добавлена проверка terminal state в MovementHandler — ВЫПОЛНЕН
-
-**Файл:** `domain/services/movement_handler.py`
-
-**Проблема:** После боя код продолжал выполняться даже если игрок умер (state_machine перешёл в GAME_OVER). Это приводило к:
-- Движению мёртвого персонажа на клетку врага
-- Обновлению позиции камеры после смерти
-- Обновлению fog of war после смерти
-- Несогласованному состоянию между state_machine и игровым миром
-
-**Изменение 1 — Combat с mimic (после строки 41):**
-```python
-combat_result = session._handle_combat(mimic_at_pos)
-
-# ДОБАВЛЕНО: Проверка terminal state сразу после боя
-if session.state_machine.is_terminal():
-    return combat_result
-
-if combat_result and not mimic_at_pos.is_alive():
-    ...
-```
-
-**Изменение 2 — Combat с обычным врагом (после строки 68):**
-```python
-enemy = session._get_revealed_enemy_at(new_x, new_y)
-if enemy:
-    combat_result = session._handle_combat(enemy)
-
-    # ДОБАВЛЕНО: Проверка terminal state сразу после боя
-    if session.state_machine.is_terminal():
-        return combat_result
-
-    if combat_result and not session.state_machine.is_terminal():
-        session._process_enemy_turns()
-    return combat_result
-```
-
-**Результат:** При смерти игрока в бою все последующие операции (движение, обновление камеры/fog) немедленно прекращаются.
-
----
-
-## ✅ Выполненные изменения (Phase 2 — Original Plan)
-
-### ⚠️ Stage 1: Удалены дублирующие константы из utils/constants.py — ВЫПОЛНЕН
-
-**Файл:** `utils/constants.py`
-
-**Проблема:** Файл содержал константы, которые были продублированы в `config/game_config.py`. Комментарии в файле указывали на миграцию, но сами константы остались.
-
-**Анализ использования:**
-- Поиск по кодовой базе: `utils/constants.py` нигде не импортировался
-- Все использования констант уже использовали `GameConfig` из `config/game_config.py`
-
-**Изменение:** Файл полностью очищен от дублирующих констант, оставлен только docstring с указанием миграции.
-
-**До:**
-```python
-# utils/constants.py (57 строк)
-MAP_WIDTH = 80
-MAP_HEIGHT = 24
-ROOM_COUNT = 9
-LEVEL_COUNT = 21
-...
-```
-
-**После:**
-```python
-# utils/constants.py
-"""
-Game constants and configuration values.
-
-DEPRECATED: This module is kept for backward compatibility only.
-All constants have been migrated to config.game_config.py
-
-Use: from config.game_config import GameConfig, ItemConfig, EnemyConfig, PlayerConfig
-"""
-```
-
-**Результат:** Устранена путаница с дублирующимися константами, код использует единый источник конфигурации.
-
----
-
-### ⚠️ Stage 2: Исправлен импорт Camera в position_synchronizer.py — ВЫПОЛНЕН
-
-**Файлы:**
-- `domain/services/position_synchronizer.py` — удалена функция `create_synced_pair`
-- `utils/sync_helpers.py` — создан новый файл с функцией `create_synced_pair`
-- `tests/domain/services/test_position_synchronizer.py` — обновлены импорты
-
-**Проблема:** Функция `create_synced_pair()` находилась в domain-слое (`position_synchronizer.py`), но создавала объекты обоих слоев (`Character` — domain, `Camera` — presentation). Для этого использовался локальный импорт `Camera`, что нарушало архитектурные границы.
-
-**Изменение 1 — Создан новый файл utils/sync_helpers.py:**
-```python
-"""
-Synchronization helpers for presentation-domain layer coordination.
-"""
-from typing import Tuple, Any
-from domain.entities.character import Character
-from utils.raycasting import Camera
-
-def create_synced_pair(character_pos: Tuple[int, int], angle: float = 0.0,
-                       fov: float = 60.0, center_offset: float = 0.5) -> Tuple[Character, Any]:
-    """Create a synchronized Character and Camera pair."""
-    char_x, char_y = character_pos
-    character = Character(char_x, char_y)
-    camera = Camera(
-        char_x + center_offset,
-        char_y + center_offset,
-        angle=angle,
-        fov=fov
-    )
-    return character, camera
-```
-
-**Изменение 2 — Удаление из position_synchronizer.py:**
-```python
-# УДАЛЕНО: Функция create_synced_pair (строки 297-324)
-- def create_synced_pair(...):
--     ...
--     from utils.raycasting import Camera  # ← Локальный импорт presentation в domain!
--     ...
-```
-
-**Изменение 3 — Обновление тестов:**
-```python
-# tests/domain/services/test_position_synchronizer.py
-# Было:
-from domain.services.position_synchronizer import (
-    PositionSynchronizer,
-    PositionSyncValidator,
-    create_synced_pair,  # ← Импорт из domain
-    ...
-)
-
-# Стало:
-from domain.services.position_synchronizer import (
-    PositionSynchronizer,
-    PositionSyncValidator,
-    ...
-)
-from utils.sync_helpers import create_synced_pair  # ← Импорт из utils
-```
-
-**Результат:** 
-- Domain-слой больше не импортирует presentation-объекты
-- Функция для создания пар Character+Camera находится в utils (координаторский слой)
-- Все 203 теста проходят успешно
-
----
-
-## ✅ Выполненные изменения (Phase 3 — Technical Debt)
-
-### 🟢 Problem 3: Использование PlayerConfig.ADJACENT_OFFSETS — ВЫПОЛНЕН
-
-**Файл:** `domain/services/inventory_manager.py`
-
-**Проблема:** В методе `_drop_weapon_on_ground()` использовался hardcoded список смещений для поиска соседних клеток:
-```python
-for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, -1), (-1, 1), (1, 1)]:
-```
-
-**Изменение:**
-```python
-from config.game_config import ItemType, PlayerConfig
-...
-for dx, dy in PlayerConfig.ADJACENT_OFFSETS:
-```
-
-**Результат:** Единый источник конфигурации, легче поддерживать и изменять.
-
----
-
-### 🟢 Problem 8: Упрощение сравнения с EnemyType.MIMIC — ВЫПОЛНЕН
-
-**Файл:** `domain/services/enemy_locator.py`
-
-**Проблема:** Избыточно сложная логика сравнения типов врагов через строки:
-```python
-MIMIC_NAME = getattr(EnemyType.MIMIC, 'name', str(EnemyType.MIMIC))
-
-def _enemy_type_name(enemy):
-    et = getattr(enemy, 'enemy_type', None)
-    if et is None:
-        return None
-    if hasattr(et, 'name'):
-        return et.name
-    return str(et)
-
-# Использование:
-if _enemy_type_name(enemy) == MIMIC_NAME:
-```
-
-**Изменение:** Упрощено до прямого сравнения:
-```python
-if enemy.enemy_type == EnemyType.MIMIC:
-```
-
-**Результат:** 
-- Удалены 12 строк избыточного кода
-- Прямое сравнение вместо сложной логики через строки
-- Не зависит от implementation details `EnemyType`
-
----
-
-### 🟢 Problem 2: Создание @dataclass SelectionRequest — ВЫПОЛНЕН
-
-**Файлы:**
-- `domain/services/item_selection.py` — создан новый файл с dataclass
-- `domain/services/inventory_manager.py` — обновлено создание запросов
-- `domain/services/inventory_manager.py` — обновлено чтение типа
-- `presentation/game_ui.py` — обновлен доступ к атрибутам
-- `data/save_manager.py` — добавлена сериализация/десериализация
-
-**Проблема:** Неявная структура dict с "магическими строками":
-```python
-session.pending_selection = {
-    'type': 'food',
-    'items': food_items,
-    'title': 'Select Food to Consume',
-    'allow_zero': False
-}
-```
-
-**Изменение:** Создан explicit dataclass:
 ```python
 @dataclass
-class SelectionRequest:
-    selection_type: str
-    items: List[Any]
-    title: str
-    allow_zero: bool
-    
-    def to_dict(self) -> dict: ...
-    @classmethod
-    def from_dict(cls, data: dict) -> Optional['SelectionRequest']: ...
+class Ghost(Enemy):
+    teleport_cooldown: int = 0
+    invisibility_cooldown: int = 0
+    is_invisible: bool = False
 ```
 
-**Использование:**
+---
+
+#### PROBLEM G: Циклические импорты между services
+
+**Файлы:** Несколько services импортируют друг друга
+
+**Проблема:**
+
 ```python
-session.pending_selection = SelectionRequest(
-    selection_type='food',
-    items=food_items,
-    title='Select Food to Consume',
-    allow_zero=False
-)
+# action_processor.py импортирует session
+# session импортирует action_processor
+# Работает только благодаря lazy imports
 ```
 
-**Результат:**
-- Type-safe структура с явным контрактом
-- IDE поддержка (автокомплит, type checking)
-- Методы для сериализации (сохранение/загрузка)
+**Решение:**
+Использовать Dependency Injection вместо прямых импортов:
 
----
-
-### 🟢 Problem 7: Перемещение create_synced_pair — ВЫПОЛНЕН
-
-**Примечание:** Уже выполнено в Stage 2. Функция перемещена из `domain/services/position_synchronizer.py` в `utils/sync_helpers.py`.
-
----
-
-### ✅ Проверка изменений
-
-**Тесты:** Все 203 существующих теста проходят успешно.
-
-```
-============================= test session starts =============================
-platform win32 -- Python 3.13.9, pytest-9.0.2, pluggy-1.6.0
-collected 203 items
-
-... (все тесты PASSED)
-
-============================= 203 passed in 1.15s =============================
+```python
+class ActionProcessor:
+    def __init__(self, combat_system, movement_handler, inventory_manager):
+        self.combat = combat_system
+        self.movement = movement_handler
+        self.inventory = inventory_manager
 ```
 
 ---
 
-## 📊 Итоговая статистика
+#### PROBLEM H: Отсутствие валидации GameState transitions
 
-### Выполнение исходного плана (7 этапов):
+**Файл:** `domain/services/game_states.py`
 
-* ✅ **Полностью выполнено:** 5 этапов (71%)
-* ⚠️ **Частично выполнено:** 1 этап (14%)
-* ❌ **Не выполнено:** 1 этап (14%)
+**Проблема:**
 
-**Общий процент выполнения:** ~78.6%
+```python
+# Нет логирования невалидных переходов
+def transition_to(self, new_state: GameState) -> bool:
+    if not self.can_transition_to(new_state):
+        raise ValueError(f"Invalid transition...")  # Silent fail
+```
 
-### Новые обнаруженные проблемы (8 проблем):
+**Улучшение:**
 
-* 🔴 **Критические:** 1 проблема
-* 🟡 **Важные:** 1 проблема
-* 🟢 **Некритичные:** 6 проблем
+```python
+import logging
 
----
-
-## 🎯 Приоритеты исправлений
-
-### Немедленно:
-
-1. **ПРОБЛЕМА 6** — Убрать двойной вызов `_process_enemy_turns` в `CombatSystem`
-
-### В ближайшее время:
-
-2. **Этап 1** — Завершить удаление дубликатов констант
-3. **Этап 2** — Убрать импорт `Camera` из `position_synchronizer.py`
-4. **ПРОБЛЕМА 4** — Добавить проверку `is_terminal()` после боя
-
-### Технический долг:
-
-5. **ПРОБЛЕМА 3** — Использовать `PlayerConfig.ADJACENT_OFFSETS`
-6. **ПРОБЛЕМА 8** — Упростить сравнение с `EnemyType.MIMIC`
-7. **ПРОБЛЕМА 2** — Создать `@dataclass SelectionRequest`
-8. **ПРОБЛЕМА 7** — Переместить `create_synced_pair` в utils
-9. **ПРОБЛЕМА 1** — Вынести создание Camera из domain
+def transition_to(self, new_state: GameState) -> bool:
+    if not self.can_transition_to(new_state):
+        logger.warning(
+            f"Invalid state transition attempted: "
+            f"{self._state.name} -> {new_state.name}"
+        )
+        raise ValueError(...)
+```
 
 ---
 
-## ✍️ Заключение
+## 📊 Приоритизация проблем
 
-Рефакторинг выполнен на  **~79%** . Критические проблемы из плана (этапы 3-7) устранены успешно. Остались две задачи из исходного плана:
+### Немедленно (блокируют развитие):
 
-* Не завершён **этап 1** (дубликаты констант)
-* Частично выполнен **этап 2** (импорт Camera в position_synchronizer)
+1. **PROBLEM A** — Рефакторинг GameSession (большой, но критичный)
+2. **PROBLEM B** — Вынести создание Camera из domain
 
-Обнаружена **новая критическая проблема** (двойной вызов enemy turns), которая требует немедленного исправления, так как полностью нарушает баланс игры.
+### Важные (улучшают архитектуру):
 
-Остальные 6 проблем — технический долг, который можно исправлять постепенно.
+3. **PROBLEM C** — Разделить PositionSynchronizer на domain/presentation части
+4. **PROBLEM D** — Event-based statistics tracking
+
+### Технический долг (можно постепенно):
+
+5. **PROBLEM E** — SelectionType constants
+6. **PROBLEM F** — Dataclasses для enemy state
+7. **PROBLEM G** — Явная DI между services
+8. **PROBLEM H** — Логирование state transitions
+
+---
+
+## 🎯 План рефакторинга по этапам
+
+### Этап 1: Вынос презентационной логики из domain
+
+**Цель:** Устранить создание Camera/CameraController в domain-слое
+
+**Шаги:**
+
+1. Создать `presentation/view_manager.py` с методами создания камеры
+2. Создать `domain/events.py` с событиями `LevelGeneratedEvent`, `CharacterMovedEvent`
+3. Добавить `EventBus` для публикации событий из domain
+4. Переместить логику создания Camera в ViewManager (подписка на события)
+5. Удалить `_camera_factory` и `_camera_controller_factory` из `GameSession.__init__`
+
+**Результат:** Domain не знает о Camera, использует только события
+
+---
+
+### Этап 2: Разделение PositionSynchronizer
+
+**Цель:** Убрать manipulation presentation-объектов из domain
+
+**Шаги:**
+
+1. Добавить методы `to_camera_coords()` и `from_camera_coords()` в `Position`
+2. Создать `presentation/camera_sync.py` с классом `CameraSync`
+3. Переместить логику синхронизации из `PositionSynchronizer` в `CameraSync`
+4. Обновить тесты для `Position` (domain) и `CameraSync` (presentation)
+5. Удалить camera-related методы из `PositionSynchronizer`
+
+**Результат:** Чистое разделение координатных систем между слоями
+
+---
+
+### Этап 3: Рефакторинг GameSession через SessionCoordinator
+
+**Цель:** Уменьшить размер и ответственность GameSession
+
+**Шаги:**
+
+1. Создать `domain/session_coordinator.py` с классом `SessionCoordinator`
+2. Переместить координацию сервисов из GameSession в Coordinator
+3. Оставить в GameSession только:
+   * `state_machine: StateMachine`
+   * `character: Character`
+   * `level: Level`
+   * `stats: Statistics`
+   * Методы делегирования к coordinator
+4. Обновить `main.py` для работы с новой структурой
+
+**Результат:** GameSession < 200 строк, фокус на state management
+
+---
+
+### Этап 4: Event-based statistics tracking
+
+**Цель:** Централизовать учёт статистики через события
+
+**Шаги:**
+
+1. Расширить `domain/events.py` событиями для всех статистических действий
+2. Создать `domain/services/statistics_tracker.py` с подписками на события
+3. Заменить прямые вызовы `stats.record_*()` на публикацию событий
+4. Добавить тесты для `StatisticsTracker`
+
+**Результат:** Невозможно забыть учесть статистику, централизованный аудит
+
+---
+
+### Этап 5: Технический долг (постепенно)
+
+**Цель:** Улучшить качество кода без изменения архитектуры
+
+**Шаги (можно выполнять независимо):**
+
+1. Создать `SelectionType` constants вместо magic strings
+2. Добавить @dataclass для enemy state attributes (Ghost, Ogre, etc.)
+3. Использовать явную DI между services (убрать session-dependencies)
+4. Добавить логирование для state transitions и важных событий
+
+**Результат:** Более явный код, меньше runtime ошибок
+
+---
+
+## ✅ Критерии успеха
+
+После завершения рефакторинга должно быть выполнено:
+
+1. ✅ Domain-слой не импортирует presentation-объекты (Camera, CameraController)
+2. ✅ Domain-слой не создаёт presentation-объекты
+3. ✅ GameSession < 200 строк, фокус на state management
+4. ✅ Все services независимы друг от друга (явная DI)
+5. ✅ Statistics tracking централизован через события
+6. ✅ Все существующие тесты проходят (203 теста)
+7. ✅ Добавлены новые тесты для новых компонентов (EventBus, ViewManager, etc.)
+
+---
+
+## 📝 Примечания
+
+### Совместимость с существующим кодом
+
+Рефакторинг выполняется итеративно с сохранением backward compatibility:
+
+* Старые методы помечаются `@deprecated` с указанием замены
+* Новая функциональность добавляется параллельно
+* Миграция выполняется постепенно
+* Тесты обновляются вместе с кодом
+
+### Оценка трудоёмкости
+
+* **Этап 1** (ViewManager): ~2-3 часа
+* **Этап 2** (PositionSync split): ~2 часа
+* **Этап 3** (SessionCoordinator): ~4-5 часов ⚠️ (самый большой)
+* **Этап 4** (Event-based stats): ~3 часа
+* **Этап 5** (Technical debt): ~2-3 часа
+
+**Всего:** ~13-16 часов работы
+
+### Риски
+
+1. **Этап 3** может потребовать значительных изменений в presentation-слое (`main.py`, `game_ui.py`)
+2. Необходимо тщательное тестирование после каждого этапа
+3. Сохранение/загрузка игры может требовать обновления при изменении структуры
+
+---
+
+## 🔄 Следующие шаги
+
+1. ✅ Ознакомиться с планом
+2. ⬜ Выбрать этап для начала (рекомендация: Этап 1 или Этап 5)
+3. ⬜ Создать feature branch для рефакторинга
+4. ⬜ Выполнить этап
+5. ⬜ Запустить все тесты
+6. ⬜ Code review
+7. ⬜ Merge и переход к следующему этапу
+
+---
+
+**Дата создания:** 2026-02-01
+
+**Версия:** 2.0 (обновлённый план после Phase 1-3)

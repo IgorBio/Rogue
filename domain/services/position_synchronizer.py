@@ -6,27 +6,31 @@ REFACTORING NOTE (Step 1.4):
 - Ensures coordinate consistency when switching between 2D and 3D views
 - Handles fractional offsets for smooth Camera positioning
 - Provides bidirectional synchronization: Character → Camera and Camera → Character
+
+REFACTORING NOTE (Phase 2):
+- Camera-specific logic moved to presentation.camera_sync.CameraSync
+- PositionSynchronizer now works only with domain objects (Position, Character)
+- Use Position.to_camera_coords() and Position.from_camera_coords() for coordinate conversion
 """
 
 from typing import Tuple, Optional, Any
 from domain.entities.position import Position
 from domain.entities.character import Character
-# Note: Camera is a presentation-layer object; avoid importing it at module level to keep domain layer decoupled.
 
 
 class PositionSynchronizer:
     """
-    Synchronizes positions between Character (2D, int coordinates) and 
-    Camera (3D, float coordinates with grid alignment).
+    Synchronizes positions between domain objects (Character and Position).
 
-    This class ensures that switching between 2D and 3D views maintains
-    positional consistency while respecting the different coordinate
-    requirements of each system.
+    This class ensures positional consistency while respecting the different
+    coordinate requirements of each system.
+
+    NOTE: Camera-specific synchronization has been moved to presentation layer.
+    Use presentation.camera_sync.CameraSync for camera operations.
 
     Key responsibilities:
-    - Sync Character position to Camera (2D → 3D)
-    - Sync Camera position to Character (3D → 2D)
-    - Handle fractional offsets for smooth Camera movement
+    - Track position changes for domain objects
+    - Provide coordinate conversion utilities via Position class methods
     - Validate position updates
     """
 
@@ -36,79 +40,23 @@ class PositionSynchronizer:
 
         Args:
             center_offset: Offset to center camera in grid cell (default 0.5)
-                          When syncing Character to Camera, camera is placed at
-                          (character.x + center_offset, character.y + center_offset)
+                          Used for coordinate conversion via Position.to_camera_coords()
         """
         self.center_offset = center_offset
         self._last_character_pos: Optional[Tuple[int, int]] = None
+        # DEPRECATED: Kept for backward compatibility, use presentation.camera_sync instead
         self._last_camera_pos: Optional[Tuple[float, float]] = None
 
-    def sync_camera_to_character(self, camera: Any, character: Character, 
-                                 preserve_angle: bool = True) -> None:
+    def sync_character_to_position(self, character: Character, position: Position) -> None:
         """
-        Synchronize Camera position to Character position.
-
-        Places camera at the center of the character's grid cell.
-        Useful when switching from 2D to 3D view.
-
-        Args:
-            camera: Camera to update
-            character: Character to sync from
-            preserve_angle: If True, keep camera's current angle
-
-        Example:
-            Character at (10, 20) → Camera at (10.5, 20.5)
-        """
-        char_x, char_y = character.position
-
-        # Place camera at center of character's grid cell
-        cam_x = float(char_x) + self.center_offset
-        cam_y = float(char_y) + self.center_offset
-
-        # Update camera position
-        if preserve_angle:
-            old_angle = camera.angle
-            camera.set_position(cam_x, cam_y)
-            camera.angle = old_angle
-        else:
-            camera.set_position(cam_x, cam_y)
-
-        # Store for tracking
-        self._last_character_pos = (char_x, char_y)
-        self._last_camera_pos = (cam_x, cam_y)
-
-    def sync_character_to_camera(self, character: Character, camera: Any,
-                                snap_to_grid: bool = True) -> None:
-        """
-        Synchronize Character position to Camera position.
-
-        Places character on the grid cell where camera is located.
-        Useful when switching from 3D to 2D view.
+        Synchronize Character position to Position.
 
         Args:
             character: Character to update
-            camera: Camera to sync from
-            snap_to_grid: If True, use camera's grid position (floor)
-                         If False, round to nearest grid cell
-
-        Example:
-            Camera at (10.5, 20.7) → Character at (10, 20) [snap_to_grid=True]
-            Camera at (10.5, 20.7) → Character at (11, 21) [snap_to_grid=False, rounded]
+            position: Position to sync from
         """
-        if snap_to_grid:
-            # Use grid position (floor)
-            char_x, char_y = camera.grid_position
-        else:
-            # Round to nearest grid cell
-            char_x = round(camera.x)
-            char_y = round(camera.y)
-
-        # Update character position
-        character.move_to(char_x, char_y)
-
-        # Store for tracking
-        self._last_character_pos = (char_x, char_y)
-        self._last_camera_pos = (camera.x, camera.y)
+        character.move_to(position.x, position.y)
+        self._last_character_pos = character.position
 
     def is_character_moved(self, character: Character) -> bool:
         """
@@ -125,34 +73,103 @@ class PositionSynchronizer:
 
         return character.position != self._last_character_pos
 
-    def is_camera_moved(self, camera: Any) -> bool:
+    def get_character_offset(self, character: Character,
+                            camera_coords: Tuple[float, float]) -> Tuple[float, float]:
         """
-        Check if camera has moved since last sync.
-
-        Args:
-            camera: Camera to check
-
-        Returns:
-            bool: True if camera position changed
-        """
-        if self._last_camera_pos is None:
-            return True
-
-        current_pos = (camera.x, camera.y)
-        return current_pos != self._last_camera_pos
-
-    def auto_sync_if_needed(self, character: Character, camera: Any,
-                           mode: str = 'character_to_camera') -> bool:
-        """
-        Automatically sync if position changed.
+        Calculate offset between character and camera coordinates.
 
         Args:
             character: Character instance
-            camera: Camera instance
-            mode: Sync direction ('character_to_camera' or 'camera_to_character')
+            camera_coords: Camera (x, y) coordinates
 
         Returns:
-            bool: True if sync was performed
+            tuple: (offset_x, offset_y) in grid units
+        """
+        char_x, char_y = character.position
+        cam_x, cam_y = camera_coords
+
+        offset_x = cam_x - char_x
+        offset_y = cam_y - char_y
+
+        return (offset_x, offset_y)
+
+    def are_positions_aligned(self, character: Character,
+                             camera_coords: Tuple[float, float]) -> bool:
+        """
+        Check if character and camera are on the same grid cell.
+
+        Args:
+            character: Character instance
+            camera_coords: Camera (x, y) coordinates
+
+        Returns:
+            bool: True if on same grid cell
+        """
+        char_pos = Position(*character.position)
+        expected_cam = char_pos.to_camera_coords(self.center_offset)
+        
+        # Check if camera is at expected position (same grid cell)
+        cam_x, cam_y = camera_coords
+        expected_x, expected_y = expected_cam
+        
+        return (int(cam_x) == int(expected_x) and
+                int(cam_y) == int(expected_y))
+
+    def reset_tracking(self) -> None:
+        """Reset position tracking (clears last known positions)."""
+        self._last_character_pos = None
+        self._last_camera_pos = None
+
+    # ========================================================================
+    # DEPRECATED METHODS - Use presentation.camera_sync.CameraSync instead
+    # ========================================================================
+    
+    def sync_camera_to_character(self, camera: Any, character: Character,
+                                 preserve_angle: bool = True) -> None:
+        """
+        DEPRECATED: Use presentation.camera_sync.CameraSync.sync_camera_to_character
+        
+        Synchronize Camera position to Character position.
+        """
+        from presentation.camera_sync import CameraSync
+        sync = CameraSync(self.center_offset)
+        sync.sync_camera_to_character(camera, character, preserve_angle)
+        
+        # Update tracking state for backward compatibility
+        self._last_character_pos = character.position
+        self._last_camera_pos = (camera.x, camera.y)
+    
+    def sync_character_to_camera(self, character: Character, camera: Any,
+                                snap_to_grid: bool = True) -> None:
+        """
+        DEPRECATED: Use presentation.camera_sync.CameraSync.sync_character_from_camera
+        
+        Synchronize Character position to Camera position.
+        """
+        from presentation.camera_sync import CameraSync
+        sync = CameraSync(self.center_offset)
+        sync.sync_character_from_camera(character, camera,
+                                        snap_mode='floor' if snap_to_grid else 'round')
+        
+        # Update tracking state for backward compatibility
+        self._last_character_pos = character.position
+        self._last_camera_pos = (camera.x, camera.y)
+    
+    def is_camera_moved(self, camera: Any) -> bool:
+        """
+        DEPRECATED: Camera tracking moved to presentation layer
+        
+        Check if camera has moved since last sync.
+        """
+        if self._last_camera_pos is None:
+            return True
+        current_pos = (camera.x, camera.y)
+        return current_pos != self._last_camera_pos
+    
+    def auto_sync_if_needed(self, character: Character, camera: Any,
+                           mode: str = 'character_to_camera') -> bool:
+        """
+        DEPRECATED: Use presentation.camera_sync.CameraSync methods directly
         """
         if mode == 'character_to_camera':
             if self.is_character_moved(character):
@@ -162,55 +179,31 @@ class PositionSynchronizer:
             if self.is_camera_moved(camera):
                 self.sync_character_to_camera(character, camera)
                 return True
-
+        
         return False
-
+    
     def get_sync_offset(self, character: Character, camera: Any) -> Tuple[float, float]:
         """
-        Calculate current offset between character and camera.
-
-        Args:
-            character: Character instance
-            camera: Camera instance
-
-        Returns:
-            tuple: (offset_x, offset_y) in grid units
+        DEPRECATED: Use presentation.camera_sync.CameraSync.calculate_offset
         """
         char_x, char_y = character.position
         cam_x, cam_y = camera.x, camera.y
-
-        offset_x = cam_x - char_x
-        offset_y = cam_y - char_y
-
-        return (offset_x, offset_y)
-
+        return (cam_x - char_x, cam_y - char_y)
+    
     def are_positions_synced(self, character: Character, camera: Any,
                             tolerance: float = 0.1) -> bool:
         """
+        DEPRECATED: Use presentation.camera_sync.CameraSync.is_camera_at_position
+        
         Check if character and camera are on the same grid cell.
-
-        Args:
-            character: Character instance
-            camera: Camera instance
-            tolerance: Tolerance for float comparison (not used for grid check)
-
-        Returns:
-            bool: True if on same grid cell
         """
-        return character.position == camera.grid_position
-
-    def reset_tracking(self) -> None:
-        """Reset position tracking (clears last known positions)."""
-        self._last_character_pos = None
-        self._last_camera_pos = None
-
-
-class PositionSyncValidator:
-    """
-    Validator for position synchronization operations.
-
-    Provides utility methods to validate sync operations and detect issues.
-    """
+        # Check if camera has grid_position attribute
+        if hasattr(camera, 'grid_position'):
+            return character.position == camera.grid_position
+        else:
+            # Fallback: calculate grid position from coordinates
+            cam_grid = Position.from_camera_coords(camera.x, camera.y, snap_mode='floor').tuple
+            return character.position == cam_grid
 
 
 class PositionSyncValidator:
@@ -218,16 +211,21 @@ class PositionSyncValidator:
     Validator for position synchronization operations.
 
     Provides utility methods to validate sync operations and detect issues.
+    
+    NOTE: Camera-specific validation moved to presentation.camera_sync.CameraSyncValidator
     """
 
     @staticmethod
-    def validate_sync(character: Character, camera: Any) -> dict:
+    def validate_sync(character: Character,
+                     camera: Any,
+                     center_offset: float = 0.5) -> dict:
         """
         Validate current sync state between character and camera.
 
         Args:
             character: Character instance
-            camera: Any duck-typed camera-like object (expects .x, .y, .grid_position)
+            camera: Camera instance or (x, y) coordinates tuple
+            center_offset: Expected camera offset (default 0.5)
 
         Returns:
             dict: Validation results with keys:
@@ -239,8 +237,18 @@ class PositionSyncValidator:
                 - 'issues': list of issue strings
         """
         char_pos = character.position
-        cam_pos = (camera.x, camera.y)
-        cam_grid = camera.grid_position
+        
+        # Handle both Camera object and tuple for backward compatibility
+        if isinstance(camera, tuple):
+            cam_pos = camera
+            cam_grid = Position.from_camera_coords(cam_pos[0], cam_pos[1], snap_mode='floor').tuple
+        else:
+            cam_pos = (camera.x, camera.y)
+            # Try to get grid_position if available, otherwise calculate
+            if hasattr(camera, 'grid_position'):
+                cam_grid = camera.grid_position
+            else:
+                cam_grid = Position.from_camera_coords(cam_pos[0], cam_pos[1], snap_mode='floor').tuple
 
         offset_x = cam_pos[0] - char_pos[0]
         offset_y = cam_pos[1] - char_pos[1]
@@ -265,26 +273,37 @@ class PositionSyncValidator:
         }
 
     @staticmethod
-    def suggest_sync_direction(character: Character, camera: Any) -> str:
+    def suggest_sync_direction(character: Character,
+                              camera: Any) -> str:
         """
         Suggest which sync direction to use based on current state.
 
         Args:
             character: Character instance
-            camera: Any duck-typed camera-like object (expects .x, .y, .grid_position)
+            camera: Camera instance or (x, y) coordinates tuple
 
         Returns:
             str: Suggested direction ('character_to_camera', 'camera_to_character', or 'none')
         """
         char_pos = character.position
-        cam_grid = camera.grid_position
+        
+        # Handle both Camera object and tuple for backward compatibility
+        if isinstance(camera, tuple):
+            cam_x, cam_y = camera
+            cam_grid = Position.from_camera_coords(cam_x, cam_y, snap_mode='floor').tuple
+        else:
+            cam_x, cam_y = camera.x, camera.y
+            if hasattr(camera, 'grid_position'):
+                cam_grid = camera.grid_position
+            else:
+                cam_grid = Position.from_camera_coords(cam_x, cam_y, snap_mode='floor').tuple
 
         if char_pos == cam_grid:
             return 'none'  # Already synced
 
         # If camera is at center of a cell, prefer syncing character to camera
-        cam_frac_x = camera.x - int(camera.x)
-        cam_frac_y = camera.y - int(camera.y)
+        cam_frac_x = cam_x - int(cam_x)
+        cam_frac_y = cam_y - int(cam_y)
 
         if abs(cam_frac_x - 0.5) < 0.1 and abs(cam_frac_y - 0.5) < 0.1:
             return 'camera_to_character'
@@ -293,26 +312,95 @@ class PositionSyncValidator:
         return 'character_to_camera'
 
 
-# Convenience functions for common operations
-def quick_sync_to_2d(character: Character, camera: Any) -> None:
+# Convenience functions for common operations (deprecated - use presentation.camera_sync)
+def quick_sync_character_to_camera_coords(character: Character,
+                                         camera_coords: Tuple[float, float],
+                                         snap_mode: str = 'floor') -> None:
     """
-    Quick sync for switching to 2D view (Camera → Character).
+    Quick sync character to camera coordinates (Camera → Character).
 
+    Args:
+        character: Character to update
+        camera_coords: Camera (x, y) coordinates
+        snap_mode: 'floor' or 'round' for coordinate conversion
+    
+    NOTE: For camera object operations, use presentation.camera_sync.CameraSync
+    """
+    position = Position.from_camera_coords(camera_coords[0], camera_coords[1], snap_mode)
+    character.move_to(position.x, position.y)
+
+
+def quick_sync_camera_coords_to_position(camera_coords: Tuple[float, float],
+                                        center_offset: float = 0.5) -> Tuple[float, float]:
+    """
+    Convert position to camera coordinates (Character → Camera).
+
+    Args:
+        camera_coords: Source coordinates (for position extraction)
+        center_offset: Camera center offset
+    
+    Returns:
+        Tuple[float, float]: Camera coordinates with offset
+    
+    NOTE: For camera object operations, use presentation.camera_sync.CameraSync
+    """
+    position = Position.from_camera_coords(camera_coords[0], camera_coords[1])
+    return position.to_camera_coords(center_offset)
+
+
+# Backward compatibility wrappers (delegate to presentation layer)
+def quick_sync_to_2d(character, camera):
+    """
+    DEPRECATED: Use presentation.camera_sync.CameraSync.sync_character_from_camera
+    
+    Quick sync for switching to 2D view (Camera → Character).
+    
     Args:
         character: Character to update
         camera: Camera to sync from
     """
-    sync = PositionSynchronizer()
-    sync.sync_character_to_camera(character, camera, snap_to_grid=True)
+    # Import here to avoid circular dependency
+    from presentation.camera_sync import CameraSync
+    sync = CameraSync()
+    sync.sync_character_from_camera(character, camera)
 
 
-def quick_sync_to_3d(camera: Any, character: Character) -> None:
+def quick_sync_to_3d(camera, character):
     """
+    DEPRECATED: Use presentation.camera_sync.CameraSync.sync_camera_to_character
+    
     Quick sync for switching to 3D view (Character → Camera).
-
+    
     Args:
         camera: Camera to update
         character: Character to sync from
     """
-    sync = PositionSynchronizer()
-    sync.sync_camera_to_character(camera, character, preserve_angle=True)
+    # Import here to avoid circular dependency
+    from presentation.camera_sync import CameraSync
+    sync = CameraSync()
+    sync.sync_camera_to_character(camera, character)
+
+
+def create_synced_pair(character_factory, camera_factory, x, y, center_offset=0.5):
+    """
+    Create a synchronized pair of Character and Camera.
+    
+    Args:
+        character_factory: Factory to create Character
+        camera_factory: Factory to create Camera
+        x: Initial X position (grid)
+        y: Initial Y position (grid)
+        center_offset: Camera center offset
+    
+    Returns:
+        tuple: (character, camera)
+    """
+    # Import here to avoid circular dependency
+    from presentation.camera_sync import CameraSync
+    
+    character = character_factory(x, y)
+    position = Position(x, y)
+    cam_x, cam_y = position.to_camera_coords(center_offset)
+    camera = camera_factory(cam_x, cam_y)
+    
+    return (character, camera)
