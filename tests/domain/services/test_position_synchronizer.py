@@ -10,10 +10,10 @@ from utils.raycasting import Camera
 from domain.services.position_synchronizer import (
     PositionSynchronizer,
     PositionSyncValidator,
-    create_synced_pair,
     quick_sync_to_2d,
     quick_sync_to_3d
 )
+from utils.sync_helpers import create_synced_pair
 
 
 class TestPositionSynchronizerInit:

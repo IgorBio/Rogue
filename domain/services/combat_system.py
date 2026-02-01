@@ -138,36 +138,3 @@ class CombatSystem:
         session.message = " ".join(messages)
         return True
 
-    def finalize_attack_result(self, session, result):
-        """Apply session-level effects for an attack result coming from
-        external callers (e.g. 3D camera controller).
-
-        This centralizes stat recording and end-of-attack flow so callers
-        (GameSession) remain thin.
-        """
-        if not result:
-            return
-
-        # Record attack stats if available
-        if self.statistics is not None:
-            try:
-                self.statistics.record_attack(result.get('hit', False), result.get('damage', 0))
-            except Exception:
-                pass
-
-        # Record enemy defeated / treasure
-        if result.get('killed') and result.get('treasure'):
-            try:
-                if self.statistics is not None:
-                    self.statistics.record_enemy_defeated(result.get('treasure'))
-            except Exception:
-                pass
-
-        # Allow session to progress enemy turns if still running
-        try:
-            if not session.state_machine.is_terminal():
-                session._process_enemy_turns()
-        except Exception:
-            pass
-
-

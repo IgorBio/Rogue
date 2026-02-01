@@ -40,6 +40,10 @@ class MovementHandler:
 
             combat_result = session._handle_combat(mimic_at_pos)
 
+            # Check terminal state immediately after combat (e.g., player died)
+            if session.state_machine.is_terminal():
+                return combat_result
+
             if combat_result and not mimic_at_pos.is_alive():
                 session.character.move_to(new_x, new_y)
 
@@ -66,6 +70,11 @@ class MovementHandler:
         enemy = session._get_revealed_enemy_at(new_x, new_y)
         if enemy:
             combat_result = session._handle_combat(enemy)
+
+            # Check terminal state immediately after combat (e.g., player died)
+            if session.state_machine.is_terminal():
+                return combat_result
+
             if combat_result and not session.state_machine.is_terminal():
                 session._process_enemy_turns()
             return combat_result

@@ -94,7 +94,10 @@ class SaveManager:
                 'death_reason': game_session.death_reason,
 
                 # ✅ NEW (Step 1.3): Pending selection
-                'pending_selection': game_session.pending_selection,
+                'pending_selection': (
+                    game_session.pending_selection.to_dict()
+                    if game_session.pending_selection is not None else None
+                ),
 
                 # ✅ NEW (Step 1.3): Difficulty manager
                 'difficulty_manager': self._serialize_difficulty_manager(
@@ -254,7 +257,9 @@ class SaveManager:
         game_session.death_reason = save_data.get('death_reason', '')
 
         # ✅ NEW (Step 1.3): Restore pending selection
-        game_session.pending_selection = save_data.get('pending_selection', None)
+        from domain.services.item_selection import SelectionRequest
+        pending_data = save_data.get('pending_selection', None)
+        game_session.pending_selection = SelectionRequest.from_dict(pending_data)
 
         # Determine final saved GameState (priority: VICTORY > GAME_OVER > PLAYER_ASLEEP > ITEM_SELECTION > PLAYING)
         from domain.services.game_states import GameState

@@ -6,18 +6,6 @@ logic testable and reusable by other services (movement, combat).
 from typing import Optional, Tuple
 from config.game_config import EnemyType
 
-# Normalize constant name for robust comparisons (supports Enum or raw string)
-MIMIC_NAME = getattr(EnemyType.MIMIC, 'name', str(EnemyType.MIMIC))
-
-
-def _enemy_type_name(enemy):
-    et = getattr(enemy, 'enemy_type', None)
-    if et is None:
-        return None
-    if hasattr(et, 'name'):
-        return et.name
-    return str(et)
-
 
 class EnemyLocator:
     def __init__(self):
@@ -29,7 +17,7 @@ class EnemyLocator:
             for enemy in room.enemies:
                 if (enemy.position == (x, y) and
                     enemy.is_alive() and
-                    _enemy_type_name(enemy) == MIMIC_NAME and
+                    enemy.enemy_type == EnemyType.MIMIC and
                     getattr(enemy, 'is_disguised', False)):
                     return enemy
         return None
@@ -39,7 +27,7 @@ class EnemyLocator:
         for room in level.rooms:
             for enemy in room.enemies:
                 if enemy.position == (x, y) and enemy.is_alive():
-                    if (_enemy_type_name(enemy) == MIMIC_NAME and
+                    if (enemy.enemy_type == EnemyType.MIMIC and
                             getattr(enemy, 'is_disguised', False)):
                         continue
                     return enemy

@@ -3,7 +3,8 @@
 This manager owns pending selections and pickup/drop logic so the
 `GameSession` can delegate and remain small.
 """
-from config.game_config import ItemType
+from config.game_config import ItemType, PlayerConfig
+from domain.services.item_selection import SelectionRequest
 
 
 class InventoryManager:
@@ -17,12 +18,12 @@ class InventoryManager:
             session.message = "No food in backpack!"
             return False
 
-        session.pending_selection = {
-            'type': 'food',
-            'items': food_items,
-            'title': 'Select Food to Consume',
-            'allow_zero': False
-        }
+        session.pending_selection = SelectionRequest(
+            selection_type='food',
+            items=food_items,
+            title='Select Food to Consume',
+            allow_zero=False
+        )
         session.request_item_selection()
         return True
 
@@ -34,12 +35,12 @@ class InventoryManager:
             session.message = "No weapons available!"
             return False
 
-        session.pending_selection = {
-            'type': 'weapon',
-            'items': weapon_items,
-            'title': 'Select Weapon to Equip (0 to unequip current)',
-            'allow_zero': True
-        }
+        session.pending_selection = SelectionRequest(
+            selection_type='weapon',
+            items=weapon_items,
+            title='Select Weapon to Equip (0 to unequip current)',
+            allow_zero=True
+        )
         session.request_item_selection()
         return True
 
@@ -50,12 +51,12 @@ class InventoryManager:
             session.message = "No elixirs in backpack!"
             return False
 
-        session.pending_selection = {
-            'type': 'elixir',
-            'items': elixir_items,
-            'title': 'Select Elixir to Drink',
-            'allow_zero': False
-        }
+        session.pending_selection = SelectionRequest(
+            selection_type='elixir',
+            items=elixir_items,
+            title='Select Elixir to Drink',
+            allow_zero=False
+        )
         session.request_item_selection()
         return True
 
@@ -66,12 +67,12 @@ class InventoryManager:
             session.message = "No scrolls in backpack!"
             return False
 
-        session.pending_selection = {
-            'type': 'scroll',
-            'items': scroll_items,
-            'title': 'Select Scroll to Read',
-            'allow_zero': False
-        }
+        session.pending_selection = SelectionRequest(
+            selection_type='scroll',
+            items=scroll_items,
+            title='Select Scroll to Read',
+            allow_zero=False
+        )
         session.request_item_selection()
         return True
 
@@ -80,7 +81,7 @@ class InventoryManager:
         if session.pending_selection is None:
             return False
 
-        selection_type = session.pending_selection['type']
+        selection_type = session.pending_selection.selection_type
 
         if selected_idx is None:
             session.message = f"Cancelled {selection_type} selection."
@@ -169,7 +170,7 @@ class InventoryManager:
 
         player_room, player_room_idx = session.level.get_room_at(player_x, player_y)
 
-        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, -1), (-1, 1), (1, 1)]:
+        for dx, dy in PlayerConfig.ADJACENT_OFFSETS:
             pos_x, pos_y = player_x + dx, player_y + dy
 
             if not session.level.is_walkable(pos_x, pos_y):

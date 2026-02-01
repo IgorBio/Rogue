@@ -294,36 +294,6 @@ class PositionSyncValidator:
 
 
 # Convenience functions for common operations
-def create_synced_pair(character_pos: Tuple[int, int], angle: float = 0.0,
-                      fov: float = 60.0, center_offset: float = 0.5) -> Tuple[Character, Any]:
-    """
-    Create a synchronized Character and Camera pair.
-
-    Args:
-        character_pos: (x, y) position for character
-        angle: Camera viewing angle in degrees
-        fov: Camera field of view in degrees
-        center_offset: Offset for centering camera
-
-    Returns:
-        tuple: (character, camera) - both synced to same position
-    """
-    char_x, char_y = character_pos
-
-    character = Character(char_x, char_y)
-    # Local import to keep domain layer decoupled from presentation implementations
-    from utils.raycasting import Camera
-
-    camera = Camera(
-        char_x + center_offset,
-        char_y + center_offset,
-        angle=angle,
-        fov=fov
-    )
-
-    return character, camera
-
-
 def quick_sync_to_2d(character: Character, camera: Any) -> None:
     """
     Quick sync for switching to 2D view (Camera → Character).

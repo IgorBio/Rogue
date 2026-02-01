@@ -107,9 +107,9 @@ class GameUI:
         
         return show_item_selection(
             self.stdscr,
-            selection_request['items'],
-            selection_request['title'],
-            selection_request['allow_zero']
+            selection_request.items,
+            selection_request.title,
+            selection_request.allow_zero
         )
     
     def show_main_menu(self, save_manager):
