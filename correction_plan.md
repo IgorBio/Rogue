@@ -1,496 +1,354 @@
 
 # План рефакторинга domain-слоя проекта Rogue
 
-## 📋 Статус выполнения предыдущего плана
+## 📊 Текущий статус
 
-### ✅ Выполнено (Phases 1-3)
+### ✅ Выполнено
 
-**Phase 1 — Critical Fixes:**
+* StateMachine для управления состоянием
+* Services: CombatSystem, LevelManager, MovementHandler, InventoryManager, EnemyTurnProcessor
+* EventBus + event-based statistics tracking
+* SessionCoordinator для координации сервисов
+* Position class для координат
+* SelectionRequest dataclass
+* Централизация конфигурации (GameConfig, ItemConfig, etc.)
 
-* ✅ Problem 6: Удалён метод `finalize_attack_result` (двойной вызов enemy turns)
-* ✅ Problem 4: Добавлена проверка terminal state после боя в `MovementHandler`
+### 🔴 Критические проблемы
 
-**Phase 2 — Original Plan:**
+#### PROBLEM 1: Domain создаёт presentation-объекты
 
-* ✅ Stage 1: Удалены дублирующие константы из `utils/constants.py`
-* ✅ Stage 2: Функция `create_synced_pair` перемещена из domain в `utils/sync_helpers.py`
-
-**Phase 3 — Technical Debt:**
-
-* ✅ Problem 3: Использование `PlayerConfig.ADJACENT_OFFSETS` в `inventory_manager.py`
-* ✅ Problem 8: Упрощено сравнение с `EnemyType.MIMIC` в `enemy_locator.py`
-* ✅ Problem 2: Создан `@dataclass SelectionRequest` в `item_selection.py`
-
----
-
-## 🔍 Обнаруженные проблемы
-
-### 🔴 КРИТИЧЕСКИЕ
-
-#### PROBLEM A: Нарушение Single Responsibility в `GameSession`
-
-**Файл:** `domain/game_session.py`
-
-**Описание:**
-`GameSession` содержит 700+ строк и нарушает принцип единственной ответственности:
-
-* Управление состоянием игры
-* Создание и управление презентационными объектами (Camera, CameraController)
-* Логика генерации уровней
-* Логика движения (2D и 3D)
-* Логика инвентаря и предметов
-* Логика боя
-* Сохранение/загрузка
-
-**Последствия:**
-
-* Сложность тестирования
-* Высокая связанность с другими слоями
-* Нарушение архитектурных границ
-
-**Решение:**
-Уже частично выполнено через сервисы:
-
-* ✅ `ActionProcessor` — обработка действий игрока
-* ✅ `CombatSystem` — боевая система
-* ✅ `LevelManager` — управление уровнями
-* ✅ `MovementHandler` — обработка движения
-* ✅ `InventoryManager` — управление инвентарем
-* ✅ `EnemyTurnProcessor` — ходы врагов
-* ✅ `EnemyLocator` — поиск врагов/предметов
-
-**Оставшиеся задачи:**
-
-1. Переместить создание Camera/CameraController в presentation layer
-2. Создать `SessionCoordinator` для координации сервисов
-3. Оставить в `GameSession` только управление состоянием через `StateMachine`
-
----
-
-#### PROBLEM B: Factory injection создаёт presentation-объекты в domain
-
-**Файл:** `domain/game_session.py`, метод `_generate_new_level()`
-
-**Код:**
+**Файл:** `domain/game_session.py:183-200`
 
 ```python
-# Domain-слой создаёт presentation-объекты
-self.camera = self._camera_factory(
-    start_x + 0.5,
-    start_y + 0.5,
-    angle=GameConfig.DEFAULT_CAMERA_ANGLE,
-    fov=GameConfig.DEFAULT_CAMERA_FOV,
-)
-self.camera_controller = self._camera_controller_factory(self.camera, self.level)
+# Domain напрямую создаёт Camera и CameraController
+if self._camera_factory is not None:
+    self.camera = self._camera_factory(start_x + 0.5, start_y + 0.5, ...)
+    self.camera_controller = self._camera_controller_factory(self.camera, self.level)
 ```
 
-**Проблема:**
-
-* Domain знает о параметрах создания Camera (углы, FOV, смещения)
-* Domain управляет lifecycle presentation-объектов
-* Нарушается инверсия зависимостей
+**Проблема:** Domain знает о Camera parameters (angle, fov, offset), нарушает Clean Architecture
 
 **Решение:**
-Создать `ViewManager` в presentation-слое:
 
 ```python
-# presentation/view_manager.py
+# domain/game_session.py - только события
+event_bus.publish(LevelGeneratedEvent(level, (start_x, start_y), level_number))
+
+# presentation/view_manager.py - создание камеры
 class ViewManager:
-    def create_camera_for_level(self, level, character, mode='2d'):
-        if mode == '3d':
-            start_room = level.get_starting_room()
-            center_x, center_y = start_room.get_center()
-            camera = Camera(center_x + 0.5, center_y + 0.5)
-            controller = CameraController(camera, level)
-            return camera, controller
-        return None, None
-  
-    def sync_camera_to_character(self, camera, character):
-        # Sync logic
-```
-
-Domain только уведомляет presentation через события:
-
-```python
-# domain/events.py
-@dataclass
-class LevelGeneratedEvent:
-    level: Level
-    character_position: Tuple[int, int]
+    def on_level_generated(self, event):
+        camera = Camera(event.character_position[0] + 0.5, ...)
 ```
 
 ---
 
-### 🟡 ВАЖНЫЕ
+#### PROBLEM 2: PositionSynchronizer манипулирует presentation
 
-#### PROBLEM C: Смешивание координатных систем в `PositionSynchronizer`
-
-**Файл:** `domain/services/position_synchronizer.py`
-
-**Проблема:**
+**Файл:** `domain/services/position_synchronizer.py:68-89`
 
 ```python
-# PositionSynchronizer находится в domain, но оперирует Camera
-def sync_camera_to_character(self, camera: Any, character: Character, ...):
+# Domain-сервис управляет Camera
+def sync_camera_to_character(self, camera: Any, character: Character):
     cam_x = float(char_x) + self.center_offset
-    camera.set_position(cam_x, cam_y)  # Управляет presentation-объектом
+    camera.set_position(cam_x, cam_y)  # ❌ Domain → Presentation
 ```
 
-**Последствия:**
-
-* Domain манипулирует presentation-объектами
-* `center_offset` — это presentation concern (где центрировать камеру)
-* Неявная зависимость от реализации Camera
+**Проблема:** Domain манипулирует presentation-объектами, `center_offset` — presentation concern
 
 **Решение:**
-Разделить на две части:
-
-1. `domain/entities/position.py` — Position с методами преобразования координат
-2. `presentation/camera_sync.py` — CameraSync использует Position для синхронизации
 
 ```python
-# domain/entities/position.py
+# domain/entities/position.py - только преобразование координат
 class Position:
     def to_camera_coords(self, offset=0.5) -> Tuple[float, float]:
         return (float(self.x) + offset, float(self.y) + offset)
 
-# presentation/camera_sync.py
+# presentation/camera_sync.py - синхронизация
 class CameraSync:
-    def sync_camera_to_position(self, camera, position: Position):
+    def sync_to_position(self, camera, position: Position):
         cam_x, cam_y = position.to_camera_coords()
         camera.set_position(cam_x, cam_y)
 ```
 
 ---
 
-#### PROBLEM D: Statistics tracking разбросан по коду
+#### PROBLEM 3: GameSession 730+ строк, избыточная ответственность
 
-**Файлы:** Множество мест в domain и services
+**Файл:** `domain/game_session.py`
 
-**Проблема:**
+**Содержит:**
 
-```python
-# В разных местах:
-session.stats.record_movement()
-session.stats.record_item_collected()
-session.stats.record_attack(hit, damage)
-# etc.
-```
+* State management (StateMachine)
+* Camera/Controller factories ❌
+* Delegation ко всем services
+* Direct service access (`self.combat_system`, `self.movement_handler`, etc.)
+* Public + private методы сервисов
 
-**Последствия:**
-
-* Легко забыть записать статистику
-* Дублирование кода учёта
-* Нет централизованного аудита статистики
+**Проблема:** SessionCoordinator уже создан, но GameSession дублирует его API
 
 **Решение:**
-Использовать паттерн Observer через события:
 
 ```python
-# domain/events.py
-@dataclass
-class PlayerMovedEvent:
-    from_pos: Tuple[int, int]
-    to_pos: Tuple[int, int]
-
-@dataclass
-class ItemCollectedEvent:
-    item_type: str
-    item: Any
-
-# domain/services/statistics_tracker.py
-class StatisticsTracker:
-    def __init__(self, stats: Statistics, event_bus: EventBus):
-        self.stats = stats
-        event_bus.subscribe(PlayerMovedEvent, self._on_player_moved)
-        event_bus.subscribe(ItemCollectedEvent, self._on_item_collected)
+class GameSession:
+    def __init__(self, ...):
+        self.state_machine = StateMachine()
+        self.character = None
+        self.level = None
+        self.stats = Statistics()
+        self.coordinator = SessionCoordinator(self, self.stats, difficulty_manager)
   
-    def _on_player_moved(self, event: PlayerMovedEvent):
-        self.stats.record_movement()
+    # Только state transitions
+    def set_game_over(self, reason): ...
+    def set_victory(self): ...
   
-    def _on_item_collected(self, event: ItemCollectedEvent):
-        self.stats.record_item_collected()
+    # Делегирование к coordinator (не дублирование)
+    def process_action(self, action_type, action_data):
+        return self.coordinator.process_action(action_type, action_data)
 ```
+
+Удалить прямой доступ к сервисам: `self.combat_system`, `self.movement_handler`, etc.
 
 ---
 
-### 🟢 НЕКРИТИЧНЫЕ (технический долг)
+### 🟡 Важные улучшения
 
-#### PROBLEM E: Hardcoded magic strings для selection types
+#### PROBLEM 4: Statistics записываются в двух местах
 
-**Файл:** `domain/services/item_selection.py`
-
-**Проблема:**
+**Файлы:** `domain/services/combat_system.py:43-45` + `StatisticsTracker`
 
 ```python
-selection_type='food'  # Магическая строка
-selection_type='weapon'
-selection_type='elixir'
+# combat_system.py - публикует события
+event_bus.publish(AttackPerformedEvent(...))
+
+# statistics_tracker.py - обрабатывает события
+def _on_attack_performed(self, event):
+    self.stats.record_attack(event.hit, event.damage)
 ```
 
-**Решение:**
+**Проблема:** Нет централизованного аудита, легко забыть публикацию события
 
-```python
-# domain/services/item_selection.py
-class SelectionType:
-    FOOD = 'food'
-    WEAPON = 'weapon'
-    ELIXIR = 'elixir'
-    SCROLL = 'scroll'
-
-# Использование:
-selection_type=SelectionType.FOOD
-```
+**Решение:** Все `stats.record_*()` вызовы заменить на события, удалить прямые вызовы
 
 ---
 
-#### PROBLEM F: Избыточное использование getattr/hasattr
+#### PROBLEM 5: Циклические зависимости services ↔ session
 
-**Файлы:** `enemy_ai.py`, `combat_system.py`
+**Примеры:**
 
-**Проблема:**
+* `ActionProcessor(session)` → вызывает `session.inventory_manager`
+* `MovementHandler(session)` → вызывает `session._get_item_at()`
+* Все services держат `self.session`
 
-```python
-# Неявные проверки атрибутов
-if hasattr(enemy, 'is_resting'):
-    enemy.is_resting = False
+**Проблема:** Tight coupling, сложное тестирование
 
-teleport_cooldown = getattr(enemy, 'teleport_cooldown', 0)
-```
-
-**Последствия:**
-
-* Нет явного контракта для атрибутов врагов
-* Ошибки видны только в runtime
-* Сложно понять, какие атрибуты требуются
-
-**Решение:**
-Использовать @dataclass с default values:
+**Решение:** Dependency Injection
 
 ```python
-@dataclass
-class Ghost(Enemy):
-    teleport_cooldown: int = 0
-    invisibility_cooldown: int = 0
-    is_invisible: bool = False
-```
-
----
-
-#### PROBLEM G: Циклические импорты между services
-
-**Файлы:** Несколько services импортируют друг друга
-
-**Проблема:**
-
-```python
-# action_processor.py импортирует session
-# session импортирует action_processor
-# Работает только благодаря lazy imports
-```
-
-**Решение:**
-Использовать Dependency Injection вместо прямых импортов:
-
-```python
-class ActionProcessor:
-    def __init__(self, combat_system, movement_handler, inventory_manager):
-        self.combat = combat_system
-        self.movement = movement_handler
+class MovementHandler:
+    def __init__(self, enemy_locator, inventory_manager):
+        self.enemies = enemy_locator
         self.inventory = inventory_manager
 ```
 
 ---
 
-#### PROBLEM H: Отсутствие валидации GameState transitions
+### 🟢 Технический долг
 
-**Файл:** `domain/services/game_states.py`
+#### PROBLEM 6: Magic strings в action types
 
-**Проблема:**
+**Файл:** `domain/services/action_processor.py:8-13`
 
 ```python
-# Нет логирования невалидных переходов
-def transition_to(self, new_state: GameState) -> bool:
-    if not self.can_transition_to(new_state):
-        raise ValueError(f"Invalid transition...")  # Silent fail
+ACTION_MOVE = "move"
+ACTION_USE_FOOD = "use_food"
 ```
 
-**Улучшение:**
+**Решение:** Enum
+
+```python
+class ActionType(Enum):
+    MOVE = "move"
+    USE_FOOD = "use_food"
+```
+
+---
+
+#### PROBLEM 7: hasattr/getattr для enemy state
+
+**Файлы:** `domain/enemy_ai.py`, `domain/services/enemy_turn_processor.py`
+
+```python
+if hasattr(enemy, 'is_resting'):
+    enemy.is_resting = False
+```
+
+**Решение:** Dataclass с defaults
+
+```python
+@dataclass
+class Ogre(Enemy):
+    is_resting: bool = False
+    will_counterattack: bool = False
+```
+
+---
+
+#### PROBLEM 8: Отсутствие логирования state transitions
+
+**Файл:** `domain/services/game_states.py:93`
+
+```python
+def transition_to(self, new_state):
+    if not self.can_transition_to(new_state):
+        raise ValueError(...)  # Silent fail
+```
+
+**Решение:**
 
 ```python
 import logging
 
-def transition_to(self, new_state: GameState) -> bool:
+def transition_to(self, new_state):
     if not self.can_transition_to(new_state):
-        logger.warning(
-            f"Invalid state transition attempted: "
-            f"{self._state.name} -> {new_state.name}"
-        )
+        logger.warning(f"Invalid: {self._state.name} -> {new_state.name}")
         raise ValueError(...)
 ```
 
 ---
 
-## 📊 Приоритизация проблем
+## 🎯 План рефакторинга
 
-### Немедленно (блокируют развитие):
+### Этап 1: Вынос Camera из domain (4 часа)
 
-1. **PROBLEM A** — Рефакторинг GameSession (большой, но критичный)
-2. **PROBLEM B** — Вынести создание Camera из domain
+**Приоритет:** 🔴 КРИТИЧЕСКИЙ
 
-### Важные (улучшают архитектуру):
+1. Создать `presentation/view_manager.py`:
+   * `ViewManager.on_level_generated(event)` → создаёт Camera
+   * Подписывается на `LevelGeneratedEvent`, `CharacterMovedEvent`
+2. Удалить из `GameSession.__init__`:
+   * `camera_factory`, `camera_controller_factory`
+   * `self.camera = None`, `self.camera_controller = None`
+3. Обновить `main.py`:
+   * Создать `ViewManager` вне `GameSession`
+   * ViewManager подписывается на события
 
-3. **PROBLEM C** — Разделить PositionSynchronizer на domain/presentation части
-4. **PROBLEM D** — Event-based statistics tracking
-
-### Технический долг (можно постепенно):
-
-5. **PROBLEM E** — SelectionType constants
-6. **PROBLEM F** — Dataclasses для enemy state
-7. **PROBLEM G** — Явная DI между services
-8. **PROBLEM H** — Логирование state transitions
-
----
-
-## 🎯 План рефакторинга по этапам
-
-### Этап 1: Вынос презентационной логики из domain
-
-**Цель:** Устранить создание Camera/CameraController в domain-слое
-
-**Шаги:**
-
-1. Создать `presentation/view_manager.py` с методами создания камеры
-2. Создать `domain/events.py` с событиями `LevelGeneratedEvent`, `CharacterMovedEvent`
-3. Добавить `EventBus` для публикации событий из domain
-4. Переместить логику создания Camera в ViewManager (подписка на события)
-5. Удалить `_camera_factory` и `_camera_controller_factory` из `GameSession.__init__`
-
-**Результат:** Domain не знает о Camera, использует только события
+**Результат:** Domain не знает о Camera
 
 ---
 
-### Этап 2: Разделение PositionSynchronizer
+### Этап 2: Разделить PositionSynchronizer (2 часа)
 
-**Цель:** Убрать manipulation presentation-объектов из domain
+**Приоритет:** 🔴 КРИТИЧЕСКИЙ
 
-**Шаги:**
+1. Добавить в `Position`:
+   ```python
+   def to_camera_coords(self, offset=0.5) -> Tuple[float, float]
+   def from_camera_coords(cls, x, y, snap_mode='floor') -> Position
+   ```
+2. Создать `presentation/camera_sync.py`:
+   * `CameraSync.sync_camera_to_character(camera, character)`
+   * `CameraSync.sync_character_from_camera(character, camera)`
+3. Пометить `@deprecated` camera-методы в `PositionSynchronizer`
 
-1. Добавить методы `to_camera_coords()` и `from_camera_coords()` в `Position`
-2. Создать `presentation/camera_sync.py` с классом `CameraSync`
-3. Переместить логику синхронизации из `PositionSynchronizer` в `CameraSync`
-4. Обновить тесты для `Position` (domain) и `CameraSync` (presentation)
-5. Удалить camera-related методы из `PositionSynchronizer`
-
-**Результат:** Чистое разделение координатных систем между слоями
-
----
-
-### Этап 3: Рефакторинг GameSession через SessionCoordinator
-
-**Цель:** Уменьшить размер и ответственность GameSession
-
-**Шаги:**
-
-1. Создать `domain/session_coordinator.py` с классом `SessionCoordinator`
-2. Переместить координацию сервисов из GameSession в Coordinator
-3. Оставить в GameSession только:
-   * `state_machine: StateMachine`
-   * `character: Character`
-   * `level: Level`
-   * `stats: Statistics`
-   * Методы делегирования к coordinator
-4. Обновить `main.py` для работы с новой структурой
-
-**Результат:** GameSession < 200 строк, фокус на state management
+**Результат:** Чистое разделение координат domain/presentation
 
 ---
 
-### Этап 4: Event-based statistics tracking
+### Этап 3: Упростить GameSession (3 часа)
 
-**Цель:** Централизовать учёт статистики через события
+**Приоритет:** 🔴 КРИТИЧЕСКИЙ
 
-**Шаги:**
+1. Удалить прямой доступ к сервисам:
+   * Убрать `self.combat_system`, `self.movement_handler`, etc.
+   * Все вызовы через `self.coordinator`
+2. Оставить только:
+   * `state_machine`, `character`, `level`, `stats`, `coordinator`
+   * State transition методы
+   * Делегирование к coordinator
+3. Удалить дублирующие `_get_*`, `_request_*` методы
 
-1. Расширить `domain/events.py` событиями для всех статистических действий
-2. Создать `domain/services/statistics_tracker.py` с подписками на события
-3. Заменить прямые вызовы `stats.record_*()` на публикацию событий
-4. Добавить тесты для `StatisticsTracker`
-
-**Результат:** Невозможно забыть учесть статистику, централизованный аудит
+**Результат:** GameSession < 250 строк
 
 ---
 
-### Этап 5: Технический долг (постепенно)
+### Этап 4: Event-only statistics (2 часа)
 
-**Цель:** Улучшить качество кода без изменения архитектуры
+**Приоритет:** 🟡 ВАЖНЫЙ
 
-**Шаги (можно выполнять независимо):**
+1. Найти все `stats.record_*()` вызовы
+2. Заменить на `event_bus.publish(Event(...))`
+3. Убедиться `StatisticsTracker` обрабатывает все события
 
-1. Создать `SelectionType` constants вместо magic strings
-2. Добавить @dataclass для enemy state attributes (Ghost, Ogre, etc.)
-3. Использовать явную DI между services (убрать session-dependencies)
-4. Добавить логирование для state transitions и важных событий
+**Результат:** Невозможно забыть учесть статистику
 
-**Результат:** Более явный код, меньше runtime ошибок
+---
+
+### Этап 5: Dependency Injection для services (3 часа)
+
+**Приоритет:** 🟡 ВАЖНЫЙ
+
+1. Изменить конструкторы services:
+   ```python
+   class MovementHandler:
+       def __init__(self, enemy_locator, inventory_manager, fog_of_war):
+   ```
+2. SessionCoordinator инжектит зависимости:
+   ```python
+   self.movement = MovementHandler(self.enemy_locator, self.inventory, fog_of_war)
+   ```
+
+**Результат:** Независимые, тестируемые сервисы
+
+---
+
+### Этап 6: Технический долг (2 часа)
+
+**Приоритет:** 🟢 НЕКРИТИЧЕСКИЙ
+
+1. `ActionType` enum вместо magic strings
+2. `@dataclass` для enemy state (Ghost, Ogre, SnakeMage)
+3. Logging для state transitions
+4. Удалить `@deprecated` методы из Этапа 2
+
+**Результат:** Чище код, меньше runtime ошибок
 
 ---
 
 ## ✅ Критерии успеха
 
-После завершения рефакторинга должно быть выполнено:
-
-1. ✅ Domain-слой не импортирует presentation-объекты (Camera, CameraController)
-2. ✅ Domain-слой не создаёт presentation-объекты
-3. ✅ GameSession < 200 строк, фокус на state management
-4. ✅ Все services независимы друг от друга (явная DI)
-5. ✅ Statistics tracking централизован через события
-6. ✅ Все существующие тесты проходят (203 теста)
-7. ✅ Добавлены новые тесты для новых компонентов (EventBus, ViewManager, etc.)
+1. ✅ Domain не импортирует/создаёт presentation-объекты
+2. ✅ GameSession < 250 строк
+3. ✅ Все services независимы (DI)
+4. ✅ Statistics только через события
+5. ✅ Все 203 теста проходят
+6. ✅ Добавлены тесты для ViewManager, CameraSync
 
 ---
 
-## 📝 Примечания
+## 📝 Оценка трудоёмкости
 
-### Совместимость с существующим кодом
+* **Этап 1:** 4 часа (ViewManager)
+* **Этап 2:** 2 часа (PositionSync split)
+* **Этап 3:** 3 часа (GameSession refactor)
+* **Этап 4:** 2 часа (Event-only stats)
+* **Этап 5:** 3 часа (DI)
+* **Этап 6:** 2 часа (Technical debt)
 
-Рефакторинг выполняется итеративно с сохранением backward compatibility:
-
-* Старые методы помечаются `@deprecated` с указанием замены
-* Новая функциональность добавляется параллельно
-* Миграция выполняется постепенно
-* Тесты обновляются вместе с кодом
-
-### Оценка трудоёмкости
-
-* **Этап 1** (ViewManager): ~2-3 часа
-* **Этап 2** (PositionSync split): ~2 часа
-* **Этап 3** (SessionCoordinator): ~4-5 часов ⚠️ (самый большой)
-* **Этап 4** (Event-based stats): ~3 часа
-* **Этап 5** (Technical debt): ~2-3 часа
-
-**Всего:** ~13-16 часов работы
-
-### Риски
-
-1. **Этап 3** может потребовать значительных изменений в presentation-слое (`main.py`, `game_ui.py`)
-2. Необходимо тщательное тестирование после каждого этапа
-3. Сохранение/загрузка игры может требовать обновления при изменении структуры
+**Всего:** 16 часов
 
 ---
 
-## 🔄 Следующие шаги
+## 🚀 Следующие шаги
 
 1. ✅ Ознакомиться с планом
-2. ⬜ Выбрать этап для начала (рекомендация: Этап 1 или Этап 5)
-3. ⬜ Создать feature branch для рефакторинга
+2. ⬜ Выбрать этап (рекомендация: начать с Этапа 1)
+3. ⬜ Создать feature branch
 4. ⬜ Выполнить этап
-5. ⬜ Запустить все тесты
-6. ⬜ Code review
-7. ⬜ Merge и переход к следующему этапу
+5. ⬜ Запустить тесты
+6. ⬜ Code review → Merge
 
 ---
 
-**Дата создания:** 2026-02-01
+**Дата:** 2026-02-01
 
-**Версия:** 2.0 (обновлённый план после Phase 1-3)
+**Версия:** 3.0 (финальный план после анализа SessionCoordinator)

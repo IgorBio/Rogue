@@ -6,6 +6,8 @@ enemies, items, and doors. Integrates with dynamic difficulty adjustment
 to scale challenge based on player performance.
 """
 import random
+from typing import TYPE_CHECKING, List, Tuple, Optional, Dict, Any
+
 from domain.entities.level import Level
 from domain.entities.room import Room
 from domain.entities.corridor import Corridor
@@ -15,77 +17,83 @@ from domain.key_door_system import place_keys_and_doors
 from config.game_config import GameConfig, ItemConfig, EnemyConfig
 from config.game_config import EnemyType, StatType
 
+if TYPE_CHECKING:
+    from domain.entities.enemy import Enemy
+
 
 # Room/map layout constants (use GameConfig directly)
-ROOM_COUNT = GameConfig.ROOM_COUNT
-ROOMS_PER_ROW = GameConfig.ROOMS_PER_ROW
-SECTION_WIDTH = GameConfig.SECTION_WIDTH
-SECTION_HEIGHT = GameConfig.SECTION_HEIGHT
-MIN_ROOM_WIDTH = GameConfig.MIN_ROOM_WIDTH
-MAX_ROOM_WIDTH = GameConfig.MAX_ROOM_WIDTH
-MIN_ROOM_HEIGHT = GameConfig.MIN_ROOM_HEIGHT
-MAX_ROOM_HEIGHT = GameConfig.MAX_ROOM_HEIGHT
+ROOM_COUNT: int = GameConfig.ROOM_COUNT
+ROOMS_PER_ROW: int = GameConfig.ROOMS_PER_ROW
+SECTION_WIDTH: int = GameConfig.SECTION_WIDTH
+SECTION_HEIGHT: int = GameConfig.SECTION_HEIGHT
+MIN_ROOM_WIDTH: int = GameConfig.MIN_ROOM_WIDTH
+MAX_ROOM_WIDTH: int = GameConfig.MAX_ROOM_WIDTH
+MIN_ROOM_HEIGHT: int = GameConfig.MIN_ROOM_HEIGHT
+MAX_ROOM_HEIGHT: int = GameConfig.MAX_ROOM_HEIGHT
 
 
 # Level generation constants (migrated to GameConfig/ItemConfig/EnemyConfig)
-MIN_STARTING_LEVEL = GameConfig.MIN_STARTING_LEVEL if hasattr(GameConfig, 'MIN_STARTING_LEVEL') else 1
-MIN_ENEMIES_PER_LEVEL = GameConfig.MIN_ENEMIES_PER_LEVEL if hasattr(GameConfig, 'MIN_ENEMIES_PER_LEVEL') else 2
-MIN_FOOD_ITEMS = GameConfig.MIN_FOOD_ITEMS if hasattr(GameConfig, 'MIN_FOOD_ITEMS') else 2
-MIN_WEAPON_ITEMS = GameConfig.MIN_WEAPON_ITEMS if hasattr(GameConfig, 'MIN_WEAPON_ITEMS') else 1
-MAX_ENEMIES_PER_ROOM = GameConfig.MAX_ENEMIES_PER_ROOM if hasattr(GameConfig, 'MAX_ENEMIES_PER_ROOM') else 4
+MIN_STARTING_LEVEL: int = getattr(GameConfig, 'MIN_STARTING_LEVEL', 1)
+MIN_ENEMIES_PER_LEVEL: int = getattr(GameConfig, 'MIN_ENEMIES_PER_LEVEL', 2)
+MIN_FOOD_ITEMS: int = getattr(GameConfig, 'MIN_FOOD_ITEMS', 2)
+MIN_WEAPON_ITEMS: int = getattr(GameConfig, 'MIN_WEAPON_ITEMS', 1)
+MAX_ENEMIES_PER_ROOM: int = getattr(GameConfig, 'MAX_ENEMIES_PER_ROOM', 4)
 
 # Enemy spawn / scaling (from EnemyConfig)
-ENEMY_COUNT_BASE = EnemyConfig.ENEMY_COUNT_BASE
-ENEMY_COUNT_PER_LEVEL = EnemyConfig.ENEMY_COUNT_PER_LEVEL
-MAX_ENEMIES_PER_LEVEL = EnemyConfig.MAX_ENEMIES_PER_LEVEL
-ENEMY_STAT_SCALING = EnemyConfig.ENEMY_STAT_SCALING
+ENEMY_COUNT_BASE: int = EnemyConfig.ENEMY_COUNT_BASE
+ENEMY_COUNT_PER_LEVEL: int = EnemyConfig.ENEMY_COUNT_PER_LEVEL
+MAX_ENEMIES_PER_LEVEL: int = EnemyConfig.MAX_ENEMIES_PER_LEVEL
+ENEMY_STAT_SCALING: float = EnemyConfig.ENEMY_STAT_SCALING
 
 # Item spawn rates (from ItemConfig)
-FOOD_SPAWN_RATE = ItemConfig.FOOD_SPAWN_RATE
-WEAPON_SPAWN_RATE = ItemConfig.WEAPON_SPAWN_RATE
-ELIXIR_SPAWN_RATE = ItemConfig.ELIXIR_SPAWN_RATE
-SCROLL_SPAWN_RATE = ItemConfig.SCROLL_SPAWN_RATE
-MIMIC_SPAWN_RATE = ItemConfig.MIMIC_SPAWN_RATE
+FOOD_SPAWN_RATE: float = ItemConfig.FOOD_SPAWN_RATE
+WEAPON_SPAWN_RATE: float = ItemConfig.WEAPON_SPAWN_RATE
+ELIXIR_SPAWN_RATE: float = ItemConfig.ELIXIR_SPAWN_RATE
+SCROLL_SPAWN_RATE: float = ItemConfig.SCROLL_SPAWN_RATE
+MIMIC_SPAWN_RATE: float = ItemConfig.MIMIC_SPAWN_RATE
 
 # Legacy treasure multiplier (kept for compatibility)
-TREASURE_LEVEL_MULTIPLIER = 0.1
+TREASURE_LEVEL_MULTIPLIER: float = 0.1
 
 # Enemy distribution by level tier
-TIER_1_LEVEL = EnemyConfig.TIER_1_LEVEL
-TIER_2_LEVEL = EnemyConfig.TIER_2_LEVEL
-MIMIC_MIN_LEVEL = ItemConfig.MIMIC_MIN_LEVEL
+TIER_1_LEVEL: int = EnemyConfig.TIER_1_LEVEL
+TIER_2_LEVEL: int = EnemyConfig.TIER_2_LEVEL
+MIMIC_MIN_LEVEL: int = ItemConfig.MIMIC_MIN_LEVEL
 
 # Weapon generation
-WEAPON_BASE_BONUS_MIN = ItemConfig.WEAPON_BASE_BONUS_MIN
-WEAPON_BASE_BONUS_MAX = ItemConfig.WEAPON_BASE_BONUS_MAX
-WEAPON_BONUS_PER_THREE_LEVELS = ItemConfig.WEAPON_BONUS_PER_THREE_LEVELS
+WEAPON_BASE_BONUS_MIN: int = ItemConfig.WEAPON_BASE_BONUS_MIN
+WEAPON_BASE_BONUS_MAX: int = ItemConfig.WEAPON_BASE_BONUS_MAX
+WEAPON_BONUS_PER_THREE_LEVELS: int = ItemConfig.WEAPON_BONUS_PER_THREE_LEVELS
 
 # Food generation
-FOOD_BASE_HEALING_MIN = ItemConfig.FOOD_BASE_HEALING_MIN
-FOOD_BASE_HEALING_MAX = ItemConfig.FOOD_BASE_HEALING_MAX
-FOOD_HEALING_PER_LEVEL = ItemConfig.FOOD_HEALING_PER_LEVEL
+FOOD_BASE_HEALING_MIN: int = ItemConfig.FOOD_BASE_HEALING_MIN
+FOOD_BASE_HEALING_MAX: int = ItemConfig.FOOD_BASE_HEALING_MAX
+FOOD_HEALING_PER_LEVEL: int = ItemConfig.FOOD_HEALING_PER_LEVEL
 
 # Elixir generation
-ELIXIR_BASE_BONUS_MIN = ItemConfig.ELIXIR_BASE_BONUS_MIN
-ELIXIR_BASE_BONUS_MAX = ItemConfig.ELIXIR_BASE_BONUS_MAX
-ELIXIR_BONUS_PER_FOUR_LEVELS = ItemConfig.ELIXIR_BONUS_PER_FOUR_LEVELS
-ELIXIR_DURATION_MIN = ItemConfig.ELIXIR_DURATION_MIN
-ELIXIR_DURATION_MAX = ItemConfig.ELIXIR_DURATION_MAX
+ELIXIR_BASE_BONUS_MIN: int = ItemConfig.ELIXIR_BASE_BONUS_MIN
+ELIXIR_BASE_BONUS_MAX: int = ItemConfig.ELIXIR_BASE_BONUS_MAX
+ELIXIR_BONUS_PER_FOUR_LEVELS: int = ItemConfig.ELIXIR_BONUS_PER_FOUR_LEVELS
+ELIXIR_DURATION_MIN: int = ItemConfig.ELIXIR_DURATION_MIN
+ELIXIR_DURATION_MAX: int = ItemConfig.ELIXIR_DURATION_MAX
 
 # Scroll generation
-SCROLL_BASE_BONUS_MIN = ItemConfig.SCROLL_BASE_BONUS_MIN
-SCROLL_BASE_BONUS_MAX = ItemConfig.SCROLL_BASE_BONUS_MAX
-SCROLL_BONUS_PER_FIVE_LEVELS = ItemConfig.SCROLL_BONUS_PER_FIVE_LEVELS
+SCROLL_BASE_BONUS_MIN: int = ItemConfig.SCROLL_BASE_BONUS_MIN
+SCROLL_BASE_BONUS_MAX: int = ItemConfig.SCROLL_BASE_BONUS_MAX
+SCROLL_BONUS_PER_FIVE_LEVELS: int = ItemConfig.SCROLL_BONUS_PER_FIVE_LEVELS
 
 # Weapon names
-WEAPON_NAMES = ItemConfig.WEAPON_NAMES
+WEAPON_NAMES: List[str] = ItemConfig.WEAPON_NAMES
 
 # Level factor calculation
-LEVEL_FACTOR_DIVISOR = GameConfig.LEVEL_FACTOR_DIVISOR
-MIN_LEVEL_FACTOR = GameConfig.MIN_LEVEL_FACTOR
+LEVEL_FACTOR_DIVISOR: int = GameConfig.LEVEL_FACTOR_DIVISOR
+MIN_LEVEL_FACTOR: float = GameConfig.MIN_LEVEL_FACTOR
 
 
-def generate_level(level_number, difficulty_adjustments=None):
+def generate_level(
+    level_number: int,
+    difficulty_adjustments: Optional[Dict[str, float]] = None
+) -> Level:
     """
     Generate a complete dungeon level with rooms and corridors.
     
@@ -94,7 +102,7 @@ def generate_level(level_number, difficulty_adjustments=None):
         difficulty_adjustments: Optional dict with difficulty modifiers
     
     Returns:
-        Level: Generated level instance
+        Generated level instance
     """
     level = Level(level_number)
     
@@ -122,9 +130,9 @@ def generate_level(level_number, difficulty_adjustments=None):
     return level
 
 
-def _generate_rooms():
+def _generate_rooms() -> List[Room]:
     """Generate 9 rooms in a 3x3 grid layout."""
-    rooms = []
+    rooms: List[Room] = []
     
     for row in range(ROOMS_PER_ROW):
         for col in range(ROOMS_PER_ROW):
@@ -146,9 +154,9 @@ def _generate_rooms():
     return rooms
 
 
-def _generate_corridors(rooms):
+def _generate_corridors(rooms: List[Room]) -> List[Corridor]:
     """Generate corridors connecting all 9 rooms."""
-    corridors = []
+    corridors: List[Corridor] = []
     
     for row in range(ROOMS_PER_ROW):
         for col in range(ROOMS_PER_ROW - 1):
@@ -175,7 +183,7 @@ def _generate_corridors(rooms):
     return corridors
 
 
-def _connect_rooms_horizontal(room1, room2):
+def _connect_rooms_horizontal(room1: Room, room2: Room) -> Corridor:
     """Create a horizontal corridor between two rooms."""
     corridor = Corridor()
     
@@ -201,7 +209,7 @@ def _connect_rooms_horizontal(room1, room2):
     return corridor
 
 
-def _connect_rooms_vertical(room1, room2):
+def _connect_rooms_vertical(room1: Room, room2: Room) -> Corridor:
     """Create a vertical corridor between two rooms."""
     corridor = Corridor()
     
@@ -227,7 +235,10 @@ def _connect_rooms_vertical(room1, room2):
     return corridor
 
 
-def _spawn_enemies(level, difficulty_adjustments=None):
+def _spawn_enemies(
+    level: Level,
+    difficulty_adjustments: Optional[Dict[str, float]] = None
+) -> None:
     """
     Spawn enemies in the level based on difficulty.
     
@@ -235,7 +246,6 @@ def _spawn_enemies(level, difficulty_adjustments=None):
         level: Level object
         difficulty_adjustments: Optional dict with difficulty modifiers
     """
-
     enemy_count = int(ENEMY_COUNT_BASE + (level.level_number * ENEMY_COUNT_PER_LEVEL))
     
     if difficulty_adjustments:
@@ -270,7 +280,7 @@ def _spawn_enemies(level, difficulty_adjustments=None):
             available_rooms.remove(room_idx)
 
 
-def _get_enemy_distribution(level_number):
+def _get_enemy_distribution(level_number: int) -> List[str]:
     """Get the enemy type distribution for a given level."""
     if level_number <= TIER_1_LEVEL:
         return (
@@ -296,7 +306,11 @@ def _get_enemy_distribution(level_number):
         )
 
 
-def _scale_enemy_stats(enemy, level_number, difficulty_adjustments=None):
+def _scale_enemy_stats(
+    enemy: 'Enemy',
+    level_number: int,
+    difficulty_adjustments: Optional[Dict[str, float]] = None
+) -> None:
     """
     Scale enemy stats based on level difficulty.
     
@@ -322,7 +336,10 @@ def _scale_enemy_stats(enemy, level_number, difficulty_adjustments=None):
     enemy.dexterity = int(enemy.dexterity * scaling_factor)
 
 
-def _spawn_items(level, difficulty_adjustments=None):
+def _spawn_items(
+    level: Level,
+    difficulty_adjustments: Optional[Dict[str, float]] = None
+) -> None:
     """
     Spawn items in the level based on difficulty.
     
@@ -330,7 +347,6 @@ def _spawn_items(level, difficulty_adjustments=None):
         level: Level object
         difficulty_adjustments: Optional dict with difficulty modifiers
     """
-    
     available_rooms = [i for i in range(len(level.rooms)) 
                       if i != level.starting_room_index]
     
@@ -367,9 +383,12 @@ def _spawn_items(level, difficulty_adjustments=None):
         _spawn_scroll_or_mimic(level, available_rooms, difficulty_adjustments)
 
 
-def _spawn_food_or_mimic(level, available_rooms, healing_modifier):
+def _spawn_food_or_mimic(
+    level: Level,
+    available_rooms: List[int],
+    healing_modifier: float
+) -> None:
     """Spawn food item or mimic disguised as food."""
-    
     room_idx = random.choice(available_rooms)
     room = level.rooms[room_idx]
     pos = room.get_random_floor_position()
@@ -388,9 +407,12 @@ def _spawn_food_or_mimic(level, available_rooms, healing_modifier):
         room.add_item(food)
 
 
-def _spawn_weapon_or_mimic(level, available_rooms, difficulty_adjustments):
+def _spawn_weapon_or_mimic(
+    level: Level,
+    available_rooms: List[int],
+    difficulty_adjustments: Optional[Dict[str, float]] = None
+) -> None:
     """Spawn weapon item or mimic disguised as weapon."""
-    
     room_idx = random.choice(available_rooms)
     room = level.rooms[room_idx]
     pos = room.get_random_floor_position()
@@ -411,9 +433,12 @@ def _spawn_weapon_or_mimic(level, available_rooms, difficulty_adjustments):
         room.add_item(weapon)
 
 
-def _spawn_elixir_or_mimic(level, available_rooms, difficulty_adjustments):
+def _spawn_elixir_or_mimic(
+    level: Level,
+    available_rooms: List[int],
+    difficulty_adjustments: Optional[Dict[str, float]] = None
+) -> None:
     """Spawn elixir item or mimic disguised as elixir."""
-    
     room_idx = random.choice(available_rooms)
     room = level.rooms[room_idx]
     pos = room.get_random_floor_position()
@@ -436,9 +461,12 @@ def _spawn_elixir_or_mimic(level, available_rooms, difficulty_adjustments):
         room.add_item(elixir)
 
 
-def _spawn_scroll_or_mimic(level, available_rooms, difficulty_adjustments):
+def _spawn_scroll_or_mimic(
+    level: Level,
+    available_rooms: List[int],
+    difficulty_adjustments: Optional[Dict[str, float]] = None
+) -> None:
     """Spawn scroll item or mimic disguised as scroll."""
-    
     room_idx = random.choice(available_rooms)
     room = level.rooms[room_idx]
     pos = room.get_random_floor_position()
@@ -459,7 +487,10 @@ def _spawn_scroll_or_mimic(level, available_rooms, difficulty_adjustments):
         room.add_item(scroll)
 
 
-def spawn_emergency_healing(level, character_position):
+def spawn_emergency_healing(
+    level: Level,
+    character_position: Tuple[int, int]
+) -> bool:
     """
     Spawn emergency healing near the player when they're struggling.
     
@@ -468,9 +499,8 @@ def spawn_emergency_healing(level, character_position):
         character_position: (x, y) tuple of player position
     
     Returns:
-        bool: True if healing was spawned, False otherwise
+        True if healing was spawned, False otherwise
     """
-
     room, room_idx = level.get_room_at(character_position[0], character_position[1])
     
     if not room:
@@ -507,7 +537,7 @@ def spawn_emergency_healing(level, character_position):
     return False
 
 
-def _is_position_occupied(pos, room):
+def _is_position_occupied(pos: Tuple[int, int], room: Room) -> bool:
     """Check if a position is occupied by an enemy or item."""
     for enemy in room.enemies:
         if enemy.position == pos:

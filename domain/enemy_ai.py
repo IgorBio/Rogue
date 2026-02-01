@@ -5,6 +5,8 @@ This module implements unique movement patterns and special abilities
 for each enemy type, providing varied and challenging gameplay.
 """
 import random
+from typing import TYPE_CHECKING, Tuple, Optional, List, Dict, Any
+
 from config.game_config import EnemyType
 from utils.pathfinding import (
     get_distance,
@@ -12,22 +14,32 @@ from utils.pathfinding import (
     get_random_adjacent_walkable
 )
 
+if TYPE_CHECKING:
+    from domain.entities.enemy import Enemy
+    from domain.entities.level import Level
+    from domain.entities.room import Room
+
 
 # AI behavior constants
-GHOST_TELEPORT_COOLDOWN_MIN = 3
-GHOST_TELEPORT_COOLDOWN_MAX = 5
-GHOST_INVISIBILITY_COOLDOWN_MIN = 4
-GHOST_INVISIBILITY_COOLDOWN_MAX = 7
+GHOST_TELEPORT_COOLDOWN_MIN: int = 3
+GHOST_TELEPORT_COOLDOWN_MAX: int = 5
+GHOST_INVISIBILITY_COOLDOWN_MIN: int = 4
+GHOST_INVISIBILITY_COOLDOWN_MAX: int = 7
 
-SNAKE_MAGE_DIRECTION_COOLDOWN_MIN = 3
-SNAKE_MAGE_DIRECTION_COOLDOWN_MAX = 6
-SNAKE_MAGE_SLEEP_CHANCE = 0.3
+SNAKE_MAGE_DIRECTION_COOLDOWN_MIN: int = 3
+SNAKE_MAGE_DIRECTION_COOLDOWN_MAX: int = 6
+SNAKE_MAGE_SLEEP_CHANCE: float = 0.3
 
-VAMPIRE_HEALTH_STEAL_MIN = 2
-VAMPIRE_HEALTH_STEAL_MAX = 5
+VAMPIRE_HEALTH_STEAL_MIN: int = 2
+VAMPIRE_HEALTH_STEAL_MAX: int = 5
 
 
-def get_enemy_movement(enemy, player_pos, level, all_enemies):
+def get_enemy_movement(
+    enemy: 'Enemy',
+    player_pos: Tuple[int, int],
+    level: 'Level',
+    all_enemies: List['Enemy']
+) -> Optional[Tuple[int, int]]:
     """
     Get the next move for an enemy based on its type and AI.
     
@@ -35,14 +47,13 @@ def get_enemy_movement(enemy, player_pos, level, all_enemies):
     
     Args:
         enemy: Enemy instance
-        player_pos (tuple): (x, y) player position
+        player_pos: (x, y) player position
         level: Level object for pathfinding
-        all_enemies (list): All enemies for collision avoidance
+        all_enemies: All enemies for collision avoidance
     
     Returns:
-        tuple: (x, y) for new position, or None if no move
+        (x, y) for new position, or None if no move
     """
-
     if enemy.enemy_type == EnemyType.MIMIC:
         return _mimic_movement(enemy, player_pos, level, all_enemies, 0)
     
@@ -63,12 +74,17 @@ def get_enemy_movement(enemy, player_pos, level, all_enemies):
     return handler(enemy, player_pos, level, all_enemies, distance)
 
 
-def _mimic_movement(enemy, player_pos, level, all_enemies, distance):
+def _mimic_movement(
+    enemy: 'Enemy',
+    player_pos: Tuple[int, int],
+    level: 'Level',
+    all_enemies: List['Enemy'],
+    distance: int
+) -> Optional[Tuple[int, int]]:
     """
     Mimic: Stays stationary while disguised.
     Once revealed, behaves like a standard enemy.
     """
-
     if hasattr(enemy, 'is_disguised') and enemy.is_disguised:
         return None
     
@@ -80,12 +96,17 @@ def _mimic_movement(enemy, player_pos, level, all_enemies, distance):
     return None
 
 
-def _zombie_movement(enemy, player_pos, level, all_enemies, distance):
+def _zombie_movement(
+    enemy: 'Enemy',
+    player_pos: Tuple[int, int],
+    level: 'Level',
+    all_enemies: List['Enemy'],
+    distance: int
+) -> Optional[Tuple[int, int]]:
     """
     Zombie: Standard chasing behavior.
     Low dexterity, medium strength, high health.
     """
-        
     if enemy.is_chasing and distance > 1:
         next_pos = get_next_step(enemy.position, player_pos, level)
         if next_pos and not _is_position_blocked(next_pos, all_enemies, enemy, player_pos):
@@ -99,13 +120,18 @@ def _zombie_movement(enemy, player_pos, level, all_enemies, distance):
     return None
 
 
-def _vampire_movement(enemy, player_pos, level, all_enemies, distance):
+def _vampire_movement(
+    enemy: 'Enemy',
+    player_pos: Tuple[int, int],
+    level: 'Level',
+    all_enemies: List['Enemy'],
+    distance: int
+) -> Optional[Tuple[int, int]]:
     """
     Vampire: Standard chasing with special combat mechanics.
     High dexterity, steals max health on hit.
     First attack against vampire always misses.
     """
-        
     if enemy.is_chasing and distance > 1:
         next_pos = get_next_step(enemy.position, player_pos, level)
         if next_pos and not _is_position_blocked(next_pos, all_enemies, enemy, player_pos):
@@ -119,7 +145,13 @@ def _vampire_movement(enemy, player_pos, level, all_enemies, distance):
     return None
 
 
-def _ghost_movement(enemy, player_pos, level, all_enemies, distance):
+def _ghost_movement(
+    enemy: 'Enemy',
+    player_pos: Tuple[int, int],
+    level: 'Level',
+    all_enemies: List['Enemy'],
+    distance: int
+) -> Optional[Tuple[int, int]]:
     """
     Ghost: Teleports within room and can become invisible.
     High dexterity, low strength, low health.
@@ -163,7 +195,13 @@ def _ghost_movement(enemy, player_pos, level, all_enemies, distance):
     return None
 
 
-def _ogre_movement(enemy, player_pos, level, all_enemies, distance):
+def _ogre_movement(
+    enemy: 'Enemy',
+    player_pos: Tuple[int, int],
+    level: 'Level',
+    all_enemies: List['Enemy'],
+    distance: int
+) -> Optional[Tuple[int, int]]:
     """
     Ogre: Moves TWO tiles per turn. Rests after attacking.
     Very high strength, low dexterity.
@@ -204,7 +242,13 @@ def _ogre_movement(enemy, player_pos, level, all_enemies, distance):
     return None
 
 
-def _snake_mage_movement(enemy, player_pos, level, all_enemies, distance):
+def _snake_mage_movement(
+    enemy: 'Enemy',
+    player_pos: Tuple[int, int],
+    level: 'Level',
+    all_enemies: List['Enemy'],
+    distance: int
+) -> Optional[Tuple[int, int]]:
     """
     Snake Mage: Moves diagonally and switches direction.
     Very high dexterity. Can put player to sleep.
@@ -258,7 +302,13 @@ def _snake_mage_movement(enemy, player_pos, level, all_enemies, distance):
     return None
 
 
-def _default_movement(enemy, player_pos, level, all_enemies, distance):
+def _default_movement(
+    enemy: 'Enemy',
+    player_pos: Tuple[int, int],
+    level: 'Level',
+    all_enemies: List['Enemy'],
+    distance: int
+) -> Optional[Tuple[int, int]]:
     """Default movement behavior (fallback)."""
     
     if enemy.is_chasing and distance > 1:
@@ -274,7 +324,12 @@ def _default_movement(enemy, player_pos, level, all_enemies, distance):
     return None
 
 
-def _is_position_blocked(pos, all_enemies, current_enemy, player_pos):
+def _is_position_blocked(
+    pos: Tuple[int, int],
+    all_enemies: List['Enemy'],
+    current_enemy: 'Enemy',
+    player_pos: Tuple[int, int]
+) -> bool:
     """Check if position is blocked by another enemy or player."""
     if pos == player_pos:
         return False
@@ -286,7 +341,7 @@ def _is_position_blocked(pos, all_enemies, current_enemy, player_pos):
     return False
 
 
-def _get_enemy_room(enemy, level):
+def _get_enemy_room(enemy: 'Enemy', level: 'Level') -> Optional['Room']:
     """Get the room that contains the enemy."""
     for room in level.rooms:
         if enemy in room.enemies:
@@ -294,7 +349,7 @@ def _get_enemy_room(enemy, level):
     return None
 
 
-def should_enemy_attack(enemy):
+def should_enemy_attack(enemy: 'Enemy') -> bool:
     """
     Check if enemy should attack this turn.
     
@@ -304,7 +359,7 @@ def should_enemy_attack(enemy):
         enemy: Enemy instance
     
     Returns:
-        bool: True if enemy should attack
+        True if enemy should attack
     """
     if enemy.enemy_type == EnemyType.OGRE:
         return not getattr(enemy, 'is_resting', False)
@@ -312,21 +367,21 @@ def should_enemy_attack(enemy):
     return True
 
 
-def get_special_attack_effects(enemy, combat_result):
+def get_special_attack_effects(enemy: 'Enemy', combat_result: Dict[str, Any]) -> Dict[str, Any]:
     """
     Apply special effects from enemy attacks.
     
     Args:
         enemy: Enemy that attacked
-        combat_result (dict): Result from resolve_attack
+        combat_result: Result from resolve_attack
     
     Returns:
-        dict: Special effects containing:
+        Special effects containing:
             - health_steal (int): For vampire
             - sleep (bool): For snake mage
             - counterattack (bool): For ogre
     """
-    effects = {
+    effects: Dict[str, Any] = {
         'health_steal': 0,
         'sleep': False,
         'counterattack': False
@@ -353,13 +408,13 @@ def get_special_attack_effects(enemy, combat_result):
     return effects
 
 
-def handle_post_attack(enemy, combat_result):
+def handle_post_attack(enemy: 'Enemy', combat_result: Dict[str, Any]) -> None:
     """
     Handle post-attack state changes for enemies.
     
     Args:
         enemy: Enemy that attacked
-        combat_result (dict): Result from resolve_attack
+        combat_result: Result from resolve_attack
     """
     if enemy.enemy_type == EnemyType.OGRE:
         if combat_result.get('hit', False):

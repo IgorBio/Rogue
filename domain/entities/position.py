@@ -1,20 +1,20 @@
 """
-Система координат для игры.
+Coordinate system for the game.
 
-Этот модуль решает проблему смешивания типов координат (float vs int)
-между Character и Camera. Position гарантирует, что все координаты
-всегда будут целыми числами (int).
+This module solves the problem of mixing coordinate types (float vs int)
+between Character and Camera. Position guarantees that all coordinates
+will always be integers (int).
 
-Проблема до рефакторинга:
-- Character.position был tuple[int, int]
-- Camera.x и Camera.y были float
-- При переключении между 2D и 3D возникали рассинхронизации
-- Сравнение позиций могло давать false negative: (1.9, 2.1) != (1, 2)
+Problem before refactoring:
+- Character.position was tuple[int, int]
+- Camera.x and Camera.y were float
+- Desynchronization occurred when switching between 2D and 3D
+- Position comparison could give false negative: (1.9, 2.1) != (1, 2)
 
-Решение:
-- Position всегда хранит int координаты
-- Автоматическое приведение float к int при установке
-- Единый интерфейс для работы с позициями
+Solution:
+- Position always stores int coordinates
+- Automatic conversion of float to int on assignment
+- Unified interface for working with positions
 """
 
 from typing import Tuple, Union
@@ -22,14 +22,14 @@ from typing import Tuple, Union
 
 class Position:
     """
-    Класс для управления позицией в игре.
+    Class for managing position in the game.
 
-    Гарантирует, что координаты всегда являются целыми числами,
-    даже если передаются float значения (например, из Camera).
+    Guarantees that coordinates are always integers,
+    even if float values are passed (e.g., from Camera).
 
     Attributes:
-        _x (int): X координата
-        _y (int): Y координата
+        _x (int): X coordinate
+        _y (int): Y coordinate
 
     Examples:
         >>> pos = Position(10.7, 20.3)
@@ -45,61 +45,61 @@ class Position:
 
     def __init__(self, x: Union[int, float], y: Union[int, float]):
         """
-        Инициализировать позицию.
+        Initialize position.
 
         Args:
-            x: X координата (будет приведена к int)
-            y: Y координата (будет приведена к int)
+            x: X coordinate (will be converted to int)
+            y: Y coordinate (will be converted to int)
         """
         self._x = int(x)
         self._y = int(y)
 
     @property
     def x(self) -> int:
-        """Получить X координату"""
+        """Get X coordinate"""
         return self._x
 
     @property
     def y(self) -> int:
-        """Получить Y координату"""
+        """Get Y coordinate"""
         return self._y
 
     @property
     def tuple(self) -> Tuple[int, int]:
-        """Получить позицию как кортеж (x, y)"""
+        """Get position as tuple (x, y)"""
         return (self._x, self._y)
 
     def update(self, x: Union[int, float], y: Union[int, float]) -> None:
         """
-        Обновить позицию (с автоматическим приведением к int).
+        Update position (with automatic conversion to int).
 
         Args:
-            x: Новая X координата
-            y: Новая Y координата
+            x: New X coordinate
+            y: New Y coordinate
         """
         self._x = int(x)
         self._y = int(y)
 
     def move_by(self, dx: Union[int, float], dy: Union[int, float]) -> None:
         """
-        Переместить позицию на delta.
+        Move position by delta.
 
         Args:
-            dx: Изменение X координаты
-            dy: Изменение Y координаты
+            dx: Change in X coordinate
+            dy: Change in Y coordinate
         """
         self._x += int(dx)
         self._y += int(dy)
 
     def distance_to(self, other: Union['Position', Tuple[int, int]]) -> float:
         """
-        Вычислить Евклидово расстояние до другой позиции.
+        Calculate Euclidean distance to another position.
 
         Args:
-            other: Другая позиция или кортеж координат
+            other: Another position or coordinate tuple
 
         Returns:
-            float: Расстояние
+            float: Distance
         """
         if isinstance(other, Position):
             dx = self._x - other._x
@@ -112,13 +112,13 @@ class Position:
 
     def manhattan_distance_to(self, other: Union['Position', Tuple[int, int]]) -> int:
         """
-        Вычислить Манхэттенское расстояние до другой позиции.
+        Calculate Manhattan distance to another position.
 
         Args:
-            other: Другая позиция или кортеж координат
+            other: Another position or coordinate tuple
 
         Returns:
-            int: Манхэттенское расстояние
+            int: Manhattan distance
         """
         if isinstance(other, Position):
             return abs(self._x - other._x) + abs(self._y - other._y)
@@ -127,25 +127,25 @@ class Position:
 
     def copy(self) -> 'Position':
         """
-        Создать копию позиции.
+        Create a copy of the position.
 
         Returns:
-            Position: Новый объект с теми же координатами
+            Position: New object with same coordinates
         """
         return Position(self._x, self._y)
 
     def to_camera_coords(self, offset: float = 0.5) -> Tuple[float, float]:
         """
-        Преобразовать grid позицию в camera координаты.
+        Convert grid position to camera coordinates.
 
-        Camera использует float координаты с offset для центрирования
-        в ячейке сетки (например, 10.5 вместо 10).
+        Camera uses float coordinates with offset for centering
+        in grid cell (e.g., 10.5 instead of 10).
 
         Args:
-            offset: Смещение для центрирования (default 0.5)
+            offset: Centering offset (default 0.5)
 
         Returns:
-            Tuple[float, float]: Camera координаты (x, y)
+            Tuple[float, float]: Camera coordinates (x, y)
 
         Example:
             >>> pos = Position(10, 20)
@@ -160,17 +160,17 @@ class Position:
     def from_camera_coords(cls, x: float, y: float,
                           snap_mode: str = 'floor') -> 'Position':
         """
-        Создать Position из camera координат.
+        Create Position from camera coordinates.
 
         Args:
-            x: Camera X координата (float)
-            y: Camera Y координата (float)
-            snap_mode: Способ приведения к int:
-                      'floor' — округление вниз (int())
-                      'round' — округление к ближайшему
+            x: Camera X coordinate (float)
+            y: Camera Y coordinate (float)
+            snap_mode: Rounding method:
+                      'floor' — round down (int())
+                      'round' — round to nearest
 
         Returns:
-            Position: Новая позиция с int координатами
+            Position: New position with int coordinates
 
         Example:
             >>> Position.from_camera_coords(10.7, 20.3)
@@ -187,41 +187,41 @@ class Position:
 
     def is_adjacent_to(self, other: Union['Position', Tuple[int, int]]) -> bool:
         """
-        Проверить, является ли позиция соседней (включая диагонали).
+        Check if position is adjacent (including diagonals).
 
-        Соседними считаются позиции, которые отличаются максимум на 1 по каждой оси.
-        Например, для (10, 10) соседними будут:
+        Positions are considered adjacent if they differ by at most 1 on each axis.
+        For example, for (10, 10) adjacent positions are:
         - (9, 9), (10, 9), (11, 9)
         - (9, 10),         (11, 10)
         - (9, 11), (10, 11), (11, 11)
 
         Args:
-            other: Другая позиция или кортеж координат
+            other: Another position or coordinate tuple
 
         Returns:
-            bool: True если позиции соседние
+            bool: True if positions are adjacent
         """
         if isinstance(other, Position):
             other_x, other_y = other._x, other._y
         else:
             other_x, other_y = other[0], other[1]
 
-        # Проверяем, что разница по каждой оси <= 1
+        # Check that difference on each axis <= 1
         dx = abs(self._x - other_x)
         dy = abs(self._y - other_y)
 
-        # Соседняя если оба <= 1 но не оба == 0 (не сама себе)
+        # Adjacent if both <= 1 but not both == 0 (not same position)
         return dx <= 1 and dy <= 1 and (dx != 0 or dy != 0)
 
     def __eq__(self, other) -> bool:
         """
-        Сравнить позицию с другой позицией или кортежем.
+        Compare position with another position or tuple.
 
         Args:
-            other: Position, tuple или любой объект
+            other: Position, tuple or any object
 
         Returns:
-            bool: True если позиции равны
+            bool: True if positions are equal
         """
         if isinstance(other, Position):
             return self._x == other._x and self._y == other._y
@@ -230,63 +230,64 @@ class Position:
         return False
 
     def __ne__(self, other) -> bool:
-        """Проверка неравенства"""
+        """Check inequality"""
         return not self.__eq__(other)
 
     def __hash__(self) -> int:
-        """Хэш для использования в множествах и словарях"""
+        """Hash for use in sets and dictionaries"""
         return hash((self._x, self._y))
 
     def __repr__(self) -> str:
-        """Строковое представление для отладки"""
+        """String representation for debugging"""
         return f"Position({self._x}, {self._y})"
 
     def __str__(self) -> str:
-        """Строковое представление для пользователя"""
+        """String representation for user"""
         return f"({self._x}, {self._y})"
 
     def __iter__(self):
-        """Позволяет распаковку: x, y = position"""
+        """Allows unpacking: x, y = position"""
         return iter((self._x, self._y))
 
     def __getitem__(self, index: int) -> int:
-        """Позволяет индексацию: position[0], position[1]"""
+        """Allow subscript access: position[0] == x, position[1] == y"""
         if index == 0:
             return self._x
         elif index == 1:
             return self._y
         else:
-            raise IndexError("Position index out of range (0-1)")
+            raise IndexError("Position index out of range (only 0 and 1 are valid)")
 
 
-def create_position(x: Union[int, float], y: Union[int, float]) -> Position:
+# Helper functions for backward compatibility
+
+def create_position(x, y):
     """
-    Фабричная функция для создания Position.
-
+    Factory function to create a Position.
+    
     Args:
-        x: X координата
-        y: Y координата
-
+        x: X coordinate (int or float)
+        y: Y coordinate (int or float)
+    
     Returns:
-        Position: Новый объект Position
+        Position: New Position instance
     """
     return Position(x, y)
 
 
-def positions_equal(pos1: Union[Position, Tuple[int, int]], 
-                   pos2: Union[Position, Tuple[int, int]]) -> bool:
+def positions_equal(pos1, pos2):
     """
-    Проверить равенство двух позиций.
-
-    Утилита для сравнения позиций различных типов.
-
+    Check if two positions are equal.
+    
     Args:
-        pos1: Первая позиция
-        pos2: Вторая позиция
-
+        pos1: First position (Position or tuple)
+        pos2: Second position (Position or tuple)
+    
     Returns:
-        bool: True если позиции равны
+        bool: True if positions are equal
     """
+    if isinstance(pos1, Position) and isinstance(pos2, Position):
+        return pos1 == pos2
     if isinstance(pos1, Position):
         return pos1 == pos2
     if isinstance(pos2, Position):

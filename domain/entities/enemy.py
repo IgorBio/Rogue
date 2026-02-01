@@ -4,7 +4,11 @@ Enemy entities with unique behaviors and attributes.
 This module defines the Enemy base class and all enemy types,
 including their special mechanics and AI behaviors.
 """
-from config.game_config import EnemyType, ENEMY_STATS
+from typing import TYPE_CHECKING, Optional
+from domain.entities.position import Position
+
+if TYPE_CHECKING:
+    from config.game_config import EnemyType
 
 
 class Enemy:
@@ -13,7 +17,7 @@ class Enemy:
     
     Attributes:
         enemy_type (str): Type identifier from EnemyType
-        position (tuple): (x, y) coordinates
+        _position (Position): Position object for coordinate management
         health (int): Current health points
         max_health (int): Maximum health capacity
         strength (int): Base damage stat
@@ -24,18 +28,19 @@ class Enemy:
         is_chasing (bool): Whether actively pursuing player
     """
     
-    def __init__(self, enemy_type, x, y):
+    def __init__(self, enemy_type: str, x: int, y: int):
         """
         Initialize an enemy.
         
         Args:
-            enemy_type (str): Enemy type from EnemyType constants
-            x (int): Starting X coordinate
-            y (int): Starting Y coordinate
+            enemy_type: Enemy type from EnemyType constants
+            x: Starting X coordinate
+            y: Starting Y coordinate
         """
         self.enemy_type = enemy_type
-        self.position = (x, y)
+        self._position = Position(x, y)
         
+        from config.game_config import ENEMY_STATS
         stats = ENEMY_STATS[enemy_type]
         self.health = stats['health']
         self.max_health = stats['health']
@@ -47,22 +52,35 @@ class Enemy:
         
         self.is_chasing = False
     
-    def is_alive(self):
+    @property
+    def position(self) -> Position:
+        """Get enemy position as Position object."""
+        return self._position
+    
+    @position.setter
+    def position(self, value):
+        """Set position from tuple or Position."""
+        if isinstance(value, Position):
+            self._position = value
+        else:
+            self._position = Position(value[0], value[1])
+    
+    def is_alive(self) -> bool:
         """Check if enemy is still alive."""
         return self.health > 0
     
-    def take_damage(self, damage):
+    def take_damage(self, damage: int) -> None:
         """
         Apply damage to the enemy.
         
         Args:
-            damage (int): Amount of damage to apply
+            damage: Amount of damage to apply
         """
         self.health -= damage
         if self.health < 0:
             self.health = 0
     
-    def move_to(self, x, y):
+    def move_to(self, x: int, y: int) -> None:
         """
         Update enemy position.
         
@@ -70,18 +88,18 @@ class Enemy:
             x: New X coordinate
             y: New Y coordinate
         """
-        self.position = (x, y)
+        self._position.update(x, y)
     
-    def get_x(self):
+    def get_x(self) -> int:
         """Get enemy's X coordinate."""
-        return self.position[0]
+        return self._position.x
     
-    def get_y(self):
+    def get_y(self) -> int:
         """Get enemy's Y coordinate."""
-        return self.position[1]
+        return self._position.y
     
-    def __repr__(self):
-        return (f"{self.__class__.__name__}(pos={self.position}, "
+    def __repr__(self) -> str:
+        return (f"{self.__class__.__name__}(pos={self._position.tuple}, "
                 f"hp={self.health}/{self.max_health})")
 
 
@@ -91,7 +109,8 @@ class Zombie(Enemy):
     Standard chasing behavior with no special abilities.
     """
     
-    def __init__(self, x, y):
+    def __init__(self, x: int, y: int):
+        from config.game_config import EnemyType
         super().__init__(EnemyType.ZOMBIE, x, y)
 
 
@@ -104,7 +123,8 @@ class Vampire(Enemy):
     - First attack against vampire always misses
     """
     
-    def __init__(self, x, y):
+    def __init__(self, x: int, y: int):
+        from config.game_config import EnemyType
         super().__init__(EnemyType.VAMPIRE, x, y)
         self.first_attack_against = True
 
@@ -118,7 +138,8 @@ class Ghost(Enemy):
     - Can become invisible until combat begins
     """
     
-    def __init__(self, x, y):
+    def __init__(self, x: int, y: int):
+        from config.game_config import EnemyType
         super().__init__(EnemyType.GHOST, x, y)
         self.is_invisible = False
         self.teleport_cooldown = 0
@@ -134,7 +155,8 @@ class Ogre(Enemy):
     - Guaranteed counterattack after resting
     """
     
-    def __init__(self, x, y):
+    def __init__(self, x: int, y: int):
+        from config.game_config import EnemyType
         super().__init__(EnemyType.OGRE, x, y)
         self.is_resting = False
         self.will_counterattack = False
@@ -150,7 +172,8 @@ class SnakeMage(Enemy):
     - Can put player to sleep for one turn on successful attack
     """
     
-    def __init__(self, x, y):
+    def __init__(self, x: int, y: int):
+        from config.game_config import EnemyType
         super().__init__(EnemyType.SNAKE_MAGE, x, y)
         self.direction = 1
 
@@ -167,60 +190,59 @@ class Mimic(Enemy):
     REVEAL_DISTANCE = 1
     DEFAULT_DISGUISE = '%'
     
-    def __init__(self, x, y, disguise_type=None):
+    def __init__(self, x: int, y: int, disguise_type: Optional[str] = None):
         """
         Initialize a Mimic enemy.
         
         Args:
-            x (int): X coordinate
-            y (int): Y coordinate
-            disguise_type (str): Character to display as disguise
+            x: X coordinate
+            y: Y coordinate
+            disguise_type: Character to display as disguise
         """
+        from config.game_config import EnemyType
         super().__init__(EnemyType.MIMIC, x, y)
         self.is_disguised = True
         self.disguise_char = disguise_type or self.DEFAULT_DISGUISE
         self.reveal_distance = self.REVEAL_DISTANCE
     
-    def reveal(self):
+    def reveal(self) -> None:
         """Reveal the mimic's true form."""
         self.is_disguised = False
     
-    def should_reveal(self, player_pos):
+    def should_reveal(self, player_pos) -> bool:
         """
         Check if mimic should reveal based on player proximity.
         
         Args:
-            player_pos (tuple): (x, y) player position
+            player_pos: (x, y) player position or Position object
             
         Returns:
-            bool: True if mimic should reveal itself
+            True if mimic should reveal itself
         """
         if not self.is_disguised:
             return False
         
-        dx = abs(self.position[0] - player_pos[0])
-        dy = abs(self.position[1] - player_pos[1])
-        distance = dx + dy
-        
-        return distance <= self.reveal_distance
+        return self._position.is_adjacent_to(player_pos)
 
 
-def create_enemy(enemy_type, x, y, **kwargs):
+def create_enemy(enemy_type: str, x: int, y: int, **kwargs) -> Enemy:
     """
     Factory function to create enemy instances.
     
     Args:
-        enemy_type (str): Enemy type from EnemyType constants
-        x (int): X coordinate
-        y (int): Y coordinate
+        enemy_type: Enemy type from EnemyType constants
+        x: X coordinate
+        y: Y coordinate
         **kwargs: Additional arguments for specific enemy types
         
     Returns:
-        Enemy: Instance of the appropriate enemy class
+        Instance of the appropriate enemy class
         
     Raises:
         ValueError: If enemy_type is unknown
     """
+    from config.game_config import EnemyType
+    
     enemy_classes = {
         EnemyType.ZOMBIE: Zombie,
         EnemyType.VAMPIRE: Vampire,
