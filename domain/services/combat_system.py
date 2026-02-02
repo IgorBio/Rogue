@@ -22,12 +22,10 @@ class CombatSystem:
     def __init__(self, statistics: Optional[object] = None):
         """
         Initialize CombatSystem.
-        
+
         Args:
-            statistics: Deprecated, kept for backward compatibility.
-                       Statistics are now tracked via EventBus events.
+            statistics: Statistics tracker (optional, kept for compatibility)
         """
-        # Statistics parameter is deprecated - tracking now done via events
         self.statistics = statistics
 
     def resolve_player_attack(self, player, enemy, attacker_weapon=None):

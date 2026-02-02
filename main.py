@@ -1,11 +1,5 @@
 """
-Main entry point for the roguelike game.
-Stage 9: Enhanced with 3D rendering mode support.
-
-REFACTORING NOTE (Phase 1):
-- Camera/CameraController creation moved to presentation.view_manager.ViewManager
-- Domain layer publishes events, ViewManager subscribes and creates presentation objects
-- This maintains Clean Architecture by preventing domain → presentation dependencies
+Main entry point for the roguelike game with 3D rendering mode support.
 """
 import curses
 import sys
@@ -32,8 +26,6 @@ def main(stdscr):
     stats_manager = StatisticsManager()
     ui = GameUI(stdscr)
     
-    # PHASE 1: Create ViewManager to handle Camera/CameraController
-    # Domain layer publishes events, ViewManager subscribes and creates presentation objects
     view_manager = create_view_manager(
         camera_factory=lambda x, y, angle=0.0, fov=60.0: Camera(x, y, angle=angle, fov=fov),
         camera_controller_factory=lambda cam, lvl: CameraController(cam, lvl)
@@ -58,8 +50,7 @@ def main(stdscr):
                 if test_config is None:
                     continue
                 
-                # Create test game session (inject data factories only)
-                # Camera factories removed - ViewManager now handles camera creation via events
+                # Create test game session
                 game_session = GameSession(
                     test_mode=True,
                     test_level=test_config['level'],
@@ -70,8 +61,7 @@ def main(stdscr):
                 ui.display_message(f"TEST MODE: Level {test_config['level']}, Fog of War: {test_config['fog_of_war']}")
             
             elif selection == 'new':
-                # Create new game (inject data factories only)
-                # Camera factories removed - ViewManager now handles camera creation via events
+                # Create new game
                 game_session = GameSession(
                     statistics_factory=Statistics,
                     save_manager_factory=lambda: save_manager

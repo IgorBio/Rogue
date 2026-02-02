@@ -1,11 +1,5 @@
 """
 Game state management using a finite state machine.
-
-REFACTORING NOTE (Step 2.1):
-- Replaces scattered boolean flags (game_over, victory, player_asleep) with explicit states
-- Ensures only valid state transitions occur
-- Simplifies game logic and makes state management explicit
-- All states are now first-class concepts with clear semantics
 """
 
 from enum import Enum, auto

@@ -126,7 +126,7 @@ DIRECTION_MAP = {
 }
 
 
-# Backward compatibility aliases (deprecated, for migration only)
+# Backward compatibility aliases
 ACTION_MOVE = ActionType.MOVE
 ACTION_USE_FOOD = ActionType.USE_FOOD
 ACTION_USE_WEAPON = ActionType.USE_WEAPON

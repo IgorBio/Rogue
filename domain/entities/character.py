@@ -1,11 +1,5 @@
 """
 Player character and inventory system.
-
-REFACTORING NOTE (Step 1.2):
-- Integrated Position class for coordinate management
-- Character now uses Position internally instead of tuple
-- position property returns tuple for backward compatibility
-- All coordinate operations now use Position methods
 """
 
 from domain.entities.position import Position
@@ -123,7 +117,6 @@ class Character:
             x (int or float): Starting X coordinate (will be converted to int)
             y (int or float): Starting Y coordinate (will be converted to int)
         """
-        # ✅ CHANGED: Use Position object instead of tuple
         self._position = Position(x, y)
 
         self.health = PlayerConfig.INITIAL_HEALTH
@@ -188,7 +181,6 @@ class Character:
             x (int or float): New X coordinate
             y (int or float): New Y coordinate
         """
-        # ✅ CHANGED: Use Position.update() method
         self._position.update(x, y)
 
     def move_by(self, dx, dy):
@@ -199,7 +191,6 @@ class Character:
             dx (int or float): Change in X coordinate
             dy (int or float): Change in Y coordinate
         """
-        # ✅ NEW: Added move_by method using Position
         self._position.move_by(dx, dy)
 
     def get_x(self):
@@ -209,7 +200,6 @@ class Character:
         Returns:
             int: X coordinate
         """
-        # ✅ CHANGED: Use Position.x property
         return self._position.x
 
     def get_y(self):
@@ -219,7 +209,6 @@ class Character:
         Returns:
             int: Y coordinate
         """
-        # ✅ CHANGED: Use Position.y property
         return self._position.y
 
     def distance_to(self, other_position):
@@ -232,7 +221,6 @@ class Character:
         Returns:
             float: Euclidean distance
         """
-        # ✅ NEW: Added distance calculation
         return self._position.distance_to(other_position)
 
     def manhattan_distance_to(self, other_position):
@@ -245,7 +233,6 @@ class Character:
         Returns:
             int: Manhattan distance
         """
-        # ✅ NEW: Added Manhattan distance calculation
         return self._position.manhattan_distance_to(other_position)
 
     def is_adjacent_to(self, other_position):
@@ -258,7 +245,6 @@ class Character:
         Returns:
             bool: True if adjacent (including diagonals)
         """
-        # ✅ NEW: Added adjacency check
         return self._position.is_adjacent_to(other_position)
 
     def get_total_strength(self):
@@ -414,6 +400,5 @@ class Character:
         return messages
 
     def __repr__(self):
-        # ✅ CHANGED: Use _position.tuple for display
         return (f"Character(pos={self._position.tuple}, hp={self.health}/{self.max_health}, "
                 f"str={self.strength}, dex={self.dexterity}, weapon={self.current_weapon})")

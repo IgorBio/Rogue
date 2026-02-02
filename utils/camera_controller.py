@@ -1,6 +1,5 @@
 """
-Stage 8: Combat & Interactions in 3D Mode
-Enhanced camera_controller.py with combat and item interaction support.
+Camera controller for 3D mode with combat and item interaction support.
 """
 import math
 from utils.raycasting import Camera

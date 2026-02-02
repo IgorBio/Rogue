@@ -85,7 +85,6 @@ class SaveManager:
                 'fog_of_war': self._serialize_fog_of_war(game_session.fog_of_war),
                 'statistics': game_session.stats.to_dict(),
 
-                # ✅ NEW (Step 1.3): Game flow state
                 'rendering_mode': game_session.rendering_mode,
                 'player_asleep': game_session.player_asleep,
                 'game_over': game_session.game_over,
@@ -93,18 +92,15 @@ class SaveManager:
                 'message': game_session.message,
                 'death_reason': game_session.death_reason,
 
-                # ✅ NEW (Step 1.3): Pending selection
                 'pending_selection': (
                     game_session.pending_selection.to_dict()
                     if game_session.pending_selection is not None else None
                 ),
 
-                # ✅ NEW (Step 1.3): Difficulty manager
                 'difficulty_manager': self._serialize_difficulty_manager(
                     game_session.difficulty_manager
                 ),
 
-                # ✅ NEW (Step 1.3): Camera (if in 3D mode)
                 'camera': self._serialize_camera(game_session.camera),
 
                 # Test mode flags
@@ -245,7 +241,6 @@ class SaveManager:
         # Restore statistics
         game_session.stats = Statistics.from_dict(save_data['statistics'])
 
-        # ✅ NEW (Step 1.3): Restore game flow state (safely)
         game_session.rendering_mode = save_data.get('rendering_mode', '2d')
         # Do not assign via property setters that trigger transitions. Instead
         # determine saved state and restore it directly at the end of restoration.
@@ -255,7 +250,6 @@ class SaveManager:
         game_session.message = save_data.get('message', '')
         game_session.death_reason = save_data.get('death_reason', '')
 
-        # ✅ NEW (Step 1.3): Restore pending selection
         from domain.services.item_selection import SelectionRequest
         pending_data = save_data.get('pending_selection', None)
         game_session.pending_selection = SelectionRequest.from_dict(pending_data)
@@ -272,7 +266,6 @@ class SaveManager:
             _saved_state = GameState.ITEM_SELECTION
         else:
             _saved_state = GameState.PLAYING
-        # ✅ NEW (Step 1.3): Restore difficulty manager
         if 'difficulty_manager' in save_data and save_data['difficulty_manager'] is not None:
             game_session.difficulty_manager = self._deserialize_difficulty_manager(
                 save_data['difficulty_manager']
@@ -281,7 +274,6 @@ class SaveManager:
             # Fallback for old saves or explicit None
             game_session.difficulty_manager = DifficultyManager()
 
-        # ✅ NEW (Step 1.3): Restore camera
         if 'camera' in save_data and save_data['camera'] is not None:
             camera_data = save_data['camera']
             game_session.camera = Camera(
@@ -439,8 +431,6 @@ class SaveManager:
         """
         Serialize difficulty manager with all modifiers and performance data.
 
-        NEW (Step 1.3): Complete difficulty state serialization.
-
         Args:
             dm: DifficultyManager instance
 
@@ -471,8 +461,6 @@ class SaveManager:
     def _serialize_camera(self, camera):
         """
         Serialize camera with position and orientation.
-
-        NEW (Step 1.3): Camera serialization for 3D mode.
 
         Args:
             camera: Camera instance or None
@@ -603,8 +591,6 @@ class SaveManager:
     def _deserialize_difficulty_manager(self, dm_data):
         """
         Deserialize difficulty manager from saved data.
-
-        NEW (Step 1.3): Restore complete difficulty state.
 
         Args:
             dm_data: Dictionary with serialized difficulty manager

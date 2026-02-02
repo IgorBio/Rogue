@@ -1,16 +1,5 @@
 """
 Position synchronization system for 2D ↔ 3D view switching.
-
-REFACTORING NOTE (Step 1.4):
-- Central system for syncing Character and Camera positions
-- Ensures coordinate consistency when switching between 2D and 3D views
-- Handles fractional offsets for smooth Camera positioning
-- Provides bidirectional synchronization: Character → Camera and Camera → Character
-
-REFACTORING NOTE (Phase 2):
-- Camera-specific logic moved to presentation.camera_sync.CameraSync
-- PositionSynchronizer now works only with domain objects (Position, Character)
-- Use Position.to_camera_coords() and Position.from_camera_coords() for coordinate conversion
 """
 
 import warnings
@@ -42,9 +31,6 @@ class PositionSynchronizer:
     This class ensures positional consistency while respecting the different
     coordinate requirements of each system.
 
-    NOTE: Camera-specific synchronization has been moved to presentation layer.
-    Use presentation.camera_sync.CameraSync for camera operations.
-
     Key responsibilities:
     - Track position changes for domain objects
     - Provide coordinate conversion utilities via Position class methods
@@ -61,7 +47,6 @@ class PositionSynchronizer:
         """
         self.center_offset = center_offset
         self._last_character_pos: Optional[Tuple[int, int]] = None
-        # DEPRECATED: Kept for backward compatibility, use presentation.camera_sync instead
         self._last_camera_pos: Optional[Tuple[float, float]] = None
 
     def sync_character_to_position(self, character: Character, position: Position) -> None:
@@ -137,10 +122,6 @@ class PositionSynchronizer:
         self._last_character_pos = None
         self._last_camera_pos = None
 
-    # ========================================================================
-    # DEPRECATED METHODS - Use presentation.camera_sync.CameraSync instead
-    # ========================================================================
-    
     @_deprecated("Use presentation.camera_sync.CameraSync.sync_camera_to_character")
     def sync_camera_to_character(self, camera: Any, character: Character,
                                  preserve_angle: bool = True) -> None:
@@ -234,8 +215,6 @@ class PositionSyncValidator:
     Validator for position synchronization operations.
 
     Provides utility methods to validate sync operations and detect issues.
-    
-    NOTE: Camera-specific validation moved to presentation.camera_sync.CameraSyncValidator
     """
 
     @staticmethod
@@ -335,7 +314,7 @@ class PositionSyncValidator:
         return 'character_to_camera'
 
 
-# Convenience functions for common operations (deprecated - use presentation.camera_sync)
+
 def quick_sync_character_to_camera_coords(character: Character,
                                          camera_coords: Tuple[float, float],
                                          snap_mode: str = 'floor') -> None:
@@ -346,8 +325,6 @@ def quick_sync_character_to_camera_coords(character: Character,
         character: Character to update
         camera_coords: Camera (x, y) coordinates
         snap_mode: 'floor' or 'round' for coordinate conversion
-    
-    NOTE: For camera object operations, use presentation.camera_sync.CameraSync
     """
     position = Position.from_camera_coords(camera_coords[0], camera_coords[1], snap_mode)
     character.move_to(position.x, position.y)
@@ -364,14 +341,12 @@ def quick_sync_camera_coords_to_position(camera_coords: Tuple[float, float],
     
     Returns:
         Tuple[float, float]: Camera coordinates with offset
-    
-    NOTE: For camera object operations, use presentation.camera_sync.CameraSync
     """
     position = Position.from_camera_coords(camera_coords[0], camera_coords[1])
     return position.to_camera_coords(center_offset)
 
 
-# Backward compatibility wrappers (delegate to presentation layer)
+
 @_deprecated("Use presentation.camera_sync.CameraSync.sync_character_from_camera")
 def quick_sync_to_2d(character, camera):
     """

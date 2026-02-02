@@ -1,18 +1,5 @@
 """
 Game session management and core game loop logic.
-
-REFACTORING NOTE (Step 2.1):
-- Replaced boolean flags (game_over, victory, player_asleep) with StateMachine
-- All state management now goes through state_machine.transition_to()
-- Added helper properties for backward compatibility during refactoring
-- State is now explicit and type-safe
-- Integrated position synchronizer for 2D ↔ 3D coordinate synchronization
-
-REFACTORING NOTE (Phase 1 - EventBus):
-- Camera/CameraController creation moved to presentation layer (ViewManager)
-- GameSession publishes events via EventBus for layer decoupling
-- Domain no longer directly creates presentation objects
-- Camera factories removed from __init__, use ViewManager instead
 """
 
 from domain.level_generator import generate_level, spawn_emergency_healing
@@ -24,13 +11,6 @@ from domain.services.game_states import GameState, StateMachine
 from domain.events import LevelGeneratedEvent, CharacterMovedEvent, GameEndedEvent
 from domain.event_bus import event_bus
 from config.game_config import GameConfig, PlayerConfig
-# Presentation dependencies (Camera / CameraController) are now managed
-# by ViewManager in presentation layer via EventBus events
-
-# Local constants removed — use centralized configuration from config/game_config.py
-# - Test mode: GameConfig.TEST_MODE_STATS
-# - Adjacent offsets: PlayerConfig.ADJACENT_OFFSETS
-# - Camera defaults: GameConfig.DEFAULT_CAMERA_ANGLE / GameConfig.DEFAULT_CAMERA_FOV
 
 
 class GameSession:
@@ -54,15 +34,6 @@ class GameSession:
         stats: Statistics instance
         state_machine: StateMachine for explicit state management
         position_sync: PositionSynchronizer for coordinate sync
-    
-    NEW in Step 2.1:
-        state_machine: Replaces game_over, victory, player_asleep flags
-    
-    NOTE on Camera:
-        Camera and CameraController are managed by presentation.view_manager.ViewManager.
-        Domain layer publishes events (LevelGeneratedEvent, CharacterMovedEvent) and
-        ViewManager subscribes to create and sync camera. This maintains Clean Architecture
-        by preventing domain from depending on presentation layer.
     """
     
     def __init__(self, test_mode=False, test_level=1, test_fog_of_war=False,
@@ -93,12 +64,9 @@ class GameSession:
         self.pending_selection = None
         
         self.rendering_mode = '2d'
-        # Camera/Controller now managed by ViewManager in presentation layer
-        # These are kept for backward compatibility but populated via events
         self.camera = None
         self.camera_controller = None
 
-        # NEW: State machine for explicit state management (Step 2.1)
         self.state_machine = StateMachine()
         
         # Position synchronizer for 2D ↔ 3D coordinate sync
@@ -123,7 +91,6 @@ class GameSession:
         except Exception:
             self.stats = None
 
-        # PHASE 3 REFACTORING: SessionCoordinator manages all services
         from domain.session_coordinator import SessionCoordinator
         self._coordinator = SessionCoordinator(self, self.stats, self.difficulty_manager)
         self._coordinator.initialize_services()
@@ -133,7 +100,7 @@ class GameSession:
         # Transition to PLAYING after initialization
         self.state_machine.transition_to(GameState.PLAYING)
     
-    # (Backward-compatibility properties removed — refactor completed)
+
     
     # ============================================================================
     # STATE MACHINE METHODS
@@ -234,8 +201,6 @@ class GameSession:
         else:
             self.character.move_to(start_x, start_y)
 
-        # PHASE 1 REFACTORING: Camera creation moved to presentation layer
-        # Domain publishes LevelGeneratedEvent - ViewManager subscribes and creates camera
         event_bus.publish(LevelGeneratedEvent(
             level=self.level,
             character_position=(start_x, start_y),
@@ -357,7 +322,6 @@ class GameSession:
         elif not value and self.state_machine.is_asleep():
             self.state_machine.transition_to(GameState.PLAYING)
     
-    # 2D/3D action handlers moved to `ActionProcessor` (Step 2.4)
     
     def has_pending_selection(self):
         """Check if there's a pending item selection."""
@@ -374,7 +338,12 @@ class GameSession:
     def advance_level(self):
         """Advance to the next dungeon level."""
         return self._coordinator.advance_level(self, GameConfig.TOTAL_LEVELS)
-    
+
+    @property
+    def combat_system(self):
+        """Get combat system from coordinator."""
+        return self._coordinator.combat_system
+
     def save_to_file(self, filename=None):
         """Save the current game state to file."""
         # Use injected save manager factory if available to avoid domain -> data import.
@@ -461,5 +430,5 @@ class GameSession:
         return self.message
     
     def get_state_machine(self):
-        """Get the state machine (NEW in Step 2.1)."""
+        """Get the state machine."""
         return self.state_machine

@@ -1,6 +1,5 @@
 """
 Combat and interaction UI elements for 3D mode.
-Stage 8: Visual feedback for attacks, damage, and pickups.
 """
 import curses
 import time

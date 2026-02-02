@@ -1,6 +1,5 @@
 """
 Enhanced Input handler for 3D first-person mode with combat support.
-Stage 8: Added attack and item pickup actions.
 """
 import curses
 

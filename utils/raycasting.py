@@ -1,12 +1,6 @@
 """
 Ray casting utilities for 3D rendering.
 
-REFACTORING NOTE (Step 1.3):
-- Integrated Position class into Camera
-- Camera now uses Position internally for coordinates
-- x and y properties return float for raycasting precision
-- Maintains backward compatibility with float coordinates
-
 Implements DDA (Digital Differential Analyzer) algorithm for wall detection.
 """
 
@@ -65,7 +59,6 @@ class Camera:
             angle: Facing angle in degrees (0 = East, 90 = North, etc.)
             fov: Field of view in degrees
         """
-        # ✅ CHANGED: Use Position for grid-aligned coordinates
         # Split into integer grid position and fractional offset
         self._position = Position(int(x), int(y))
         self._offset_x = x - int(x)  # Fractional part: 0.0 to 1.0
@@ -132,7 +125,6 @@ class Camera:
             x: New X coordinate (can be float)
             y: New Y coordinate (can be float)
         """
-        # ✅ CHANGED: Update Position and offsets
         self._position.update(int(x), int(y))
         self._offset_x = x - int(x)
         self._offset_y = y - int(y)
@@ -201,7 +193,6 @@ class Camera:
         Returns:
             Tuple of (new_x, new_y) as floats
         """
-        # ✅ NEW: Strafe movement perpendicular to view direction
         dx, dy = self.get_direction_vector()
         # Rotate direction 90 degrees for strafe
         strafe_dx = -dy
@@ -219,13 +210,11 @@ class Camera:
         Returns:
             float: Euclidean distance
         """
-        # ✅ NEW: Distance calculation
         dx = self.x - target_x
         dy = self.y - target_y
         return math.sqrt(dx * dx + dy * dy)
 
     def __repr__(self):
-        # ✅ CHANGED: Show both float position and grid position
         return (f"Camera(pos=({self.x:.2f}, {self.y:.2f}), "
                 f"grid={self._position.tuple}, angle={self.angle:.1f}°, fov={self.fov}°)")
 
@@ -259,7 +248,6 @@ def cast_ray(camera: Camera, ray_angle: float, level,
     if abs(ray_dir_y) < 0.0001:
         ray_dir_y = 0.0001
 
-    # ✅ CHANGED: Use camera properties (x, y return floats)
     # Current map position
     map_x = int(camera.x)
     map_y = int(camera.y)

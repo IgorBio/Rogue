@@ -30,7 +30,6 @@ class TestCompleteSerialization:
         self.game_session.test_mode = False
         self.game_session.test_fog_of_war_enabled = False
 
-        # ✅ NEW (Step 1.3): Game flow state
         self.game_session.rendering_mode = '3d'
         self.game_session.player_asleep = True
         self.game_session.game_over = False
@@ -39,7 +38,6 @@ class TestCompleteSerialization:
         self.game_session.death_reason = ""
         self.game_session.pending_selection = {'type': 'food', 'items': []}
 
-        # ✅ NEW (Step 1.3): Difficulty manager
         self.difficulty_manager = Mock()
         self.difficulty_manager.levels_completed = 4
         self.difficulty_manager.total_damage_taken = 150
@@ -56,7 +54,6 @@ class TestCompleteSerialization:
         self.difficulty_manager.ADJUSTMENT_RATE = 0.1
         self.game_session.difficulty_manager = self.difficulty_manager
 
-        # ✅ NEW (Step 1.3): Camera
         self.camera = Mock()
         self.camera.x = 25.5
         self.camera.y = 30.2
