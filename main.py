@@ -18,8 +18,8 @@ def main(stdscr):
     from presentation.view_manager import create_view_manager
     from data.save_manager import SaveManager
     from data.statistics import StatisticsManager, Statistics
-    from utils.raycasting import Camera
-    from utils.camera_controller import CameraController
+    from presentation.camera import Camera
+    from presentation.camera import CameraController
     
     # Initialize managers and UI
     save_manager = SaveManager()

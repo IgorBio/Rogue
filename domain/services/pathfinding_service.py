@@ -1,6 +1,9 @@
 """
-Pathfinding utilities for enemy AI.
+Pathfinding service for enemy AI.
 FIXED: Improved pathfinding to handle corridor tiles correctly.
+
+This module provides pathfinding algorithms for the domain layer.
+It is used by enemy AI to navigate the game world.
 """
 from collections import deque
 

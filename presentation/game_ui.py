@@ -47,8 +47,8 @@ class GameUI:
         
         # Initialize 3D components
         from presentation.renderer_3d import Renderer3D
-        from utils.input_handler_3d import InputHandler3D
-        from utils.combat_ui_3d import CombatFeedback, TargetingReticle, EnemyHealthBar
+        from presentation.input import InputHandler3D
+        from presentation.ui import CombatFeedback, TargetingReticle, EnemyHealthBar
         
         self.renderer_3d = Renderer3D(stdscr, viewport_width=70, viewport_height=20,
                                       use_textures=True, show_minimap=True, show_sprites=True)
@@ -232,7 +232,7 @@ class GameUI:
         if game_session.is_3d_mode():
             action = self.input_handler_3d.get_action()
             
-            from utils.input_handler_3d import InputHandler3D
+            from presentation.input import InputHandler3D
             
             if action == InputHandler3D.ACTION_TOGGLE_MODE:
                 new_mode = game_session.toggle_rendering_mode()

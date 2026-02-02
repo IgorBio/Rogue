@@ -4,10 +4,11 @@ FIXED: Z-buffer now properly updates and sprites render correctly.
 """
 import curses
 import math
-from utils.raycasting import Camera, cast_fov_rays, calculate_wall_height
-from utils.texture_system import get_texture_manager, TexturedRenderer
-from utils.minimap_renderer import MiniMapRenderer
-from utils.sprite_renderer_3d import SpriteRenderer
+from presentation.camera import Camera
+from presentation.rendering.raycasting import cast_fov_rays, calculate_wall_height
+from presentation.rendering.texture_system import get_texture_manager, TexturedRenderer
+from presentation.rendering.minimap_renderer import MiniMapRenderer
+from presentation.rendering.sprite_renderer_3d import SpriteRenderer
 from presentation.colors import (
     init_colors,
     COLOR_WALL,

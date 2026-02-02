@@ -6,14 +6,14 @@
 
 import pytest
 from domain.entities.character import Character
-from utils.raycasting import Camera
+from presentation.camera import Camera
 from domain.services.position_synchronizer import (
     PositionSynchronizer,
     PositionSyncValidator,
     quick_sync_to_2d,
     quick_sync_to_3d
 )
-from utils.sync_helpers import create_synced_pair
+from presentation.camera import create_synced_pair
 
 
 class TestPositionSynchronizerInit:

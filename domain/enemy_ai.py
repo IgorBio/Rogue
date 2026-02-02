@@ -8,7 +8,7 @@ import random
 from typing import TYPE_CHECKING, Tuple, Optional, List, Dict, Any
 
 from config.game_config import EnemyType
-from utils.pathfinding import (
+from domain.services.pathfinding_service import (
     get_distance,
     get_next_step,
     get_random_adjacent_walkable

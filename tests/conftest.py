@@ -165,8 +165,8 @@ def save_manager(tmp_path):
 def game_session(statistics, save_manager):
     """Фикстура для игровой сессии в тестовом режиме"""
     from domain.game_session import GameSession
-    from utils.raycasting import Camera
-    from utils.camera_controller import CameraController
+    from presentation.camera import Camera
+    from presentation.camera import CameraController
 
     return GameSession(
         test_mode=True,
@@ -183,8 +183,8 @@ def game_session(statistics, save_manager):
 def game_session_with_fog(statistics, save_manager):
     """Фикстура для игровой сессии с туманом войны"""
     from domain.game_session import GameSession
-    from utils.raycasting import Camera
-    from utils.camera_controller import CameraController
+    from presentation.camera import Camera
+    from presentation.camera import CameraController
 
     return GameSession(
         test_mode=True,
@@ -202,7 +202,7 @@ def game_session_with_fog(statistics, save_manager):
 @pytest.fixture
 def camera():
     """Фикстура для 3D камеры"""
-    from utils.raycasting import Camera
+    from presentation.camera import Camera
     return Camera(x=10, y=10, angle=0.0, fov=60.0)
 
 

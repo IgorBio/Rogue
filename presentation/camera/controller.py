@@ -2,7 +2,7 @@
 Camera controller for 3D mode with combat and item interaction support.
 """
 import math
-from utils.raycasting import Camera
+from presentation.camera.camera import Camera
 
 
 class CameraController:

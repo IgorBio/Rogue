@@ -14,8 +14,8 @@ from domain.services.game_states import GameState
 
 from data.statistics import Statistics
 from data.save_manager import SaveManager
-from utils.raycasting import Camera
-from utils.camera_controller import CameraController
+from presentation.camera import Camera
+from presentation.camera import CameraController
 
 
 def _make_session(**kwargs):

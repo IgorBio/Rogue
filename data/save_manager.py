@@ -24,8 +24,8 @@ from domain.fog_of_war import FogOfWar
 from domain.dynamic_difficulty import DifficultyManager
 from data.statistics import Statistics
 from config.game_config import ItemType
-from utils.raycasting import Camera
-from utils.camera_controller import CameraController
+from presentation.camera import Camera
+from presentation.camera import CameraController
 
 # Save file configuration
 DEFAULT_SAVE_DIR = 'saves'
@@ -284,7 +284,7 @@ class SaveManager:
             )
 
             # Recreate camera controller
-            from utils.camera_controller import CameraController
+            from presentation.camera import CameraController
             game_session.camera_controller = CameraController(
                 game_session.camera,
                 game_session.level

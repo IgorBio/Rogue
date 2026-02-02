@@ -6,8 +6,8 @@ Can operate in event-driven mode (subscribing to EventBus) or manual mode.
 
 Usage:
     from presentation.view_manager import ViewManager, view_manager
-    from utils.raycasting import Camera
-    from utils.camera_controller import CameraController
+    from presentation.camera import Camera
+    from presentation.camera import CameraController
     
     # Create view manager manually
     vm = ViewManager(auto_subscribe=False)

@@ -345,7 +345,7 @@ def test_sprite_renderer():
     print("SPRITE POSITIONING TEST")
     print("=" * 60)
     
-    from utils.raycasting import Camera
+    from presentation.camera.camera import Camera
     
     camera = Camera(5.0, 5.0, angle=0.0, fov=60.0)
     

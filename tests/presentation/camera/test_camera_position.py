@@ -6,7 +6,7 @@
 
 import pytest
 import math
-from utils.raycasting import Camera
+from presentation.camera import Camera
 from domain.entities.position import Position
 
 
