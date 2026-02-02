@@ -85,7 +85,7 @@ def _mimic_movement(
     Mimic: Stays stationary while disguised.
     Once revealed, behaves like a standard enemy.
     """
-    if hasattr(enemy, 'is_disguised') and enemy.is_disguised:
+    if enemy.is_disguised:
         return None
     
     if enemy.is_chasing and distance > 1:
@@ -156,11 +156,7 @@ def _ghost_movement(
     Ghost: Teleports within room and can become invisible.
     High dexterity, low strength, low health.
     """
-    if not hasattr(enemy, 'invisibility_cooldown'):
-        enemy.invisibility_cooldown = 0
-    
-    if not hasattr(enemy, 'teleport_cooldown'):
-        enemy.teleport_cooldown = 0
+    # Note: invisibility_cooldown and teleport_cooldown are initialized in Enemy base class
     
     if enemy.teleport_cooldown <= 0:
         room = _get_enemy_room(enemy, level)
@@ -176,7 +172,7 @@ def _ghost_movement(
     enemy.teleport_cooldown -= 1
     
     if enemy.invisibility_cooldown <= 0:
-        enemy.is_invisible = not getattr(enemy, 'is_invisible', False)
+        enemy.is_invisible = not enemy.is_invisible
         enemy.invisibility_cooldown = random.randint(
             GHOST_INVISIBILITY_COOLDOWN_MIN,
             GHOST_INVISIBILITY_COOLDOWN_MAX
@@ -207,11 +203,7 @@ def _ogre_movement(
     Very high strength, low dexterity.
     Guaranteed counterattack after resting.
     """
-    if not hasattr(enemy, 'is_resting'):
-        enemy.is_resting = False
-    
-    if not hasattr(enemy, 'will_counterattack'):
-        enemy.will_counterattack = False
+    # Note: is_resting and will_counterattack are initialized in Enemy base class
     
     if enemy.is_resting:
         enemy.is_resting = False
@@ -256,11 +248,9 @@ def _snake_mage_movement(
     if not hasattr(enemy, 'diagonal_direction'):
         enemy.diagonal_direction = random.choice([(1, 1), (1, -1), (-1, 1), (-1, -1)])
     
-    if not hasattr(enemy, 'direction_cooldown'):
-        enemy.direction_cooldown = random.randint(
-            SNAKE_MAGE_DIRECTION_COOLDOWN_MIN,
-            SNAKE_MAGE_DIRECTION_COOLDOWN_MAX
-        )
+    # Initialize diagonal_direction if not set (first time)
+    if enemy.diagonal_direction is None:
+        enemy.diagonal_direction = random.choice([(1, 1), (1, -1), (-1, 1), (-1, -1)])
     
     enemy.direction_cooldown -= 1
     if enemy.direction_cooldown <= 0:

@@ -51,6 +51,18 @@ class Enemy:
         self.color = stats['color']
         
         self.is_chasing = False
+        
+        # Universal optional attributes (initialized with defaults)
+        # These allow enemy-specific behaviors without hasattr checks
+        self.is_disguised = False  # For Mimic
+        self.is_invisible = False  # For Ghost
+        self.is_resting = False  # For Ogre
+        self.will_counterattack = False  # For Ogre
+        self.first_attack_against = False  # For Vampire
+        self.teleport_cooldown = 0  # For Ghost
+        self.invisibility_cooldown = 0  # For Ghost
+        self.diagonal_direction = None  # For Snake
+        self.direction_cooldown = 0  # For Snake
     
     @property
     def position(self) -> Position:

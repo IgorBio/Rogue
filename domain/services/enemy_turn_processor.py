@@ -46,7 +46,7 @@ class EnemyTurnProcessor:
             distance = enemy_pos_obj.manhattan_distance_to(player_pos)
 
             if distance == 1:
-                if enemy.enemy_type == EnemyType.MIMIC and hasattr(enemy, 'is_disguised') and enemy.is_disguised:
+                if enemy.enemy_type == EnemyType.MIMIC and enemy.is_disguised:
                     continue
 
                 if should_enemy_attack(enemy):
