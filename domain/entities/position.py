@@ -1,20 +1,5 @@
 """
 Coordinate system for the game.
-
-This module solves the problem of mixing coordinate types (float vs int)
-between Character and Camera. Position guarantees that all coordinates
-will always be integers (int).
-
-Problem before refactoring:
-- Character.position was tuple[int, int]
-- Camera.x and Camera.y were float
-- Desynchronization occurred when switching between 2D and 3D
-- Position comparison could give false negative: (1.9, 2.1) != (1, 2)
-
-Solution:
-- Position always stores int coordinates
-- Automatic conversion of float to int on assignment
-- Unified interface for working with positions
 """
 
 from typing import Tuple, Union
@@ -24,23 +9,9 @@ class Position:
     """
     Class for managing position in the game.
 
-    Guarantees that coordinates are always integers,
-    even if float values are passed (e.g., from Camera).
-
     Attributes:
         _x (int): X coordinate
         _y (int): Y coordinate
-
-    Examples:
-        >>> pos = Position(10.7, 20.3)
-        >>> pos.x
-        10
-        >>> pos.y
-        20
-        >>> pos.tuple
-        (10, 20)
-        >>> pos == (10, 20)
-        True
     """
 
     def __init__(self, x: Union[int, float], y: Union[int, float]):
@@ -146,13 +117,6 @@ class Position:
 
         Returns:
             Tuple[float, float]: Camera coordinates (x, y)
-
-        Example:
-            >>> pos = Position(10, 20)
-            >>> pos.to_camera_coords()
-            (10.5, 20.5)
-            >>> pos.to_camera_coords(offset=0.0)
-            (10.0, 20.0)
         """
         return (float(self._x) + offset, float(self._y) + offset)
 
@@ -171,12 +135,6 @@ class Position:
 
         Returns:
             Position: New position with int coordinates
-
-        Example:
-            >>> Position.from_camera_coords(10.7, 20.3)
-            Position(10, 20)  # floor mode
-            >>> Position.from_camera_coords(10.7, 20.3, snap_mode='round')
-            Position(11, 20)  # round mode
         """
         if snap_mode == 'floor':
             return cls(int(x), int(y))
@@ -188,12 +146,7 @@ class Position:
     def is_adjacent_to(self, other: Union['Position', Tuple[int, int]]) -> bool:
         """
         Check if position is adjacent (including diagonals).
-
         Positions are considered adjacent if they differ by at most 1 on each axis.
-        For example, for (10, 10) adjacent positions are:
-        - (9, 9), (10, 9), (11, 9)
-        - (9, 10),         (11, 10)
-        - (9, 11), (10, 11), (11, 11)
 
         Args:
             other: Another position or coordinate tuple

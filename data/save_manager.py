@@ -1,11 +1,5 @@
 """
 Save and load game state persistence.
-
-STEP 1.3: Complete serialization added.
-- Added rendering_mode, player_asleep, game_over, victory
-- Added full difficulty_manager serialization
-- Added camera serialization with position and angle
-- All game state fields now saved and restored correctly
 """
 
 import json
@@ -36,11 +30,6 @@ SAVE_VERSION = '1.1'  # Incremented for new fields
 class SaveManager:
     """
     Manages game state persistence to disk.
-
-    STEP 1.3: Extended to save all game state fields:
-    - Game flow state (rendering_mode, player_asleep, game_over, victory)
-    - Dynamic difficulty manager (all modifiers and performance metrics)
-    - 3D camera (position, angle, FOV)
     """
 
     def __init__(self, save_dir=DEFAULT_SAVE_DIR):
@@ -57,8 +46,6 @@ class SaveManager:
     def save_game(self, game_session, filename=None):
         """
         Save complete game session to file.
-
-        STEP 1.3: Now saves ALL game state fields.
 
         Args:
             game_session: GameSession instance to save
@@ -162,8 +149,6 @@ class SaveManager:
     def restore_game_session(self, save_data):
         """
         Restore complete GameSession from saved data.
-
-        STEP 1.3: Now restores ALL game state fields.
 
         Args:
             save_data (dict): Dictionary loaded from save file

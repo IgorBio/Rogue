@@ -21,75 +21,6 @@ if TYPE_CHECKING:
     from domain.entities.enemy import Enemy
 
 
-# Room/map layout constants (use GameConfig directly)
-ROOM_COUNT: int = GameConfig.ROOM_COUNT
-ROOMS_PER_ROW: int = GameConfig.ROOMS_PER_ROW
-SECTION_WIDTH: int = GameConfig.SECTION_WIDTH
-SECTION_HEIGHT: int = GameConfig.SECTION_HEIGHT
-MIN_ROOM_WIDTH: int = GameConfig.MIN_ROOM_WIDTH
-MAX_ROOM_WIDTH: int = GameConfig.MAX_ROOM_WIDTH
-MIN_ROOM_HEIGHT: int = GameConfig.MIN_ROOM_HEIGHT
-MAX_ROOM_HEIGHT: int = GameConfig.MAX_ROOM_HEIGHT
-
-
-# Level generation constants (migrated to GameConfig/ItemConfig/EnemyConfig)
-MIN_STARTING_LEVEL: int = getattr(GameConfig, 'MIN_STARTING_LEVEL', 1)
-MIN_ENEMIES_PER_LEVEL: int = getattr(GameConfig, 'MIN_ENEMIES_PER_LEVEL', 2)
-MIN_FOOD_ITEMS: int = getattr(GameConfig, 'MIN_FOOD_ITEMS', 2)
-MIN_WEAPON_ITEMS: int = getattr(GameConfig, 'MIN_WEAPON_ITEMS', 1)
-MAX_ENEMIES_PER_ROOM: int = getattr(GameConfig, 'MAX_ENEMIES_PER_ROOM', 4)
-
-# Enemy spawn / scaling (from EnemyConfig)
-ENEMY_COUNT_BASE: int = EnemyConfig.ENEMY_COUNT_BASE
-ENEMY_COUNT_PER_LEVEL: int = EnemyConfig.ENEMY_COUNT_PER_LEVEL
-MAX_ENEMIES_PER_LEVEL: int = EnemyConfig.MAX_ENEMIES_PER_LEVEL
-ENEMY_STAT_SCALING: float = EnemyConfig.ENEMY_STAT_SCALING
-
-# Item spawn rates (from ItemConfig)
-FOOD_SPAWN_RATE: float = ItemConfig.FOOD_SPAWN_RATE
-WEAPON_SPAWN_RATE: float = ItemConfig.WEAPON_SPAWN_RATE
-ELIXIR_SPAWN_RATE: float = ItemConfig.ELIXIR_SPAWN_RATE
-SCROLL_SPAWN_RATE: float = ItemConfig.SCROLL_SPAWN_RATE
-MIMIC_SPAWN_RATE: float = ItemConfig.MIMIC_SPAWN_RATE
-
-# Legacy treasure multiplier (kept for compatibility)
-TREASURE_LEVEL_MULTIPLIER: float = 0.1
-
-# Enemy distribution by level tier
-TIER_1_LEVEL: int = EnemyConfig.TIER_1_LEVEL
-TIER_2_LEVEL: int = EnemyConfig.TIER_2_LEVEL
-MIMIC_MIN_LEVEL: int = ItemConfig.MIMIC_MIN_LEVEL
-
-# Weapon generation
-WEAPON_BASE_BONUS_MIN: int = ItemConfig.WEAPON_BASE_BONUS_MIN
-WEAPON_BASE_BONUS_MAX: int = ItemConfig.WEAPON_BASE_BONUS_MAX
-WEAPON_BONUS_PER_THREE_LEVELS: int = ItemConfig.WEAPON_BONUS_PER_THREE_LEVELS
-
-# Food generation
-FOOD_BASE_HEALING_MIN: int = ItemConfig.FOOD_BASE_HEALING_MIN
-FOOD_BASE_HEALING_MAX: int = ItemConfig.FOOD_BASE_HEALING_MAX
-FOOD_HEALING_PER_LEVEL: int = ItemConfig.FOOD_HEALING_PER_LEVEL
-
-# Elixir generation
-ELIXIR_BASE_BONUS_MIN: int = ItemConfig.ELIXIR_BASE_BONUS_MIN
-ELIXIR_BASE_BONUS_MAX: int = ItemConfig.ELIXIR_BASE_BONUS_MAX
-ELIXIR_BONUS_PER_FOUR_LEVELS: int = ItemConfig.ELIXIR_BONUS_PER_FOUR_LEVELS
-ELIXIR_DURATION_MIN: int = ItemConfig.ELIXIR_DURATION_MIN
-ELIXIR_DURATION_MAX: int = ItemConfig.ELIXIR_DURATION_MAX
-
-# Scroll generation
-SCROLL_BASE_BONUS_MIN: int = ItemConfig.SCROLL_BASE_BONUS_MIN
-SCROLL_BASE_BONUS_MAX: int = ItemConfig.SCROLL_BASE_BONUS_MAX
-SCROLL_BONUS_PER_FIVE_LEVELS: int = ItemConfig.SCROLL_BONUS_PER_FIVE_LEVELS
-
-# Weapon names
-WEAPON_NAMES: List[str] = ItemConfig.WEAPON_NAMES
-
-# Level factor calculation
-LEVEL_FACTOR_DIVISOR: int = GameConfig.LEVEL_FACTOR_DIVISOR
-MIN_LEVEL_FACTOR: float = GameConfig.MIN_LEVEL_FACTOR
-
-
 def generate_level(
     level_number: int,
     difficulty_adjustments: Optional[Dict[str, float]] = None
@@ -114,8 +45,8 @@ def generate_level(
     for corridor in corridors:
         level.add_corridor(corridor)
     
-    level.starting_room_index = random.randint(0, ROOM_COUNT - 1)
-    exit_choices = [i for i in range(ROOM_COUNT) if i != level.starting_room_index]
+    level.starting_room_index = random.randint(0, GameConfig.ROOM_COUNT - 1)
+    exit_choices = [i for i in range(GameConfig.ROOM_COUNT) if i != level.starting_room_index]
     level.exit_room_index = random.choice(exit_choices)
     
     exit_room = level.rooms[level.exit_room_index]
@@ -124,7 +55,7 @@ def generate_level(
     _spawn_enemies(level, difficulty_adjustments)
     _spawn_items(level, difficulty_adjustments)
     
-    if level_number >= MIN_STARTING_LEVEL:
+    if level_number >= GameConfig.MIN_STARTING_LEVEL:
         place_keys_and_doors(level)
     
     return level
@@ -134,16 +65,16 @@ def _generate_rooms() -> List[Room]:
     """Generate 9 rooms in a 3x3 grid layout."""
     rooms: List[Room] = []
     
-    for row in range(ROOMS_PER_ROW):
-        for col in range(ROOMS_PER_ROW):
-            section_x = col * SECTION_WIDTH
-            section_y = row * SECTION_HEIGHT
+    for row in range(GameConfig.ROOMS_PER_ROW):
+        for col in range(GameConfig.ROOMS_PER_ROW):
+            section_x = col * GameConfig.SECTION_WIDTH
+            section_y = row * GameConfig.SECTION_HEIGHT
             
-            room_width = random.randint(MIN_ROOM_WIDTH, MAX_ROOM_WIDTH)
-            room_height = random.randint(MIN_ROOM_HEIGHT, MAX_ROOM_HEIGHT)
+            room_width = random.randint(GameConfig.MIN_ROOM_WIDTH, GameConfig.MAX_ROOM_WIDTH)
+            room_height = random.randint(GameConfig.MIN_ROOM_HEIGHT, GameConfig.MAX_ROOM_HEIGHT)
             
-            max_x = section_x + SECTION_WIDTH - room_width - 1
-            max_y = section_y + SECTION_HEIGHT - room_height - 1
+            max_x = section_x + GameConfig.SECTION_WIDTH - room_width - 1
+            max_y = section_y + GameConfig.SECTION_HEIGHT - room_height - 1
             
             room_x = random.randint(section_x + 1, max(section_x + 1, max_x))
             room_y = random.randint(section_y + 1, max(section_y + 1, max_y))
@@ -158,9 +89,9 @@ def _generate_corridors(rooms: List[Room]) -> List[Corridor]:
     """Generate corridors connecting all 9 rooms."""
     corridors: List[Corridor] = []
     
-    for row in range(ROOMS_PER_ROW):
-        for col in range(ROOMS_PER_ROW - 1):
-            room_index = row * ROOMS_PER_ROW + col
+    for row in range(GameConfig.ROOMS_PER_ROW):
+        for col in range(GameConfig.ROOMS_PER_ROW - 1):
+            room_index = row * GameConfig.ROOMS_PER_ROW + col
             next_room_index = room_index + 1
             
             corridor = _connect_rooms_horizontal(
@@ -169,10 +100,10 @@ def _generate_corridors(rooms: List[Room]) -> List[Corridor]:
             )
             corridors.append(corridor)
     
-    for col in range(ROOMS_PER_ROW):
-        for row in range(ROOMS_PER_ROW - 1):
-            room_index = row * ROOMS_PER_ROW + col
-            below_room_index = room_index + ROOMS_PER_ROW
+    for col in range(GameConfig.ROOMS_PER_ROW):
+        for row in range(GameConfig.ROOMS_PER_ROW - 1):
+            room_index = row * GameConfig.ROOMS_PER_ROW + col
+            below_room_index = room_index + GameConfig.ROOMS_PER_ROW
             
             corridor = _connect_rooms_vertical(
                 rooms[room_index],
@@ -246,13 +177,13 @@ def _spawn_enemies(
         level: Level object
         difficulty_adjustments: Optional dict with difficulty modifiers
     """
-    enemy_count = int(ENEMY_COUNT_BASE + (level.level_number * ENEMY_COUNT_PER_LEVEL))
+    enemy_count = int(EnemyConfig.ENEMY_COUNT_BASE + (level.level_number * EnemyConfig.ENEMY_COUNT_PER_LEVEL))
     
     if difficulty_adjustments:
         enemy_modifier = difficulty_adjustments.get('enemy_count_modifier', 1.0)
         enemy_count = int(enemy_count * enemy_modifier)
     
-    enemy_count = min(max(enemy_count, MIN_ENEMIES_PER_LEVEL), MAX_ENEMIES_PER_LEVEL)
+    enemy_count = min(max(enemy_count, GameConfig.MIN_ENEMIES_PER_LEVEL), EnemyConfig.MAX_ENEMIES_PER_LEVEL)
     
     available_rooms = [i for i in range(len(level.rooms)) 
                       if i != level.starting_room_index]
@@ -276,19 +207,19 @@ def _spawn_enemies(
         room.add_enemy(enemy)
         enemies_spawned += 1
         
-        if len(room.enemies) >= MAX_ENEMIES_PER_ROOM:
+        if len(room.enemies) >= GameConfig.MAX_ENEMIES_PER_ROOM:
             available_rooms.remove(room_idx)
 
 
 def _get_enemy_distribution(level_number: int) -> List[str]:
     """Get the enemy type distribution for a given level."""
-    if level_number <= TIER_1_LEVEL:
+    if level_number <= EnemyConfig.TIER_1_LEVEL:
         return (
             [EnemyType.ZOMBIE] * 5 +
             [EnemyType.VAMPIRE] * 1 +
             [EnemyType.GHOST] * 1
         )
-    elif level_number <= TIER_2_LEVEL:
+    elif level_number <= EnemyConfig.TIER_2_LEVEL:
         return (
             [EnemyType.ZOMBIE] * 3 +
             [EnemyType.VAMPIRE] * 2 +
@@ -322,7 +253,7 @@ def _scale_enemy_stats(
     if level_number <= 1:
         base_scaling = 1.0
     else:
-        base_scaling = ENEMY_STAT_SCALING ** (level_number - 1)
+        base_scaling = GameConfig.ENEMY_STAT_SCALING ** (level_number - 1)
     
     if difficulty_adjustments:
         stat_modifier = difficulty_adjustments.get('enemy_stat_modifier', 1.0)
@@ -353,7 +284,7 @@ def _spawn_items(
     if not available_rooms:
         return
     
-    level_factor = max(MIN_LEVEL_FACTOR, 1.0 - (level.level_number / LEVEL_FACTOR_DIVISOR))
+    level_factor = max(GameConfig.MIN_LEVEL_FACTOR, 1.0 - (level.level_number / GameConfig.LEVEL_FACTOR_DIVISOR))
     
     if difficulty_adjustments:
         item_modifier = difficulty_adjustments.get('item_spawn_modifier', 1.0)
@@ -362,13 +293,13 @@ def _spawn_items(
     else:
         healing_modifier = 1.0
     
-    food_count = int(FOOD_SPAWN_RATE * len(available_rooms) * level_factor * healing_modifier)
-    weapon_count = int(WEAPON_SPAWN_RATE * len(available_rooms))
-    elixir_count = int(ELIXIR_SPAWN_RATE * len(available_rooms) * level_factor)
-    scroll_count = int(SCROLL_SPAWN_RATE * len(available_rooms) * level_factor)
+    food_count = int(ItemConfig.FOOD_SPAWN_RATE * len(available_rooms) * level_factor * healing_modifier)
+    weapon_count = int(ItemConfig.WEAPON_SPAWN_RATE * len(available_rooms))
+    elixir_count = int(ItemConfig.ELIXIR_SPAWN_RATE * len(available_rooms) * level_factor)
+    scroll_count = int(ItemConfig.SCROLL_SPAWN_RATE * len(available_rooms) * level_factor)
     
-    food_count = max(MIN_FOOD_ITEMS, food_count)
-    weapon_count = max(MIN_WEAPON_ITEMS, weapon_count)
+    food_count = max(GameConfig.MIN_FOOD_ITEMS, food_count)
+    weapon_count = max(GameConfig.MIN_WEAPON_ITEMS, weapon_count)
     
     for _ in range(food_count):
         _spawn_food_or_mimic(level, available_rooms, healing_modifier)
@@ -393,13 +324,13 @@ def _spawn_food_or_mimic(
     room = level.rooms[room_idx]
     pos = room.get_random_floor_position()
     
-    if random.random() < MIMIC_SPAWN_RATE and level.level_number >= MIMIC_MIN_LEVEL:
+    if random.random() < ItemConfig.MIMIC_SPAWN_RATE and level.level_number >= ItemConfig.MIMIC_MIN_LEVEL:
         mimic = create_enemy(EnemyType.MIMIC, pos[0], pos[1], disguise_type='%')
         _scale_enemy_stats(mimic, level.level_number)
         room.add_enemy(mimic)
     else:
-        base_healing = random.randint(FOOD_BASE_HEALING_MIN, FOOD_BASE_HEALING_MAX)
-        level_bonus = level.level_number * FOOD_HEALING_PER_LEVEL
+        base_healing = random.randint(ItemConfig.FOOD_BASE_HEALING_MIN, ItemConfig.FOOD_BASE_HEALING_MAX)
+        level_bonus = level.level_number * ItemConfig.FOOD_HEALING_PER_LEVEL
         healing = int((base_healing + level_bonus) * healing_modifier)
         
         food = Food(healing)
@@ -417,16 +348,16 @@ def _spawn_weapon_or_mimic(
     room = level.rooms[room_idx]
     pos = room.get_random_floor_position()
     
-    if random.random() < MIMIC_SPAWN_RATE and level.level_number >= MIMIC_MIN_LEVEL:
+    if random.random() < ItemConfig.MIMIC_SPAWN_RATE and level.level_number >= ItemConfig.MIMIC_MIN_LEVEL:
         mimic = create_enemy(EnemyType.MIMIC, pos[0], pos[1], disguise_type='(')
         _scale_enemy_stats(mimic, level.level_number, difficulty_adjustments)
         room.add_enemy(mimic)
     else:
-        base_bonus = random.randint(WEAPON_BASE_BONUS_MIN, WEAPON_BASE_BONUS_MAX)
-        level_bonus = level.level_number // WEAPON_BONUS_PER_THREE_LEVELS
+        base_bonus = random.randint(ItemConfig.WEAPON_BASE_BONUS_MIN, ItemConfig.WEAPON_BASE_BONUS_MAX)
+        level_bonus = level.level_number // ItemConfig.WEAPON_BONUS_PER_THREE_LEVELS
         weapon_bonus = base_bonus + level_bonus
         
-        weapon_name = random.choice(WEAPON_NAMES)
+        weapon_name = random.choice(ItemConfig.WEAPON_NAMES)
         
         weapon = Weapon(f"{weapon_name} +{weapon_bonus}", weapon_bonus)
         weapon.position = pos
@@ -443,18 +374,18 @@ def _spawn_elixir_or_mimic(
     room = level.rooms[room_idx]
     pos = room.get_random_floor_position()
     
-    if random.random() < MIMIC_SPAWN_RATE and level.level_number >= MIMIC_MIN_LEVEL:
+    if random.random() < ItemConfig.MIMIC_SPAWN_RATE and level.level_number >= ItemConfig.MIMIC_MIN_LEVEL:
         mimic = create_enemy(EnemyType.MIMIC, pos[0], pos[1], disguise_type='!')
         _scale_enemy_stats(mimic, level.level_number, difficulty_adjustments)
         room.add_enemy(mimic)
     else:
         stat_type = random.choice([StatType.STRENGTH, StatType.DEXTERITY, StatType.MAX_HEALTH])
         
-        base_bonus = random.randint(ELIXIR_BASE_BONUS_MIN, ELIXIR_BASE_BONUS_MAX)
-        level_bonus = level.level_number // ELIXIR_BONUS_PER_FOUR_LEVELS
+        base_bonus = random.randint(ItemConfig.ELIXIR_BASE_BONUS_MIN, ItemConfig.ELIXIR_BASE_BONUS_MAX)
+        level_bonus = level.level_number // ItemConfig.ELIXIR_BONUS_PER_FOUR_LEVELS
         bonus = base_bonus + level_bonus
         
-        duration = random.randint(ELIXIR_DURATION_MIN, ELIXIR_DURATION_MAX)
+        duration = random.randint(ItemConfig.ELIXIR_DURATION_MIN, ItemConfig.ELIXIR_DURATION_MAX)
         
         elixir = Elixir(stat_type, bonus, duration)
         elixir.position = pos
@@ -471,15 +402,15 @@ def _spawn_scroll_or_mimic(
     room = level.rooms[room_idx]
     pos = room.get_random_floor_position()
     
-    if random.random() < MIMIC_SPAWN_RATE and level.level_number >= MIMIC_MIN_LEVEL:
+    if random.random() < ItemConfig.MIMIC_SPAWN_RATE and level.level_number >= ItemConfig.MIMIC_MIN_LEVEL:
         mimic = create_enemy(EnemyType.MIMIC, pos[0], pos[1], disguise_type='?')
         _scale_enemy_stats(mimic, level.level_number, difficulty_adjustments)
         room.add_enemy(mimic)
     else:
         stat_type = random.choice([StatType.STRENGTH, StatType.DEXTERITY, StatType.MAX_HEALTH])
         
-        base_bonus = random.randint(SCROLL_BASE_BONUS_MIN, SCROLL_BASE_BONUS_MAX)
-        level_bonus = level.level_number // SCROLL_BONUS_PER_FIVE_LEVELS
+        base_bonus = random.randint(ItemConfig.SCROLL_BASE_BONUS_MIN, ItemConfig.SCROLL_BASE_BONUS_MAX)
+        level_bonus = level.level_number // ItemConfig.SCROLL_BONUS_PER_FIVE_LEVELS
         bonus = base_bonus + level_bonus
         
         scroll = Scroll(stat_type, bonus)

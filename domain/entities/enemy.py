@@ -53,7 +53,6 @@ class Enemy:
         self.is_chasing = False
         
         # Universal optional attributes (initialized with defaults)
-        # These allow enemy-specific behaviors without hasattr checks
         self.is_disguised = False  # For Mimic
         self.is_invisible = False  # For Ghost
         self.is_resting = False  # For Ogre

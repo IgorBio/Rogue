@@ -7,10 +7,7 @@ from .game_config import (
     GameConfig,
     ItemConfig,
     EnemyConfig,
-    PlayerConfig,
-    SaveConfig,
-    get_config_summary,
-    validate_config
+    PlayerConfig
 )
 
 __all__ = [
@@ -18,10 +15,4 @@ __all__ = [
     'ItemConfig',
     'EnemyConfig',
     'PlayerConfig',
-    'SaveConfig',
-    'get_config_summary',
-    'validate_config'
 ]
-
-# Валидация при импорте
-validate_config()

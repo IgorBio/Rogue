@@ -1,8 +1,7 @@
 """
 Domain layer for the roguelike game.
 
-This package contains all core game logic and business rules,
-independent of presentation or data storage concerns.
+This package contains all core game logic and business rules.
 
 The domain layer includes:
 - Game entities (character, enemies, items, levels)
