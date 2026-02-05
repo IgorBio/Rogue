@@ -130,7 +130,7 @@ class PositionSynchronizer:
         
         Synchronize Camera position to Character position.
         """
-        from presentation.camera_sync import CameraSync
+        from presentation.camera.sync import CameraSync
         sync = CameraSync(self.center_offset)
         sync.sync_camera_to_character(camera, character, preserve_angle)
         
@@ -146,7 +146,7 @@ class PositionSynchronizer:
         
         Synchronize Character position to Camera position.
         """
-        from presentation.camera_sync import CameraSync
+        from presentation.camera.sync import CameraSync
         sync = CameraSync(self.center_offset)
         sync.sync_character_from_camera(character, camera,
                                         snap_mode='floor' if snap_to_grid else 'round')
@@ -359,7 +359,7 @@ def quick_sync_to_2d(character, camera):
         camera: Camera to sync from
     """
     # Import here to avoid circular dependency
-    from presentation.camera_sync import CameraSync
+    from presentation.camera.sync import CameraSync
     sync = CameraSync()
     sync.sync_character_from_camera(character, camera)
 
@@ -376,7 +376,7 @@ def quick_sync_to_3d(camera, character):
         character: Character to sync from
     """
     # Import here to avoid circular dependency
-    from presentation.camera_sync import CameraSync
+    from presentation.camera.sync import CameraSync
     sync = CameraSync()
     sync.sync_camera_to_character(camera, character)
 
@@ -396,7 +396,7 @@ def create_synced_pair(character_factory, camera_factory, x, y, center_offset=0.
         tuple: (character, camera)
     """
     # Import here to avoid circular dependency
-    from presentation.camera_sync import CameraSync
+    from presentation.camera.sync import CameraSync
     
     character = character_factory(x, y)
     position = Position(x, y)

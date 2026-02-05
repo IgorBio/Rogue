@@ -1,264 +1,118 @@
-# План исправления архитектуры Rogue (Clean Architecture)
+﻿# План рефакторинга Rogue (упрощение без потери функциональности)
 
-## Анализ текущей структуры
+## Краткий вывод
+Проект уже избавился от папки `utils`, но остались дублирующие и неиспользуемые компоненты, которые усложняют поддержку. Ниже — обновленные предложения с учетом замечаний: оставить доменную часть `PositionSynchronizer`, выбрать единый источник action-констант (вариант B), а глубокую перестройку `GameSession` и `SaveManager` отложить как техдолг.
 
-### Текущие слои
-```
-config/       - Конфигурация игры
-├── game_config.py
+## Что можно убрать целиком
+1. `domain/services/service_container.py`
+Нет использований в коде и тестах. Оставляет ложное ощущение, что есть DI-контейнер.
+Действия: удалить файл, убрать упоминания в комментариях/доках.
 
-data/         - Слой данных (Data Layer)
-├── save_manager.py      ⚠️ Импортирует из utils/
-├── statistics.py
+2. `domain/services/session_protocol.py`
+Не используется нигде. Усложняет чтение, не приносит пользы.
+Действия: удалить файл.
 
-domain/       - Доменный слой (Domain Layer)
-├── entities/             - Сущности
-├── services/             - Доменные сервисы
-├── enemy_ai.py          ⚠️ Импортирует из utils/
-├── *.py                  - Другая бизнес-логика
+3. `presentation/camera_sync.py`
+Полный дубль `presentation/camera/sync.py`.
+Действия: удалить `presentation/camera_sync.py`, все импорты перевести на `presentation.camera.sync`.
 
-presentation/ - Слой представления (Presentation Layer)
-├── renderer_3d.py       ⚠️ Импортирует из utils/
-├── *.py                  - UI, рендеринг, ввод
+4. `presentation/input/handler_3d.py` (частично)
+Блоки `if __name__ == "__main__":` и `test_input_handler_3d()` — неиспользуемый тестовый код в runtime-модуле.
+Действия: вынести в `tests/` или удалить.
 
-utils/        - ⚠️ Микс разных ответственностей
-├── raycasting.py        - 3D рендеринг (Presentation)
-├── camera_controller.py - Управление камерой (Presentation)
-├── combat_ui_3d.py      - UI обратная связь (Presentation)
-├── input_handler_3d.py  - Обработка ввода (Presentation)
-├── minimap_renderer.py  - Рендеринг миникарты (Presentation)
-├── sprite_renderer_3d.py- Рендеринг спрайтов (Presentation)
-├── texture_system.py    - Система текстур (Presentation)
-├── pathfinding.py       - Поиск пути (Domain)
-├── sync_helpers.py      - Синхронизация (Presentation)
-```
+## Что нельзя удалять сейчас
+1. `domain/services/action_types.py`
+С учетом замечаний рекомендуется сделать его единым источником action-констант (вариант B), а не удалять.
 
----
+## Что убрать/сжать частично
+1. `domain/services/position_synchronizer.py`
+Содержит deprecated-обертки поверх `presentation.camera_sync`, из-за чего domain зависит от presentation.
+Действия: удалить deprecated-обертки и оставить только доменную логику:
+`sync_character_to_position`, `is_character_moved`, `are_positions_aligned`, `get_character_offset`, `reset_tracking`.
 
-## Нарушения принципов Clean Architecture
+2. `presentation/input_handler.py`
+Экземпляр создается, но фактически не используется: `GameUI` делает собственное сопоставление клавиш.
+Действия: использовать `InputHandler.get_action()` в `GameUI` (и удалить ручной mapping), либо удалить `InputHandler` целиком. Рекомендуется использовать `InputHandler` для консолидации логики.
 
-### 1. Нарушение Dependency Rule
-**Проблема:** Слой `data/` импортирует из `utils/`
-```python
-# data/save_manager.py
-from utils.raycasting import Camera              # ❌ Нарушение
-from utils.camera_controller import CameraController  # ❌ Нарушение
-```
+## Что можно объединить
+1. Camera Sync
+Оставить единственный модуль `presentation/camera/sync.py` и использовать его везде.
+Файлы для перевода импортов:
+- `presentation/view_manager.py`
+- `tests/presentation/test_camera_sync.py`
+- `domain/services/position_synchronizer.py` (если оставляем)
 
-**Проблема:** Слой `domain/` импортирует из `utils/`
-```python
-# domain/enemy_ai.py
-from utils.pathfinding import (
-    get_distance,
-    get_next_step,
-    get_random_adjacent_walkable
-)  # ❌ Нарушение
-```
+2. Обработка действий (Action constants)
+Сейчас есть дубли строк в:
+- `domain/services/action_processor.py`
+- `presentation/input_handler.py`
+- `presentation/input/handler_3d.py`
+- `presentation/game_ui.py`
 
-### 2. Нарушение Single Responsibility / Layer Boundaries
-Папка `utils/` содержит код разных слоев:
-- **Presentation**: raycasting, camera_controller, combat_ui_3d, input_handler_3d, minimap_renderer, sprite_renderer_3d, texture_system, sync_helpers
-- **Domain**: pathfinding
+Рекомендуемый вариант (B):
+Использовать `domain/services/action_types.py` как единственный источник.
+Для UI и `ActionProcessor`:
+- заменить строковые литералы на `ActionType` или алиасы из `action_types.py`.
+- централизовать преобразование `str -> ActionType` в одном месте (например, в `GameUI`).
 
-### 3. Нарушение Abstraction Principle
-`data/save_manager.py` работает напрямую с presentation-объектами (Camera), вместо работы через доменные сущности или DTO.
+## Что заменить
+1. Синхронизацию камеры при смене режима
+Сейчас `GameSession.toggle_rendering_mode()` напрямую синхронизирует камеру через `PositionSynchronizer`.
+Действия:
+1. Упростить `GameSession.toggle_rendering_mode()` до смены режима и сообщения.
+2. Синхронизацию выполнять в presentation-слое (например, в `ViewManager`) с использованием `presentation.camera.sync`.
+3. Оставить `PositionSynchronizer` в domain только как доменный утилитарный компонент (без обращения к presentation).
 
----
+2. Зависимость SaveManager от presentation
+`data/save_manager.py` напрямую импортирует `Camera` и `CameraController`.
+С учетом замечаний это часть более глубокой проблемы: `GameSession` хранит presentation-объекты.
+Действия (как техдолг):
+1. Перенести `camera`/`camera_controller` полностью в `ViewManager`.
+2. В `SaveManager` хранить только примитивный `camera_state`.
+3. Восстановление камеры делегировать presentation-слою.
 
-## План изменений
+## Подробный план по этапам
 
-### Фаза 1: Перенос pathfinding в Domain Layer
+### Фаза 1: Чистка мертвого кода
+1. Удалить `domain/services/service_container.py`.
+2. Удалить `domain/services/session_protocol.py`.
+3. Удалить `presentation/camera_sync.py`, обновить импорты на `presentation.camera.sync`.
+4. Удалить тестовый код из `presentation/input/handler_3d.py` (перенос в `tests/` при необходимости).
 
-**Исходное место:** `utils/pathfinding.py`
-**Новое место:** `domain/services/pathfinding_service.py`
+### Фаза 2: Консолидация синхронизации камеры
+1. Удалить deprecated-обертки в `domain/services/position_synchronizer.py`, оставить только доменные методы.
+2. Обновить `GameSession.toggle_rendering_mode()`:
+1. Только смена режима и сообщение.
+2. Синхронизацию перенести в presentation-слой (`ViewManager`).
+3. Обновить тесты `tests/domain/services/test_position_synchronizer.py` под обновленный, доменный интерфейс.
 
-**Действия:**
-1. Создать `domain/services/pathfinding_service.py` с содержимым из `utils/pathfinding.py`
-2. Обновить импорты в `domain/enemy_ai.py`:
-   ```python
-   # Было:
-   from utils.pathfinding import get_distance, get_next_step, ...
-   
-   # Стало:
-   from domain.services.pathfinding_service import get_distance, get_next_step, ...
-   ```
-3. Удалить `utils/pathfinding.py`
+### Фаза 3: Упрощение input-слоя
+1. Использовать `domain/services/action_types.py` как единый источник.
+2. Удалить дубли в `InputHandler`, `InputHandler3D`, `ActionProcessor`, `GameUI`.
+3. Обновить `tests/domain/test_action_processor.py` на новый источник констант.
 
-**Обоснование:** Поиск пути - это бизнес-логика перемещения существ в игре (Domain). Не зависит от UI/рендеринга.
+### Фаза 4: Архитектурный техдолг (отложить)
+1. Убрать `camera` и `camera_controller` из `GameSession`.
+2. Перенести управление камерой полностью в `ViewManager`.
+3. В `SaveManager` хранить только примитивный `camera_state`.
+4. Обновить сериализацию/десериализацию и тесты сохранения.
 
----
+## Точки изменения (файлы)
+- `main.py`
+- `presentation/game_ui.py`
+- `presentation/view_manager.py`
+- `presentation/camera/sync.py`
+- `presentation/input_handler.py`
+- `presentation/input/handler_3d.py`
+- `domain/game_session.py`
+- `domain/services/action_processor.py`
+- `domain/services/position_synchronizer.py`
+- `data/save_manager.py`
+- `tests/presentation/test_camera_sync.py`
+- `tests/domain/test_action_processor.py`
+- `tests/domain/services/test_position_synchronizer.py`
 
-### Фаза 2: Перенос presentation-утилит в Presentation Layer
-
-Создать подпакеты в `presentation/` для лучшей организации:
-
-```
-presentation/
-├── __init__.py
-├── rendering/
-│   ├── __init__.py
-│   ├── raycasting.py           # ← из utils/
-│   ├── sprite_renderer_3d.py   # ← из utils/
-│   ├── texture_system.py       # ← из utils/
-│   └── minimap_renderer.py     # ← из utils/
-├── camera/
-│   ├── __init__.py
-│   ├── camera.py               # ← Camera из utils/raycasting.py
-│   ├── controller.py           # ← из utils/camera_controller.py
-│   └── sync.py                 # ← объединить camera_sync.py + sync_helpers.py
-├── input/
-│   ├── __init__.py
-│   ├── handler.py              # ← существующий input_handler.py
-│   └── handler_3d.py           # ← из utils/input_handler_3d.py
-├── ui/
-│   ├── __init__.py
-│   ├── combat_feedback.py      # ← из utils/combat_ui_3d.py
-│   ├── components.py           # ← существующий ui_components.py
-│   └── game_ui.py              # ← существующий game_ui.py
-├── colors.py
-├── renderer.py
-├── renderer_3d.py
-└── view_manager.py
-```
-
-**Действия для каждого файла:**
-
-#### 1. `utils/raycasting.py` → `presentation/rendering/raycasting.py` + `presentation/camera/camera.py`
-- Вынести класс `Camera` в `presentation/camera/camera.py`
-- Оставить raycast-функции в `presentation/rendering/raycasting.py`
-
-#### 2. `utils/camera_controller.py` → `presentation/camera/controller.py`
-- Перенести класс `CameraController`
-
-#### 3. `utils/sync_helpers.py` + `presentation/camera_sync.py` → `presentation/camera/sync.py`
-- Объединить синхронизацию в один модуль
-- `presentation/camera_sync.py` пометить как deprecated
-
-#### 4. `utils/combat_ui_3d.py` → `presentation/ui/combat_feedback.py`
-- Перенести класс `CombatFeedback`
-
-#### 5. `utils/input_handler_3d.py` → `presentation/input/handler_3d.py`
-- Перенести класс `InputHandler3D`
-
-#### 6. `utils/minimap_renderer.py` → `presentation/rendering/minimap_renderer.py`
-- Перенести класс `MiniMapRenderer`
-
-#### 7. `utils/sprite_renderer_3d.py` → `presentation/rendering/sprite_renderer_3d.py`
-- Перенести классы `Sprite` и `SpriteRenderer`
-
-#### 8. `utils/texture_system.py` → `presentation/rendering/texture_system.py`
-- Перенести классы `WallTexture` и `TextureManager`
-
----
-
-### Фаза 3: Обновление зависимостей
-
-#### Обновить `data/save_manager.py`:
-```python
-# Было:
-from utils.raycasting import Camera
-from utils.camera_controller import CameraController
-
-# Стало:
-from presentation.camera.camera import Camera
-from presentation.camera.controller import CameraController
-```
-
-**Примечание:** В долгосрочной перспективе, `save_manager.py` должен работать с DTO/словарями, а не напрямую с presentation-объектами. Это требует создания сериализационных мапперов.
-
-#### Обновить `presentation/renderer_3d.py`:
-```python
-# Было:
-from utils.raycasting import Camera, cast_fov_rays, calculate_wall_height
-from utils.texture_system import get_texture_manager, TexturedRenderer
-from utils.minimap_renderer import MiniMapRenderer
-from utils.sprite_renderer_3d import SpriteRenderer
-
-# Стало:
-from presentation.camera.camera import Camera
-from presentation.rendering.raycasting import cast_fov_rays, calculate_wall_height
-from presentation.rendering.texture_system import get_texture_manager, TexturedRenderer
-from presentation.rendering.minimap_renderer import MiniMapRenderer
-from presentation.rendering.sprite_renderer_3d import SpriteRenderer
-```
-
-#### Обновить `main.py`:
-```python
-# Было:
-from utils.raycasting import Camera
-from utils.camera_controller import CameraController
-
-# Стало:
-from presentation.camera.camera import Camera
-from presentation.camera.controller import CameraController
-```
-
-#### Обновить `domain/services/position_synchronizer.py` (deprecated методы):
-Убрать импорты из presentation, оставить только core-синхронизацию.
-
----
-
-### Фаза 4: Рефакторинг импортов в тестах
-
-Обновить тестовые файлы:
-- `tests/utils/test_camera_position.py` → `tests/presentation/camera/`
-
----
-
-### Фаза 5: Удаление пустой папки utils/
-
-После переноса всех модулей:
-```bash
-rm -rf utils/
-```
-
----
-
-## Итоговая архитектура
-
-```
-config/         - Конфигурация (без изменений)
-data/           - Data Layer (исправлены импорты)
-domain/         - Domain Layer (+ pathfinding_service)
-presentation/   - Presentation Layer (+ подпакеты)
-tests/          - Тесты (обновлены импорты)
-main.py         - Точка входа (обновлены импорты)
-```
-
-### Правила зависимостей (после исправления)
-```
-main.py → presentation → domain → config
-              ↓              ↓
-           data (через абстракции)
-```
-
-**Запрещено:**
-- ❌ domain → presentation
-- ❌ domain → data
-- ❌ data → presentation
-- ❌ config → что-либо (кроме констант)
-
-**Разрешено:**
-- ✅ presentation → domain
-- ✅ presentation → config
-- ✅ data → domain
-- ✅ domain → config
-- ✅ main → все слои (композиция)
-
----
-
-## Приоритеты
-
-1. **Высокий:** Перенос `pathfinding.py` в domain (нарушает Dependency Rule)
-2. **Высокий:** Перенос `raycasting.py`, `camera_controller.py` в presentation
-3. **Средний:** Обновление импортов в `save_manager.py`, `main.py`
-4. **Средний:** Реорганизация presentation в подпакеты
-5. **Низкий:** Удаление папки `utils/`
-
----
-
-## Риски и замечания
-
-1. **Циклические импорты:** При перемещении `pathfinding.py` проверить отсутствие циклов (использовать TYPE_CHECKING если нужно)
-2. **Тесты:** Все тесты использующие `utils/` нужно обновить
-3. **SaveManager:** Нужен рефакторинг для работы через DTO вместо прямых зависимостей от Camera
+## Риски и проверки
+1. Проверить смену режима 2D/3D (камера должна синхронизироваться корректно).
+2. Проверить сохранение/загрузку (включая восстановление камеры).
+3. Прогнать тесты: `tests/domain`, `tests/presentation`, `tests/data`, `tests/integration`.

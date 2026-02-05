@@ -253,7 +253,7 @@ def _scale_enemy_stats(
     if level_number <= 1:
         base_scaling = 1.0
     else:
-        base_scaling = GameConfig.ENEMY_STAT_SCALING ** (level_number - 1)
+        base_scaling = EnemyConfig.ENEMY_STAT_SCALING ** (level_number - 1)
     
     if difficulty_adjustments:
         stat_modifier = difficulty_adjustments.get('enemy_stat_modifier', 1.0)

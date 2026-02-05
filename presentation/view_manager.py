@@ -32,7 +32,7 @@ from domain.events import (
     LevelGeneratedEvent,
     CharacterMovedEvent,
 )
-from presentation.camera_sync import camera_sync
+from presentation.camera.sync import camera_sync
 from config.game_config import GameConfig
 
 

@@ -4,7 +4,7 @@ Tests for CameraSync presentation layer component.
 
 import pytest
 from unittest.mock import Mock
-from presentation.camera_sync import CameraSync, camera_sync
+from presentation.camera.sync import CameraSync, camera_sync
 from domain.entities.position import Position
 
 
