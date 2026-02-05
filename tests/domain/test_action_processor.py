@@ -6,8 +6,6 @@ from domain.services.action_types import ActionType
 
 from data.statistics import Statistics
 from data.save_manager import SaveManager
-from presentation.camera import Camera
-from presentation.camera import CameraController
 
 
 def _make_session(**kwargs):

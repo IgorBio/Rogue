@@ -56,7 +56,8 @@ def main(stdscr):
                     test_level=test_config['level'],
                     test_fog_of_war=test_config['fog_of_war'],
                     statistics_factory=Statistics,
-                    save_manager_factory=lambda: save_manager
+                    save_manager_factory=lambda: save_manager,
+                    camera_provider=view_manager
                 )
                 ui.display_message(f"TEST MODE: Level {test_config['level']}, Fog of War: {test_config['fog_of_war']}")
             
@@ -64,7 +65,8 @@ def main(stdscr):
                 # Create new game
                 game_session = GameSession(
                     statistics_factory=Statistics,
-                    save_manager_factory=lambda: save_manager
+                    save_manager_factory=lambda: save_manager,
+                    camera_provider=view_manager
                 )
                 ui.display_message("Welcome to the dungeon! Find the exit to proceed.")
             
@@ -77,7 +79,10 @@ def main(stdscr):
                     continue
                 
                 # Restore game session
-                game_session = save_manager.restore_game_session(save_data)
+                game_session = save_manager.restore_game_session(
+                    save_data,
+                    camera_provider=view_manager
+                )
                 ui.display_message("Game loaded! Welcome back!")
             
             else:

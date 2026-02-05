@@ -18,8 +18,6 @@ from domain.fog_of_war import FogOfWar
 from domain.dynamic_difficulty import DifficultyManager
 from data.statistics import Statistics
 from config.game_config import ItemType
-from presentation.camera import Camera
-from presentation.camera import CameraController
 
 # Save file configuration
 DEFAULT_SAVE_DIR = 'saves'
@@ -146,12 +144,13 @@ class SaveManager:
 
         return os.path.exists(filename)
 
-    def restore_game_session(self, save_data):
+    def restore_game_session(self, save_data, camera_provider=None):
         """
         Restore complete GameSession from saved data.
 
         Args:
             save_data (dict): Dictionary loaded from save file
+            camera_provider: Optional camera provider (presentation layer)
 
         Returns:
             GameSession: Restored game session instance
@@ -164,7 +163,8 @@ class SaveManager:
             test_mode=test_mode,
             test_fog_of_war=test_fog,
             statistics_factory=Statistics,
-            save_manager_factory=lambda: self
+            save_manager_factory=lambda: self,
+            camera_provider=camera_provider
         )
 
         # Restore level number
@@ -259,25 +259,14 @@ class SaveManager:
             # Fallback for old saves or explicit None
             game_session.difficulty_manager = DifficultyManager()
 
-        if 'camera' in save_data and save_data['camera'] is not None:
-            camera_data = save_data['camera']
-            game_session.camera = Camera(
-                camera_data['x'],
-                camera_data['y'],
-                angle=camera_data.get('angle', 0.0),
-                fov=camera_data.get('fov', 60.0)
-            )
-
-            # Recreate camera controller
-            from presentation.camera import CameraController
-            game_session.camera_controller = CameraController(
-                game_session.camera,
-                game_session.level
-            )
-        else:
-            # Create camera if needed (e.g., switching to 3D after load)
-            game_session.camera = None
-            game_session.camera_controller = None
+        # Preserve camera state for presentation layer to restore
+        camera_state = save_data.get('camera')
+        game_session.restored_camera_state = camera_state
+        if camera_provider is not None and hasattr(camera_provider, 'apply_camera_state'):
+            try:
+                camera_provider.apply_camera_state(camera_state, game_session.level)
+            except Exception:
+                pass
 
         # Finally: restore state machine to saved state without validating transitions
         try:

@@ -273,6 +273,35 @@ class ViewManager:
         self.camera_controller = None
         self._level = None
 
+    def apply_camera_state(self, camera_state: Optional[dict], level: Any) -> None:
+        """
+        Apply a serialized camera state and recreate controller.
+
+        Args:
+            camera_state: Dict with x, y, angle, fov or None
+            level: Level instance for controller binding
+        """
+        if camera_state is None or self._camera_factory is None:
+            return
+
+        try:
+            self.camera = self._camera_factory(
+                camera_state.get('x', 0.0),
+                camera_state.get('y', 0.0),
+                camera_state.get('angle', GameConfig.DEFAULT_CAMERA_ANGLE),
+                camera_state.get('fov', GameConfig.DEFAULT_CAMERA_FOV),
+            )
+        except Exception:
+            self.camera = None
+            self.camera_controller = None
+            return
+
+        if self._camera_controller_factory is not None and self.camera is not None:
+            try:
+                self.camera_controller = self._camera_controller_factory(self.camera, level)
+            except Exception:
+                self.camera_controller = None
+
 
 # Global instance for application-wide use
 view_manager = ViewManager()
