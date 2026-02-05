@@ -21,7 +21,7 @@ class GameUI:
         renderer_2d: Renderer instance for 2D mode
         input_handler_2d: InputHandler for 2D controls
         renderer_3d: Renderer3D instance for 3D mode
-        input_handler_3d: InputHandler3D for 3D controls
+        input_handler_3d: InputHandler for 3D controls
         combat_feedback: CombatFeedback for 3D combat visuals
         reticle: TargetingReticle for 3D aiming
         health_bar: EnemyHealthBar for 3D enemy display
@@ -47,12 +47,12 @@ class GameUI:
         
         # Initialize 3D components
         from presentation.renderer_3d import Renderer3D
-        from presentation.input import InputHandler3D
+        from presentation.input_handler import InputHandler
         from presentation.ui import CombatFeedback, TargetingReticle, EnemyHealthBar
         
         self.renderer_3d = Renderer3D(stdscr, viewport_width=70, viewport_height=20,
                                       use_textures=True, show_minimap=True, show_sprites=True)
-        self.input_handler_3d = InputHandler3D(stdscr)
+        self.input_handler_3d = InputHandler(stdscr, mode='3d')
         
         self.combat_feedback = CombatFeedback(stdscr)
         self.reticle = TargetingReticle(stdscr)
@@ -232,26 +232,26 @@ class GameUI:
         if game_session.is_3d_mode():
             action = self.input_handler_3d.get_action()
             
-            from presentation.input import InputHandler3D
+            from presentation.input_handler import InputHandler
             
-            if action == InputHandler3D.ACTION_TOGGLE_MODE:
+            if action == InputHandler.ACTION_TOGGLE_MODE:
                 new_mode = game_session.toggle_rendering_mode()
                 return ('toggle_mode', {'new_mode': new_mode})
-            elif action == InputHandler3D.ACTION_TOGGLE_DEBUG:
+            elif action == InputHandler.ACTION_TOGGLE_DEBUG:
                 self.show_debug = not self.show_debug
-                return (InputHandler3D.ACTION_NONE, None)
-            elif action == InputHandler3D.ACTION_TOGGLE_HELP:
+                return (InputHandler.ACTION_NONE, None)
+            elif action == InputHandler.ACTION_TOGGLE_HELP:
                 self.show_help = not self.show_help
-                return (InputHandler3D.ACTION_NONE, None)
-            elif action == InputHandler3D.ACTION_TOGGLE_TEXTURES:
+                return (InputHandler.ACTION_NONE, None)
+            elif action == InputHandler.ACTION_TOGGLE_TEXTURES:
                 self.renderer_3d.use_textures = not self.renderer_3d.use_textures
-                return (InputHandler3D.ACTION_NONE, None)
-            elif action == InputHandler3D.ACTION_TOGGLE_MINIMAP:
+                return (InputHandler.ACTION_NONE, None)
+            elif action == InputHandler.ACTION_TOGGLE_MINIMAP:
                 self.renderer_3d.toggle_minimap()
-                return (InputHandler3D.ACTION_NONE, None)
-            elif action == InputHandler3D.ACTION_TOGGLE_SPRITES:
+                return (InputHandler.ACTION_NONE, None)
+            elif action == InputHandler.ACTION_TOGGLE_SPRITES:
                 self.renderer_3d.toggle_sprites()
-                return (InputHandler3D.ACTION_NONE, None)
+                return (InputHandler.ACTION_NONE, None)
             
             return (action, None)
         else:
