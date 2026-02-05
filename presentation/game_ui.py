@@ -39,7 +39,7 @@ class GameUI:
         self.stdscr = stdscr
         
         # Initialize 2D components
-        from presentation.renderer import Renderer
+        from presentation.renderer_2d import Renderer
         from presentation.input_handler import InputHandler
         
         self.renderer_2d = Renderer(stdscr)
@@ -103,7 +103,7 @@ class GameUI:
         Returns:
             int: Selected index or None
         """
-        from presentation.ui_components import show_item_selection
+        from presentation.renderer_2d import show_item_selection
         
         return show_item_selection(
             self.stdscr,
@@ -122,22 +122,22 @@ class GameUI:
         Returns:
             str: Selected option
         """
-        from presentation.ui_components import show_main_menu
+        from presentation.renderer_2d import show_main_menu
         return show_main_menu(self.stdscr, save_manager)
     
     def show_test_mode_menu(self):
         """Show test mode configuration menu."""
-        from presentation.ui_components import show_test_mode_menu
+        from presentation.renderer_2d import show_test_mode_menu
         return show_test_mode_menu(self.stdscr)
     
     def show_statistics(self, stats_manager):
         """Show statistics/leaderboard screen."""
-        from presentation.ui_components import show_statistics_screen
+        from presentation.renderer_2d import show_statistics_screen
         show_statistics_screen(self.stdscr, stats_manager)
     
     def show_game_over(self, stats, victory=False):
         """Show game over screen with statistics."""
-        from presentation.ui_components import show_game_over_screen
+        from presentation.renderer_2d import show_game_over_screen
         return show_game_over_screen(self.stdscr, stats, victory)
     
     def render_game(self, game_session):
@@ -197,7 +197,7 @@ class GameUI:
         self.combat_feedback.render(x_offset=viewport_x, y_offset=viewport_y,
                                     max_width=self.renderer_3d.viewport_width)
         
-        from presentation.ui_components import render_status_panel
+        from presentation.renderer_2d import render_status_panel
         status_y = viewport_y + self.renderer_3d.viewport_height + 2
         render_status_panel(self.stdscr, character, level, game_session.stats, y_offset=status_y)
         
