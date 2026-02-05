@@ -6,7 +6,6 @@ from domain.level_generator import generate_level, spawn_emergency_healing
 from domain.entities.character import Character
 from domain.fog_of_war import FogOfWar
 from domain.dynamic_difficulty import DifficultyManager
-from domain.services.position_synchronizer import PositionSynchronizer
 from domain.services.game_states import GameState, StateMachine
 from domain.events import LevelGeneratedEvent, CharacterMovedEvent, GameEndedEvent
 from domain.event_bus import event_bus
@@ -33,7 +32,6 @@ class GameSession:
         difficulty_manager: DifficultyManager instance
         stats: Statistics instance
         state_machine: StateMachine for explicit state management
-        position_sync: PositionSynchronizer for coordinate sync
     """
     
     def __init__(self, test_mode=False, test_level=1, test_fog_of_war=False,
@@ -70,7 +68,6 @@ class GameSession:
         self.state_machine = StateMachine()
         
         # Position synchronizer for 2D ↔ 3D coordinate sync
-        self.position_sync = PositionSynchronizer(center_offset=0.5)
         
         self.difficulty_manager = DifficultyManager()
 
@@ -236,29 +233,17 @@ class GameSession:
         """
         Toggle between 2D and 3D rendering modes.
 
-        Uses PositionSynchronizer for type-safe coordinate conversion.
+        Camera synchronization is handled by the presentation layer.
         """
         if self.rendering_mode == "2d":
-            # Switching to 3D: sync camera to character (only if camera available)
             self.rendering_mode = "3d"
-            if self.camera is not None:
-                try:
-                    self.position_sync.sync_camera_to_character(self.camera, self.character, preserve_angle=True)
-                except Exception:
-                    pass
             self.message = "Switched to 3D view"
         else:
-            # Switching to 2D: sync character to camera (only if camera available)
             self.rendering_mode = "2d"
-            if self.camera is not None:
-                try:
-                    self.position_sync.sync_character_to_camera(self.character, self.camera, snap_to_grid=True)
-                except Exception:
-                    pass
             self.message = "Switched to 2D view"
 
         return self.rendering_mode
-    
+
     def get_rendering_mode(self):
         """Get current rendering mode."""
         return self.rendering_mode
