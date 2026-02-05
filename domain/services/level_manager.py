@@ -5,6 +5,7 @@ coordinates level-number tracking and difficulty adjustments.
 
 Statistics are now tracked via events published to the EventBus.
 """
+from domain.logging_utils import log_exception
 from typing import Optional
 
 from domain.level_generator import generate_level
@@ -35,8 +36,8 @@ class LevelManager:
             # Keep difficulty manager up-to-date
             try:
                 self.difficulty_manager.update_performance(stats, character)
-            except Exception:
-                pass
+            except Exception as exc:
+                    log_exception(exc, __name__)
 
         level = generate_level(level_number, difficulty_adjustments)
         self.current_level_number = level_number
@@ -84,8 +85,8 @@ class LevelManager:
             event_bus.publish(LevelReachedEvent(
                 level_number=session.current_level_number
             ))
-        except Exception:
-            pass
+        except Exception as exc:
+                log_exception(exc, __name__)
 
         # Begin level transition state before generating the new level
         if hasattr(session, 'begin_level_transition'):

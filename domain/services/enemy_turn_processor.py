@@ -5,6 +5,7 @@ Encapsulates enemy-turn logic so it can be tested and refactored
 independently from `GameSession`.
 """
 
+from domain.logging_utils import log_exception
 from domain.enemy_ai import (
     get_enemy_movement,
     get_special_attack_effects,

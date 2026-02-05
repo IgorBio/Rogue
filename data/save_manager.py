@@ -2,6 +2,7 @@
 Save and load game state persistence.
 """
 
+from domain.logging_utils import log_exception
 import json
 import os
 from datetime import datetime
@@ -261,12 +262,11 @@ class SaveManager:
 
         # Preserve camera state for presentation layer to restore
         camera_state = save_data.get('camera')
-        game_session.restored_camera_state = camera_state
         if camera_provider is not None and hasattr(camera_provider, 'apply_camera_state'):
             try:
                 camera_provider.apply_camera_state(camera_state, game_session.level)
-            except Exception:
-                pass
+            except Exception as exc:
+                    log_exception(exc, __name__)
 
         # Finally: restore state machine to saved state without validating transitions
         try:
@@ -275,8 +275,8 @@ class SaveManager:
             # As a final safety net, leave session in PLAYING if restore fails
             try:
                 game_session.state_machine.restore_state(GameState.PLAYING)
-            except Exception:
-                pass
+            except Exception as exc:
+                    log_exception(exc, __name__)
 
         return game_session
 

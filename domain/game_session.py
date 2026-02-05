@@ -2,6 +2,7 @@
 Game session management and core game loop logic.
 """
 
+from domain.logging_utils import log_exception
 from domain.level_generator import generate_level, spawn_emergency_healing
 from domain.entities.character import Character
 from domain.fog_of_war import FogOfWar
@@ -120,8 +121,8 @@ class GameSession:
                 final_dexterity=self.character.dexterity,
                 level_reached=self.current_level_number
             ))
-        except Exception:
-            pass
+        except Exception as exc:
+                log_exception(exc, __name__)
     
     def set_victory(self) -> None:
         """Set victory state (won the game)."""
@@ -135,8 +136,8 @@ class GameSession:
                 final_dexterity=self.character.dexterity,
                 level_reached=self.current_level_number
             ))
-        except Exception:
-            pass
+        except Exception as exc:
+                log_exception(exc, __name__)
     
     def set_player_asleep(self) -> None:
         """Put player to sleep (snake mage effect)."""
@@ -271,6 +272,10 @@ class GameSession:
         """
         # Delegate to the coordinator
         return self._coordinator.process_action(action_type, action_data)
+
+    def process_enemy_turns(self) -> None:
+        """Process all enemy turns via coordinator."""
+        return self._coordinator.process_enemy_turns()
 
 
     @property
@@ -435,3 +440,15 @@ class GameSession:
     def get_state_machine(self):
         """Get the state machine."""
         return self.state_machine
+
+    # ============================================================================
+    # Coordinator delegates (public API for services)
+    # ============================================================================
+
+    def get_item_at(self, x: int, y: int):
+        """Get item at position via coordinator."""
+        return self._coordinator.get_item_at(self.level, x, y)
+
+    def get_revealed_enemy_at(self, x: int, y: int):
+        """Get revealed enemy at position via coordinator."""
+        return self._coordinator.get_revealed_enemy_at(self.level, x, y)

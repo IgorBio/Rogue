@@ -7,6 +7,7 @@ effects) without changing callers.
 Statistics are now tracked via events published to the EventBus,
 eliminating direct coupling between CombatSystem and Statistics.
 """
+from domain.logging_utils import log_exception
 from typing import Optional, Any
 
 from domain import combat as _combat
@@ -45,8 +46,8 @@ class CombatSystem:
                 damage=result.get('damage', 0),
                 killed=result.get('killed', False)
             ))
-        except Exception:
-            pass
+        except Exception as exc:
+                log_exception(exc, __name__)
 
         # If enemy died, attach treasure value for convenience
         if result.get('killed', False):
@@ -74,8 +75,8 @@ class CombatSystem:
                     damage=result.get('damage', 0),
                     enemy_type=str(enemy_type)
                 ))
-            except Exception:
-                pass
+            except Exception as exc:
+                    log_exception(exc, __name__)
 
         return result
 
@@ -109,8 +110,8 @@ class CombatSystem:
             if treasure:
                 try:
                     session.character.backpack.treasure_value += treasure
-                except Exception:
-                    pass
+                except Exception as exc:
+                        log_exception(exc, __name__)
                 # Publish enemy defeated event for statistics tracking
                 try:
                     enemy_type = getattr(enemy, 'enemy_type', 'unknown')
@@ -121,8 +122,8 @@ class CombatSystem:
                         enemy_level=enemy_level,
                         position=position if isinstance(position, tuple) else (0, 0)
                     ))
-                except Exception:
-                    pass
+                except Exception as exc:
+                        log_exception(exc, __name__)
 
             # Remove enemy from its room
             enemy_room = None
@@ -134,39 +135,38 @@ class CombatSystem:
             if enemy_room:
                 try:
                     enemy_room.remove_enemy(enemy)
-                except Exception:
-                    pass
+                except Exception as exc:
+                        log_exception(exc, __name__)
 
             # Move player onto enemy tile
             try:
                 session.character.move_to(enemy.position[0], enemy.position[1])
-            except Exception:
-                pass
+            except Exception as exc:
+                    log_exception(exc, __name__)
 
             # Sync camera in 3D mode
             if session.is_3d_mode():
                 try:
                     session.camera.x = enemy.position[0]
                     session.camera.y = enemy.position[1]
-                except Exception:
-                    pass
+                except Exception as exc:
+                        log_exception(exc, __name__)
 
             if session.should_use_fog_of_war():
                 try:
                     session.fog_of_war.update_visibility(session.character.position)
-                except Exception:
-                    pass
+                except Exception as exc:
+                        log_exception(exc, __name__)
 
             # Pickup item if present
             try:
-                item = session._get_item_at(enemy.position[0], enemy.position[1])
+                item = session.get_item_at(enemy.position[0], enemy.position[1])
                 if item:
                     pickup_message = session._pickup_item(item)
                     if pickup_message:
                         messages.append(pickup_message)
-            except Exception:
-                pass
+            except Exception as exc:
+                    log_exception(exc, __name__)
 
         session.message = " ".join(messages)
         return True
-

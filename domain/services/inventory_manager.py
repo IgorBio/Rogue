@@ -5,6 +5,7 @@ This manager owns pending selections and pickup/drop logic so the
 
 Statistics are now tracked via events published to the EventBus.
 """
+from domain.logging_utils import log_exception
 from config.game_config import ItemType, PlayerConfig
 from domain.services.item_selection import SelectionRequest
 from domain.event_bus import event_bus
@@ -114,7 +115,7 @@ class InventoryManager:
         session.return_from_selection()
 
         if result and not session.state_machine.is_terminal():
-            session._process_enemy_turns()
+            session.process_enemy_turns()
 
         return result
 
@@ -134,8 +135,8 @@ class InventoryManager:
                 health_restored=getattr(food, 'health_restoration', 0),
                 food_item=food
             ))
-        except Exception:
-            pass
+        except Exception as exc:
+                log_exception(exc, __name__)
         session.message = message
         return True
 
@@ -184,8 +185,8 @@ class InventoryManager:
                 weapon_name=getattr(weapon, 'name', 'unknown'),
                 damage_bonus=getattr(weapon, 'damage_bonus', 0)
             ))
-        except Exception:
-            pass
+        except Exception as exc:
+                log_exception(exc, __name__)
         return True
 
     def _drop_weapon_on_ground(self, weapon):
@@ -200,10 +201,10 @@ class InventoryManager:
             if not session.level.is_walkable(pos_x, pos_y):
                 continue
 
-            if session._get_revealed_enemy_at(pos_x, pos_y):
+            if session.get_revealed_enemy_at(pos_x, pos_y):
                 continue
 
-            if session._get_item_at(pos_x, pos_y):
+            if session.get_item_at(pos_x, pos_y):
                 continue
 
             weapon.position = (pos_x, pos_y)
@@ -239,8 +240,8 @@ class InventoryManager:
                 stat_boosted=stat_boosted,
                 boost_amount=boost_amount
             ))
-        except Exception:
-            pass
+        except Exception as exc:
+                log_exception(exc, __name__)
         session.message = message
         return True
 
@@ -260,8 +261,8 @@ class InventoryManager:
                 scroll_type=getattr(scroll, 'scroll_type', 'unknown'),
                 effect_description=getattr(scroll, 'description', '')
             ))
-        except Exception:
-            pass
+        except Exception as exc:
+                log_exception(exc, __name__)
         session.message = message
         return True
 
@@ -283,8 +284,8 @@ class InventoryManager:
                     item=item,
                     position=getattr(item, 'position', (0, 0))
                 ))
-            except Exception:
-                pass
+            except Exception as exc:
+                    log_exception(exc, __name__)
 
             item_room = self.get_item_room(item)
             if item_room:

@@ -5,6 +5,7 @@ state checks (sleep, terminal states) so the session stays thin.
 
 Statistics are now tracked via events published to the EventBus.
 """
+from domain.logging_utils import log_exception
 from domain.services.game_states import GameState
 from domain.services.action_types import ActionType
 from domain.event_bus import event_bus
@@ -60,8 +61,8 @@ class ActionProcessor:
             # process enemy turns after being asleep
             try:
                 self.session._coordinator.process_enemy_turns()
-            except Exception:
-                pass
+            except Exception as exc:
+                    log_exception(exc, __name__)
             return False
 
         # Terminal states: no actions allowed
@@ -207,7 +208,7 @@ class ActionProcessor:
                     item=item,
                     position=getattr(item, 'position', (0, 0))
                 ))
-            except Exception:
-                pass
+            except Exception as exc:
+                    log_exception(exc, __name__)
 
         return success

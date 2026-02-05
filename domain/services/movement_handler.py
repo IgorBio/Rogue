@@ -6,6 +6,7 @@ This file deliberately contains a single, unambiguous definition of
 
 Statistics are now tracked via events published to the EventBus.
 """
+from domain.logging_utils import log_exception
 from domain.event_bus import event_bus
 from domain.events import PlayerMovedEvent
 from config.game_config import GameConfig
@@ -66,8 +67,8 @@ class MovementHandler:
                         from_pos=(current_x, current_y),
                         to_pos=(new_x, new_y)
                     ))
-                except Exception:
-                    pass
+                except Exception as exc:
+                        log_exception(exc, __name__)
 
                 item = session._coordinator.get_item_at(session.level, new_x, new_y)
                 if item:
@@ -113,8 +114,8 @@ class MovementHandler:
                 from_pos=(current_x, current_y),
                 to_pos=(new_x, new_y)
             ))
-        except Exception:
-            pass
+        except Exception as exc:
+                log_exception(exc, __name__)
 
         if session.level.exit_position == (new_x, new_y):
             session._coordinator.advance_level(session, GameConfig.TOTAL_LEVELS)
@@ -155,8 +156,8 @@ class MovementHandler:
                 from_pos=session.character.position,
                 to_pos=(new_x, new_y)
             ))
-        except Exception:
-            pass
+        except Exception as exc:
+                log_exception(exc, __name__)
 
         session._coordinator.process_enemy_turns()
         return True

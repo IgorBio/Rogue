@@ -26,6 +26,7 @@ Usage:
     controller = vm.camera_controller
 """
 
+from domain.logging_utils import log_exception
 from typing import Any, Optional, Callable, Tuple
 from domain.event_bus import event_bus
 from domain.events import (

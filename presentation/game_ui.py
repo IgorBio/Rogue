@@ -5,6 +5,7 @@ This module coordinates all UI interactions for the game, providing
 a unified interface for both 2D and 3D rendering modes. Acts as a
 facade for the entire presentation layer.
 """
+from domain.logging_utils import log_exception
 import curses
 
 
