@@ -255,40 +255,14 @@ class GameUI:
             
             return (action, None)
         else:
-            key = self.stdscr.getch()
-            
-            if key == 9:
+            action_type, action_data = self.input_handler_2d.get_action()
+            from presentation.input_handler import InputHandler
+
+            if action_type == InputHandler.ACTION_TOGGLE_MODE:
                 new_mode = game_session.toggle_rendering_mode()
                 return ('toggle_mode', {'new_mode': new_mode})
-            
-            from presentation.input_handler import InputHandler
-            
-            key_map = {
-                ord('w'): (InputHandler.ACTION_MOVE, InputHandler.DIR_UP),
-                ord('W'): (InputHandler.ACTION_MOVE, InputHandler.DIR_UP),
-                ord('s'): (InputHandler.ACTION_MOVE, InputHandler.DIR_DOWN),
-                ord('S'): (InputHandler.ACTION_MOVE, InputHandler.DIR_DOWN),
-                ord('a'): (InputHandler.ACTION_MOVE, InputHandler.DIR_LEFT),
-                ord('A'): (InputHandler.ACTION_MOVE, InputHandler.DIR_LEFT),
-                ord('d'): (InputHandler.ACTION_MOVE, InputHandler.DIR_RIGHT),
-                ord('D'): (InputHandler.ACTION_MOVE, InputHandler.DIR_RIGHT),
-                curses.KEY_UP: (InputHandler.ACTION_MOVE, InputHandler.DIR_UP),
-                curses.KEY_DOWN: (InputHandler.ACTION_MOVE, InputHandler.DIR_DOWN),
-                curses.KEY_LEFT: (InputHandler.ACTION_MOVE, InputHandler.DIR_LEFT),
-                curses.KEY_RIGHT: (InputHandler.ACTION_MOVE, InputHandler.DIR_RIGHT),
-                ord('h'): (InputHandler.ACTION_USE_WEAPON, None),
-                ord('H'): (InputHandler.ACTION_USE_WEAPON, None),
-                ord('j'): (InputHandler.ACTION_USE_FOOD, None),
-                ord('J'): (InputHandler.ACTION_USE_FOOD, None),
-                ord('k'): (InputHandler.ACTION_USE_ELIXIR, None),
-                ord('K'): (InputHandler.ACTION_USE_ELIXIR, None),
-                ord('e'): (InputHandler.ACTION_USE_SCROLL, None),
-                ord('E'): (InputHandler.ACTION_USE_SCROLL, None),
-                ord('q'): (InputHandler.ACTION_QUIT, None),
-                ord('Q'): (InputHandler.ACTION_QUIT, None),
-            }
-            
-            return key_map.get(key, (InputHandler.ACTION_NONE, None))
+
+            return (action_type, action_data)
     
     def display_message(self, message):
         """Display a message."""

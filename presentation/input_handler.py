@@ -6,6 +6,7 @@ Supports both WASD and arrow key movement schemes, plus action keys
 for item usage and game control.
 """
 import curses
+from domain.services.action_types import ActionType
 
 
 class InputHandler:
@@ -19,14 +20,17 @@ class InputHandler:
         stdscr: Curses standard screen object
     """
     
-    # Action types
-    ACTION_MOVE = "move"
-    ACTION_USE_WEAPON = "use_weapon"
-    ACTION_USE_FOOD = "use_food"
-    ACTION_USE_ELIXIR = "use_elixir"
-    ACTION_USE_SCROLL = "use_scroll"
-    ACTION_QUIT = "quit"
-    ACTION_NONE = "none"
+    # Action types (domain)
+    ACTION_MOVE = ActionType.MOVE
+    ACTION_USE_WEAPON = ActionType.USE_WEAPON
+    ACTION_USE_FOOD = ActionType.USE_FOOD
+    ACTION_USE_ELIXIR = ActionType.USE_ELIXIR
+    ACTION_USE_SCROLL = ActionType.USE_SCROLL
+    ACTION_QUIT = ActionType.QUIT
+    ACTION_NONE = ActionType.NONE
+
+    # UI-only action
+    ACTION_TOGGLE_MODE = "toggle_mode"
     
     # Direction tuples (dx, dy)
     DIR_UP = (0, -1)
@@ -80,6 +84,10 @@ class InputHandler:
             return (self.ACTION_MOVE, self.DIR_LEFT)
         elif key == curses.KEY_RIGHT:
             return (self.ACTION_MOVE, self.DIR_RIGHT)
+
+        # Toggle 2D/3D mode (handled by UI layer)
+        elif key == ord('\t') or key == 9:
+            return (self.ACTION_TOGGLE_MODE, None)
         
         # Item usage keys
         elif key == ord('h') or key == ord('H'):

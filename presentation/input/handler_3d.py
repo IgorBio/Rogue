@@ -2,23 +2,24 @@
 Enhanced Input handler for 3D first-person mode with combat support.
 """
 import curses
+from domain.services.action_types import ActionType
 
 
 class InputHandler3D:
     """Handles input for 3D first-person mode with combat."""
     
-    # Action types - Movement
-    ACTION_MOVE_FORWARD = "move_forward"
-    ACTION_MOVE_BACKWARD = "move_backward"
-    ACTION_STRAFE_LEFT = "strafe_left"
-    ACTION_STRAFE_RIGHT = "strafe_right"
-    ACTION_ROTATE_LEFT = "rotate_left"
-    ACTION_ROTATE_RIGHT = "rotate_right"
+    # Action types - Movement (domain)
+    ACTION_MOVE_FORWARD = ActionType.MOVE_FORWARD
+    ACTION_MOVE_BACKWARD = ActionType.MOVE_BACKWARD
+    ACTION_STRAFE_LEFT = ActionType.STRAFE_LEFT
+    ACTION_STRAFE_RIGHT = ActionType.STRAFE_RIGHT
+    ACTION_ROTATE_LEFT = ActionType.ROTATE_LEFT
+    ACTION_ROTATE_RIGHT = ActionType.ROTATE_RIGHT
     
-    # Action types - Combat & Interaction
-    ACTION_ATTACK = "attack"
-    ACTION_PICKUP = "pickup"
-    ACTION_INTERACT = "interact"  # Generic interaction (attack/pickup/use)
+    # Action types - Combat & Interaction (domain)
+    ACTION_ATTACK = ActionType.ATTACK
+    ACTION_PICKUP = ActionType.PICKUP
+    ACTION_INTERACT = ActionType.INTERACT  # Generic interaction (attack/pickup/use)
     
     # Action types - UI
     ACTION_TOGGLE_MODE = "toggle_mode"
@@ -28,15 +29,15 @@ class InputHandler3D:
     ACTION_TOGGLE_MINIMAP = "toggle_minimap"
     ACTION_TOGGLE_SPRITES = "toggle_sprites"
     
-    # Action types - Items
-    ACTION_USE_WEAPON = "use_weapon"
-    ACTION_USE_FOOD = "use_food"
-    ACTION_USE_ELIXIR = "use_elixir"
-    ACTION_USE_SCROLL = "use_scroll"
+    # Action types - Items (domain)
+    ACTION_USE_WEAPON = ActionType.USE_WEAPON
+    ACTION_USE_FOOD = ActionType.USE_FOOD
+    ACTION_USE_ELIXIR = ActionType.USE_ELIXIR
+    ACTION_USE_SCROLL = ActionType.USE_SCROLL
     
-    # Action types - System
-    ACTION_QUIT = "quit"
-    ACTION_NONE = "none"
+    # Action types - System (domain)
+    ACTION_QUIT = ActionType.QUIT
+    ACTION_NONE = ActionType.NONE
     
     def __init__(self, stdscr):
         """

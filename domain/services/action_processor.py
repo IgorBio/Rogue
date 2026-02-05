@@ -6,39 +6,52 @@ state checks (sleep, terminal states) so the session stays thin.
 Statistics are now tracked via events published to the EventBus.
 """
 from domain.services.game_states import GameState
+from domain.services.action_types import ActionType
 from domain.event_bus import event_bus
 from domain.events import ItemCollectedEvent
 
 
 class ActionProcessor:
-    # 2D action constants (decoupled from presentation layer)
-    ACTION_MOVE = "move"
-    ACTION_USE_FOOD = "use_food"
-    ACTION_USE_WEAPON = "use_weapon"
-    ACTION_USE_ELIXIR = "use_elixir"
-    ACTION_USE_SCROLL = "use_scroll"
-    ACTION_QUIT = "quit"
-    ACTION_NONE = "none"
+    # 2D action constants (domain)
+    ACTION_MOVE = ActionType.MOVE
+    ACTION_USE_FOOD = ActionType.USE_FOOD
+    ACTION_USE_WEAPON = ActionType.USE_WEAPON
+    ACTION_USE_ELIXIR = ActionType.USE_ELIXIR
+    ACTION_USE_SCROLL = ActionType.USE_SCROLL
+    ACTION_QUIT = ActionType.QUIT
+    ACTION_NONE = ActionType.NONE
 
-    # 3D action constants
-    ACTION_MOVE_FORWARD = "move_forward"
-    ACTION_MOVE_BACKWARD = "move_backward"
-    ACTION_STRAFE_LEFT = "strafe_left"
-    ACTION_STRAFE_RIGHT = "strafe_right"
-    ACTION_ROTATE_LEFT = "rotate_left"
-    ACTION_ROTATE_RIGHT = "rotate_right"
-    ACTION_INTERACT = "interact"
-    ACTION_ATTACK = "attack"
-    ACTION_PICKUP = "pickup"
+    # 3D action constants (domain)
+    ACTION_MOVE_FORWARD = ActionType.MOVE_FORWARD
+    ACTION_MOVE_BACKWARD = ActionType.MOVE_BACKWARD
+    ACTION_STRAFE_LEFT = ActionType.STRAFE_LEFT
+    ACTION_STRAFE_RIGHT = ActionType.STRAFE_RIGHT
+    ACTION_ROTATE_LEFT = ActionType.ROTATE_LEFT
+    ACTION_ROTATE_RIGHT = ActionType.ROTATE_RIGHT
+    ACTION_INTERACT = ActionType.INTERACT
+    ACTION_ATTACK = ActionType.ATTACK
+    ACTION_PICKUP = ActionType.PICKUP
 
     def __init__(self, session):
         self.session = session
+
+    def _normalize_action_type(self, action_type):
+        if isinstance(action_type, ActionType):
+            return action_type
+        if isinstance(action_type, str):
+            try:
+                return ActionType.from_string(action_type)
+            except Exception:
+                return action_type
+        return action_type
     def process_action(self, action_type, action_data):
         """Process an action, enforcing state checks and delegating to
         the appropriate 2D/3D handlers implemented on this processor.
 
         Returns True when action succeeded, False otherwise.
         """
+        action_type = self._normalize_action_type(action_type)
+
         # Sleep handling: wake player and process enemy turns
         if self.session.state_machine.is_asleep():
             self.session.message = "You are asleep and cannot act this turn!"
