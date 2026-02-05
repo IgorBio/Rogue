@@ -41,8 +41,8 @@ class PositionSynchronizer:
     def are_positions_aligned(self, character: Character,
                               camera_coords: Tuple[float, float]) -> bool:
         """Check if character and camera are on the same grid cell."""
-        char_pos = Position(*character.position)
-        expected_x, expected_y = char_pos.to_camera_coords(self.center_offset)
+        expected_x = float(character.position[0]) + self.center_offset
+        expected_y = float(character.position[1]) + self.center_offset
         cam_x, cam_y = camera_coords
         return (int(cam_x) == int(expected_x) and int(cam_y) == int(expected_y))
 
@@ -61,7 +61,7 @@ class PositionSyncValidator:
         """Validate current sync state between character and camera coords."""
         char_pos = character.position
         cam_pos = camera_coords
-        cam_grid = Position.from_camera_coords(cam_pos[0], cam_pos[1], snap_mode='floor').tuple
+        cam_grid = (int(cam_pos[0]), int(cam_pos[1]))
 
         offset_x = cam_pos[0] - char_pos[0]
         offset_y = cam_pos[1] - char_pos[1]
@@ -89,7 +89,7 @@ class PositionSyncValidator:
         """Suggest which sync direction to use based on current state."""
         char_pos = character.position
         cam_x, cam_y = camera_coords
-        cam_grid = Position.from_camera_coords(cam_x, cam_y, snap_mode='floor').tuple
+        cam_grid = (int(cam_x), int(cam_y))
 
         if char_pos == cam_grid:
             return 'none'
@@ -107,12 +107,17 @@ def quick_sync_character_to_camera_coords(character: Character,
                                            camera_coords: Tuple[float, float],
                                            snap_mode: str = 'floor') -> None:
     """Quick sync character to camera coordinates (Camera -> Character)."""
-    position = Position.from_camera_coords(camera_coords[0], camera_coords[1], snap_mode)
-    character.move_to(position.x, position.y)
+    if snap_mode == 'round':
+        x = round(camera_coords[0])
+        y = round(camera_coords[1])
+    else:
+        x = int(camera_coords[0])
+        y = int(camera_coords[1])
+    character.move_to(int(x), int(y))
 
 
 def quick_sync_camera_coords_to_position(camera_coords: Tuple[float, float],
                                           center_offset: float = 0.5) -> Tuple[float, float]:
     """Convert position to camera coordinates (Character -> Camera)."""
-    position = Position.from_camera_coords(camera_coords[0], camera_coords[1])
-    return position.to_camera_coords(center_offset)
+    return (float(int(camera_coords[0])) + center_offset,
+            float(int(camera_coords[1])) + center_offset)

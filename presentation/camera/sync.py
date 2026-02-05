@@ -2,8 +2,8 @@
 Camera synchronization for presentation layer.
 
 This module handles synchronization between domain Position/Character
-and presentation Camera objects. It uses Position.to_camera_coords()
-for coordinate transformation, keeping domain layer clean.
+and presentation Camera objects. Coordinate conversion is kept in
+presentation to avoid camera concerns in domain.
 
 Also includes helper functions for creating synchronized pairs.
 
@@ -67,7 +67,8 @@ class CameraSync:
         Example:
             Position(10, 20) → Camera at (10.5, 20.5)
         """
-        cam_x, cam_y = position.to_camera_coords(self.center_offset)
+        cam_x = float(position.x) + self.center_offset
+        cam_y = float(position.y) + self.center_offset
         
         if preserve_angle:
             old_angle = getattr(camera, 'angle', 0)
@@ -91,8 +92,15 @@ class CameraSync:
         Example:
             Character at (10, 20) → Camera at (10.5, 20.5)
         """
-        position = Position(*character.position)
-        self.sync_camera_to_position(camera, position, preserve_angle)
+        cam_x = float(character.position[0]) + self.center_offset
+        cam_y = float(character.position[1]) + self.center_offset
+        if preserve_angle:
+            old_angle = getattr(camera, 'angle', 0)
+            camera.set_position(cam_x, cam_y)
+            camera.angle = old_angle
+        else:
+            camera.set_position(cam_x, cam_y)
+        self._last_position = (cam_x, cam_y)
 
     def sync_character_from_camera(self, character: Character, camera: Any,
                                   snap_mode: str = 'floor') -> None:
@@ -108,8 +116,13 @@ class CameraSync:
             Camera at (10.5, 20.7) → Character at (10, 20) [floor]
             Camera at (10.5, 20.7) → Character at (11, 21) [round]
         """
-        position = Position.from_camera_coords(camera.x, camera.y, snap_mode)
-        character.move_to(position.x, position.y)
+        if snap_mode == 'round':
+            x = round(camera.x)
+            y = round(camera.y)
+        else:
+            x = int(camera.x)
+            y = int(camera.y)
+        character.move_to(int(x), int(y))
     
     def sync_camera_to_coords(self, camera: Any, x: int, y: int,
                              preserve_angle: bool = True) -> None:
@@ -135,9 +148,7 @@ class CameraSync:
         Returns:
             Tuple[int, int]: Grid coordinates (x, y)
         """
-        # Use Position.from_camera_coords with floor mode
-        pos = Position.from_camera_coords(camera.x, camera.y, snap_mode='floor')
-        return pos.tuple
+        return (int(camera.x), int(camera.y))
     
     def is_camera_at_position(self, camera: Any, position: Position,
                              tolerance: float = 0.01) -> bool:
@@ -152,7 +163,8 @@ class CameraSync:
         Returns:
             bool: True if camera is at position
         """
-        expected_x, expected_y = position.to_camera_coords(self.center_offset)
+        expected_x = float(position.x) + self.center_offset
+        expected_y = float(position.y) + self.center_offset
         actual_x, actual_y = camera.x, camera.y
         
         return (abs(actual_x - expected_x) < tolerance and 
@@ -169,7 +181,8 @@ class CameraSync:
         Returns:
             Tuple[float, float]: (offset_x, offset_y)
         """
-        expected_x, expected_y = position.to_camera_coords(self.center_offset)
+        expected_x = float(position.x) + self.center_offset
+        expected_y = float(position.y) + self.center_offset
         return (camera.x - expected_x, camera.y - expected_y)
     
     def reset(self) -> None:

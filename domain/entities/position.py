@@ -105,44 +105,6 @@ class Position:
         """
         return Position(self._x, self._y)
 
-    def to_camera_coords(self, offset: float = 0.5) -> Tuple[float, float]:
-        """
-        Convert grid position to camera coordinates.
-
-        Camera uses float coordinates with offset for centering
-        in grid cell (e.g., 10.5 instead of 10).
-
-        Args:
-            offset: Centering offset (default 0.5)
-
-        Returns:
-            Tuple[float, float]: Camera coordinates (x, y)
-        """
-        return (float(self._x) + offset, float(self._y) + offset)
-
-    @classmethod
-    def from_camera_coords(cls, x: float, y: float,
-                          snap_mode: str = 'floor') -> 'Position':
-        """
-        Create Position from camera coordinates.
-
-        Args:
-            x: Camera X coordinate (float)
-            y: Camera Y coordinate (float)
-            snap_mode: Rounding method:
-                      'floor' — round down (int())
-                      'round' — round to nearest
-
-        Returns:
-            Position: New position with int coordinates
-        """
-        if snap_mode == 'floor':
-            return cls(int(x), int(y))
-        elif snap_mode == 'round':
-            return cls(round(x), round(y))
-        else:
-            raise ValueError(f"Unknown snap_mode: {snap_mode}")
-
     def is_adjacent_to(self, other: Union['Position', Tuple[int, int]]) -> bool:
         """
         Check if position is adjacent (including diagonals).
