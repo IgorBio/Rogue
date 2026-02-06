@@ -114,34 +114,9 @@ class ViewManager:
             event: LevelGeneratedEvent with level and character_position
         """
         self._level = event.level
-        
-        if self._camera_factory is None:
-            return
-        
+
         start_x, start_y = event.character_position
-        
-        try:
-            # Create camera at center of starting cell
-            self.camera = self._camera_factory(
-                start_x + 0.5,
-                start_y + 0.5,
-                GameConfig.DEFAULT_CAMERA_ANGLE,
-                GameConfig.DEFAULT_CAMERA_FOV,
-            )
-        except Exception:
-            self.camera = None
-            self.camera_controller = None
-            return
-        
-        # Create camera controller if factory provided
-        if self._camera_controller_factory is not None and self.camera is not None:
-            try:
-                self.camera_controller = self._camera_controller_factory(
-                    self.camera, 
-                    event.level
-                )
-            except Exception:
-                self.camera_controller = None
+        self._create_camera_at(start_x, start_y, event.level)
     
     def _on_character_moved(self, event: CharacterMovedEvent) -> None:
         """
@@ -181,53 +156,11 @@ class ViewManager:
         
         if self._camera_factory is None:
             return None, None
-        
+
         char_x, char_y = character.position
-        
-        try:
-            self.camera = self._camera_factory(
-                char_x + 0.5,
-                char_y + 0.5,
-                GameConfig.DEFAULT_CAMERA_ANGLE,
-                GameConfig.DEFAULT_CAMERA_FOV,
-            )
-        except Exception:
-            self.camera = None
-            self.camera_controller = None
-            return None, None
-        
-        if self._camera_controller_factory is not None:
-            try:
-                self.camera_controller = self._camera_controller_factory(self.camera, level)
-            except Exception:
-                self.camera_controller = None
-        
         self._level = level
+        self._create_camera_at(char_x, char_y, level)
         return self.camera, self.camera_controller
-    
-    def sync_camera_to_position(
-        self, 
-        x: float, 
-        y: float, 
-        preserve_angle: bool = True
-    ) -> None:
-        """
-        Sync camera to specific world coordinates.
-        
-        Args:
-            x: World X coordinate
-            y: World Y coordinate
-            preserve_angle: Whether to preserve camera angle
-        """
-        if self.camera is None:
-            return
-        
-        if preserve_angle:
-            old_angle = getattr(self.camera, 'angle', 0)
-            self.camera.set_position(x, y)
-            self.camera.angle = old_angle
-        else:
-            self.camera.set_position(x, y)
     
     def sync_camera_to_character_coords(self, x: int, y: int, preserve_angle: bool = True) -> None:
         """
@@ -302,6 +235,32 @@ class ViewManager:
                 self.camera_controller = self._camera_controller_factory(self.camera, level)
             except Exception:
                 self.camera_controller = None
+
+    def _create_camera_at(self, grid_x: int, grid_y: int, level: Any) -> None:
+        """Create camera and controller at grid position (centered)."""
+        if self._camera_factory is None:
+            return
+
+        try:
+            self.camera = self._camera_factory(
+                grid_x + 0.5,
+                grid_y + 0.5,
+                GameConfig.DEFAULT_CAMERA_ANGLE,
+                GameConfig.DEFAULT_CAMERA_FOV,
+            )
+        except Exception as exc:
+            log_exception(exc, __name__)
+            self.camera = None
+            self.camera_controller = None
+            return
+
+        if self._camera_controller_factory is not None and self.camera is not None:
+            try:
+                self.camera_controller = self._camera_controller_factory(self.camera, level)
+            except Exception as exc:
+                log_exception(exc, __name__)
+                self.camera_controller = None
+
 
 
 # Global instance for application-wide use

@@ -101,9 +101,8 @@ class SpriteRenderer:
                         continue
                 
                 # Get item character and color
-                from presentation.colors import get_item_color
-                item_char = self._get_item_char(item)
-                color = get_item_color(item_char)
+                from presentation.rendering.item_rendering import get_item_render_data
+                item_char, color = get_item_render_data(item)
                 
                 sprite = Sprite(
                     item.position[0],
@@ -139,20 +138,6 @@ class SpriteRenderer:
                 sprites.append(sprite)
         
         return sprites
-    
-    def _get_item_char(self, item):
-        """Get character for item."""
-        from config.game_config import ItemType
-        
-        item_chars = {
-            ItemType.FOOD: '%',
-            ItemType.TREASURE: '$',
-            ItemType.WEAPON: '(',
-            ItemType.ELIXIR: '!',
-            ItemType.SCROLL: '?',
-            ItemType.KEY: 'k',
-        }
-        return item_chars.get(item.item_type, '?')
     
     def calculate_sprite_positions(self, sprites, camera):
         """

@@ -12,11 +12,11 @@ from presentation.colors import (
     COLOR_PLAYER,
     COLOR_EXIT,
     get_enemy_color,
-    get_item_color,
     get_key_door_color,
     COLOR_UI_TEXT,
     COLOR_UI_HIGHLIGHT,
 )
+from presentation.rendering.item_rendering import get_item_render_data
 
 class Renderer:
     """
@@ -345,14 +345,7 @@ class Renderer:
         
         x, y = item.position
         if 0 <= x < self.map_width and 0 <= y < self.map_height:
-            char = self._get_item_char(item)
-
-            # Special handling for keys - use door color matching
-            if item.item_type == ItemType.KEY:
-                color = get_key_door_color(item.color)
-            else:
-                color = get_item_color(char)
-            
+            char, color = get_item_render_data(item)
             self._draw_char(y, x, char, color)
     
     def _render_enemy(self, enemy):
@@ -470,25 +463,6 @@ class Renderer:
         inv_str = f"Items: F:{food_count} W:{weapon_count} E:{elixir_count} S:{scroll_count} K:{key_count}"
         self._draw_string(ui_y + 1, 45, inv_str, COLOR_UI_TEXT)
     
-    def _get_item_char(self, item):
-        """
-        Get the character representation for an item.
-        
-        Args:
-            item: Item object
-        
-        Returns:
-            str: Single character to display
-        """
-        item_chars = {
-            ItemType.FOOD: '%',
-            ItemType.TREASURE: '$',
-            ItemType.WEAPON: '(',
-            ItemType.ELIXIR: '!',
-            ItemType.SCROLL: '?',
-            ItemType.KEY: 'k'
-        }
-        return item_chars.get(item.item_type, '?')
     
     def _draw_char(self, y, x, char, color_pair):
         """

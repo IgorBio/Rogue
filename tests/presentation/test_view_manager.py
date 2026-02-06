@@ -153,25 +153,6 @@ class TestViewManagerCameraCreation:
 class TestViewManagerSync:
     """Test camera synchronization."""
     
-    def test_sync_camera_to_position(self):
-        """Test syncing camera to specific position."""
-        vm = ViewManager(auto_subscribe=False)
-        mock_camera = MockCamera()
-        vm.camera = mock_camera
-        
-        vm.sync_camera_to_position(15.5, 25.5)
-        
-        assert mock_camera.x == 15.5
-        assert mock_camera.y == 25.5
-    
-    def test_sync_camera_to_position_no_camera(self):
-        """Test syncing when camera is None does nothing."""
-        vm = ViewManager(auto_subscribe=False)
-        vm.camera = None
-        
-        # Should not raise
-        vm.sync_camera_to_position(15.5, 25.5)
-    
     def test_sync_camera_to_character(self):
         """Test syncing camera to character position."""
         vm = ViewManager(auto_subscribe=False)
@@ -184,29 +165,26 @@ class TestViewManagerSync:
         # Camera should be at character position + 0.5 offset
         assert mock_camera.x == 10.5
         assert mock_camera.y == 20.5
-    
-    def test_sync_camera_preserves_angle(self):
-        """Test that sync preserves camera angle by default."""
+
+    def test_sync_camera_to_character_coords_preserves_angle(self):
+        """Test syncing camera to grid coords preserves angle."""
         vm = ViewManager(auto_subscribe=False)
-        mock_camera = MockCamera(angle=45.0)
+        mock_camera = MockCamera(angle=30.0)
         vm.camera = mock_camera
-        
-        vm.sync_camera_to_position(10.5, 20.5, preserve_angle=True)
-        
-        assert mock_camera.angle == 45.0
-    
-    def test_sync_camera_updates_angle_when_requested(self):
-        """Test that sync can update angle when preserve_angle=False."""
-        vm = ViewManager(auto_subscribe=False)
-        mock_camera = MockCamera(angle=45.0)
-        vm.camera = mock_camera
-        
-        vm.sync_camera_to_position(10.5, 20.5, preserve_angle=False)
-        
-        # Angle may or may not change depending on implementation
-        # Just verify no exception is raised
+
+        vm.sync_camera_to_character_coords(10, 20, preserve_angle=True)
+
         assert mock_camera.x == 10.5
         assert mock_camera.y == 20.5
+        assert mock_camera.angle == 30.0
+
+    def test_sync_camera_to_character_coords_no_camera(self):
+        """Test syncing grid coords when camera is None does nothing."""
+        vm = ViewManager(auto_subscribe=False)
+        vm.camera = None
+
+        # Should not raise
+        vm.sync_camera_to_character_coords(10, 20)
 
 
 class TestViewManagerEventHandling:
@@ -274,6 +252,61 @@ class TestViewManagerReset:
         assert vm.camera is None
         assert vm.camera_controller is None
         assert vm._level is None
+
+
+class TestViewManagerGridPosition:
+    """Test camera grid position helper."""
+
+    def test_get_camera_grid_position_none(self):
+        """Test grid position when no camera."""
+        vm = ViewManager(auto_subscribe=False)
+        vm.camera = None
+
+        assert vm.get_camera_grid_position() is None
+
+    def test_get_camera_grid_position(self):
+        """Test grid position with camera."""
+        vm = ViewManager(auto_subscribe=False)
+        vm.camera = MockCamera(10.7, 20.3)
+
+        assert vm.get_camera_grid_position() == (10, 20)
+
+
+class TestViewManagerApplyCameraState:
+    """Test apply_camera_state behavior."""
+
+    def test_apply_camera_state_creates_camera_and_controller(self):
+        """Test applying camera state creates camera and controller."""
+        vm = ViewManager(auto_subscribe=False)
+        mock_camera = MockCamera()
+        mock_controller = Mock()
+
+        camera_factory = Mock(return_value=mock_camera)
+        controller_factory = Mock(return_value=mock_controller)
+        vm.set_factories(camera_factory, controller_factory)
+
+        level = MockLevel()
+        state = {"x": 5.5, "y": 6.5, "angle": 10.0, "fov": 70.0}
+
+        vm.apply_camera_state(state, level)
+
+        assert vm.camera is mock_camera
+        assert vm.camera_controller is mock_controller
+        camera_factory.assert_called_once_with(5.5, 6.5, 10.0, 70.0)
+        controller_factory.assert_called_once_with(mock_camera, level)
+
+    def test_apply_camera_state_no_factory(self):
+        """Test applying camera state without factory does nothing."""
+        vm = ViewManager(auto_subscribe=False)
+        vm.set_factories(None, None)
+
+        level = MockLevel()
+        state = {"x": 5.5, "y": 6.5, "angle": 10.0, "fov": 70.0}
+
+        vm.apply_camera_state(state, level)
+
+        assert vm.camera is None
+        assert vm.camera_controller is None
 
 
 class TestGlobalViewManager:
