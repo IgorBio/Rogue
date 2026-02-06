@@ -106,6 +106,24 @@ class SessionCoordinator:
         # Initialize and start statistics tracker
         self._statistics_tracker = StatisticsTracker(self.stats, event_bus)
         self._statistics_tracker.start_tracking()
+
+    def update_stats(self, stats: Any) -> None:
+        """Update stats reference and rewire dependent services."""
+        self.stats = stats
+
+        if self._combat_system is not None:
+            self._combat_system.statistics = stats
+
+        if self._statistics_tracker is not None:
+            try:
+                self._statistics_tracker.stop_tracking()
+            except Exception:
+                pass
+            self._statistics_tracker.stats = stats
+            try:
+                self._statistics_tracker.start_tracking()
+            except Exception:
+                pass
     
     # ========================================================================
     # Service Access

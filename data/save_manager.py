@@ -226,7 +226,8 @@ class SaveManager:
         game_session.fog_of_war = fog_of_war
 
         # Restore statistics
-        game_session.stats = Statistics.from_dict(save_data['statistics'])
+        restored_stats = Statistics.from_dict(save_data['statistics'])
+        game_session.set_stats(restored_stats)
 
         game_session.rendering_mode = save_data.get('rendering_mode', '2d')
         # Do not assign via property setters that trigger transitions. Instead

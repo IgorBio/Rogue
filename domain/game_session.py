@@ -390,6 +390,14 @@ class GameSession:
             stats_dict['difficulty'] = self.difficulty_manager.get_difficulty_description()
         
         return stats_dict
+
+    def set_stats(self, stats) -> None:
+        """Replace stats instance and rewire coordinator tracking."""
+        self.stats = stats
+        try:
+            self._coordinator.update_stats(stats)
+        except Exception:
+            pass
     
     def reset_game(self):
         """Reset the game to start a new run."""
