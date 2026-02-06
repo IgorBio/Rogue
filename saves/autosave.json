@@ -1,25 +1,24 @@
 {
   "version": "1.1",
-  "timestamp": "2026-02-06T14:16:16.003814",
+  "timestamp": "2026-02-06T19:02:05.058791",
   "current_level_number": 2,
   "character": {
     "position": [
-      45,
+      59,
       4
     ],
-    "health": 68,
-    "max_health": 100,
+    "health": 91,
+    "max_health": 91,
     "strength": 10,
-    "dexterity": 10,
-    "current_weapon": null,
+    "dexterity": 22,
+    "current_weapon": {
+      "name": "Axe +9",
+      "strength_bonus": 9
+    },
     "backpack": {
-      "treasure_value": 163,
+      "treasure_value": 650,
       "items": {
         "food": [
-          {
-            "item_type": "food",
-            "health_restoration": 21
-          },
           {
             "item_type": "food",
             "health_restoration": 32
@@ -27,17 +26,32 @@
           {
             "item_type": "food",
             "health_restoration": 27
-          }
-        ],
-        "elixir": [],
-        "scroll": [
+          },
           {
-            "item_type": "scroll",
-            "stat_type": "dexterity",
-            "bonus": 6
+            "item_type": "food",
+            "health_restoration": 34
+          },
+          {
+            "item_type": "food",
+            "health_restoration": 30
           }
         ],
-        "weapon": [],
+        "elixir": [
+          {
+            "item_type": "elixir",
+            "stat_type": "strength",
+            "bonus": 9,
+            "duration": 12
+          }
+        ],
+        "scroll": [],
+        "weapon": [
+          {
+            "item_type": "weapon",
+            "name": "Axe +8",
+            "strength_bonus": 8
+          }
+        ],
         "key": []
       }
     },
@@ -45,198 +59,206 @@
   },
   "level": {
     "level_number": 2,
-    "starting_room_index": 1,
-    "exit_room_index": 5,
+    "starting_room_index": 2,
+    "exit_room_index": 6,
     "exit_position": [
-      66,
-      12
+      9,
+      20
     ],
     "rooms": [
       {
-        "x": 5,
+        "x": 10,
         "y": 1,
-        "width": 14,
+        "width": 15,
         "height": 7,
         "enemies": [],
         "items": [
           {
-            "item_type": "food",
-            "health_restoration": 34,
+            "item_type": "elixir",
+            "stat_type": "max_health",
+            "bonus": 5,
+            "duration": 11,
             "position": [
               11,
-              3
-            ]
-          },
-          {
-            "item_type": "key",
-            "color": "red",
-            "position": [
-              14,
-              3
-            ]
-          }
-        ]
-      },
-      {
-        "x": 40,
-        "y": 1,
-        "width": 11,
-        "height": 6,
-        "enemies": [],
-        "items": []
-      },
-      {
-        "x": 57,
-        "y": 1,
-        "width": 20,
-        "height": 7,
-        "enemies": [
-          {
-            "enemy_type": "vampire",
-            "position": [
-              59,
-              6
-            ],
-            "health": 55,
-            "max_health": 55,
-            "strength": 7,
-            "dexterity": 13,
-            "is_chasing": false
-          }
-        ],
-        "items": []
-      },
-      {
-        "x": 4,
-        "y": 9,
-        "width": 18,
-        "height": 7,
-        "enemies": [],
-        "items": [
-          {
-            "item_type": "food",
-            "health_restoration": 30,
-            "position": [
-              10,
-              11
+              2
             ]
           },
           {
             "item_type": "key",
             "color": "blue",
             "position": [
-              8,
-              11
+              17,
+              5
             ]
           }
         ]
       },
       {
-        "x": 35,
-        "y": 10,
-        "width": 9,
-        "height": 5,
+        "x": 28,
+        "y": 1,
+        "width": 12,
+        "height": 7,
+        "enemies": [],
+        "items": []
+      },
+      {
+        "x": 53,
+        "y": 1,
+        "width": 12,
+        "height": 6,
+        "enemies": [],
+        "items": []
+      },
+      {
+        "x": 7,
+        "y": 9,
+        "width": 15,
+        "height": 6,
         "enemies": [
           {
             "enemy_type": "zombie",
             "position": [
-              38,
-              12
+              15,
+              11
             ],
-            "health": 44,
-            "max_health": 44,
-            "strength": 8,
+            "health": 46,
+            "max_health": 46,
+            "strength": 9,
             "dexterity": 4,
             "is_chasing": false
           }
         ],
         "items": [
           {
-            "item_type": "scroll",
-            "stat_type": "dexterity",
-            "bonus": 6,
+            "item_type": "weapon",
+            "name": "Hammer +10",
+            "strength_bonus": 10,
             "position": [
-              39,
+              17,
+              13
+            ]
+          },
+          {
+            "item_type": "key",
+            "color": "red",
+            "position": [
+              8,
               13
             ]
           }
         ]
       },
       {
-        "x": 56,
+        "x": 30,
         "y": 9,
-        "width": 20,
-        "height": 6,
-        "enemies": [
-          {
-            "enemy_type": "zombie",
-            "position": [
-              60,
-              10
-            ],
-            "health": 44,
-            "max_health": 44,
-            "strength": 8,
-            "dexterity": 4,
-            "is_chasing": false
-          }
-        ],
-        "items": [
-          {
-            "item_type": "weapon",
-            "name": "Axe +8",
-            "strength_bonus": 8,
-            "position": [
-              64,
-              11
-            ]
-          },
-          {
-            "item_type": "weapon",
-            "name": "Axe +9",
-            "strength_bonus": 9,
-            "position": [
-              72,
-              12
-            ]
-          }
-        ]
-      },
-      {
-        "x": 3,
-        "y": 17,
         "width": 18,
         "height": 7,
         "enemies": [],
         "items": []
       },
       {
-        "x": 37,
-        "y": 18,
-        "width": 8,
-        "height": 5,
+        "x": 54,
+        "y": 9,
+        "width": 17,
+        "height": 7,
+        "enemies": [
+          {
+            "enemy_type": "zombie",
+            "position": [
+              55,
+              11
+            ],
+            "health": 46,
+            "max_health": 46,
+            "strength": 9,
+            "dexterity": 4,
+            "is_chasing": false
+          }
+        ],
+        "items": [
+          {
+            "item_type": "food",
+            "health_restoration": 29,
+            "position": [
+              61,
+              14
+            ]
+          }
+        ]
+      },
+      {
+        "x": 4,
+        "y": 17,
+        "width": 11,
+        "height": 7,
         "enemies": [
           {
             "enemy_type": "vampire",
             "position": [
-              40,
+              7,
               19
             ],
-            "health": 55,
-            "max_health": 55,
-            "strength": 7,
+            "health": 57,
+            "max_health": 57,
+            "strength": 8,
             "dexterity": 13,
             "is_chasing": false
           }
         ],
         "items": [
           {
-            "item_type": "elixir",
-            "stat_type": "strength",
-            "bonus": 9,
-            "duration": 12,
+            "item_type": "food",
+            "health_restoration": 32,
             "position": [
-              39,
+              6,
+              22
+            ]
+          },
+          {
+            "item_type": "weapon",
+            "name": "Sword +8",
+            "strength_bonus": 8,
+            "position": [
+              12,
+              20
+            ]
+          }
+        ]
+      },
+      {
+        "x": 29,
+        "y": 17,
+        "width": 18,
+        "height": 6,
+        "enemies": [
+          {
+            "enemy_type": "zombie",
+            "position": [
+              40,
+              21
+            ],
+            "health": 46,
+            "max_health": 46,
+            "strength": 9,
+            "dexterity": 4,
+            "is_chasing": false
+          }
+        ],
+        "items": [
+          {
+            "item_type": "food",
+            "health_restoration": 24,
+            "position": [
+              43,
+              18
+            ]
+          },
+          {
+            "item_type": "scroll",
+            "stat_type": "dexterity",
+            "bonus": 5,
+            "position": [
+              31,
               20
             ]
           },
@@ -244,71 +266,38 @@
             "item_type": "key",
             "color": "yellow",
             "position": [
-              43,
-              19
+              32,
+              18
             ]
           }
         ]
       },
       {
-        "x": 53,
-        "y": 18,
-        "width": 20,
-        "height": 5,
+        "x": 56,
+        "y": 17,
+        "width": 19,
+        "height": 7,
         "enemies": [
           {
             "enemy_type": "zombie",
             "position": [
-              62,
-              19
+              60,
+              22
             ],
-            "health": 44,
-            "max_health": 44,
-            "strength": 8,
+            "health": 46,
+            "max_health": 46,
+            "strength": 9,
             "dexterity": 4,
             "is_chasing": false
           }
         ],
-        "items": [
-          {
-            "item_type": "food",
-            "health_restoration": 22,
-            "position": [
-              59,
-              20
-            ]
-          }
-        ]
+        "items": []
       }
     ],
     "corridors": [
       {
         "tiles": [
           [
-            18,
-            4
-          ],
-          [
-            19,
-            4
-          ],
-          [
-            20,
-            4
-          ],
-          [
-            21,
-            4
-          ],
-          [
-            22,
-            4
-          ],
-          [
-            23,
-            4
-          ],
-          [
             24,
             4
           ],
@@ -327,47 +316,11 @@
           [
             28,
             4
-          ],
-          [
-            29,
-            4
-          ],
-          [
-            30,
-            4
-          ],
-          [
-            31,
-            4
-          ],
-          [
-            32,
-            4
-          ],
-          [
-            33,
-            4
-          ],
-          [
-            34,
-            4
-          ],
-          [
-            35,
-            4
-          ],
-          [
-            36,
-            4
-          ],
-          [
-            37,
-            4
-          ],
-          [
-            38,
-            4
-          ],
+          ]
+        ]
+      },
+      {
+        "tiles": [
           [
             39,
             4
@@ -375,425 +328,281 @@
           [
             40,
             4
-          ]
-        ]
-      },
-      {
-        "tiles": [
-          [
-            50,
-            4
-          ],
-          [
-            51,
-            4
-          ],
-          [
-            52,
-            4
-          ],
-          [
-            53,
-            4
-          ],
-          [
-            54,
-            4
-          ],
-          [
-            55,
-            4
-          ],
-          [
-            56,
-            4
-          ],
-          [
-            57,
-            4
-          ]
-        ]
-      },
-      {
-        "tiles": [
-          [
-            21,
-            12
-          ],
-          [
-            22,
-            12
-          ],
-          [
-            23,
-            12
-          ],
-          [
-            24,
-            12
-          ],
-          [
-            25,
-            12
-          ],
-          [
-            26,
-            12
-          ],
-          [
-            27,
-            12
-          ],
-          [
-            28,
-            12
-          ],
-          [
-            29,
-            12
-          ],
-          [
-            30,
-            12
-          ],
-          [
-            31,
-            12
-          ],
-          [
-            32,
-            12
-          ],
-          [
-            33,
-            12
-          ],
-          [
-            34,
-            12
-          ],
-          [
-            35,
-            12
-          ]
-        ]
-      },
-      {
-        "tiles": [
-          [
-            43,
-            12
-          ],
-          [
-            44,
-            12
-          ],
-          [
-            45,
-            12
-          ],
-          [
-            46,
-            12
-          ],
-          [
-            47,
-            12
-          ],
-          [
-            48,
-            12
-          ],
-          [
-            49,
-            12
-          ],
-          [
-            50,
-            12
-          ],
-          [
-            51,
-            12
-          ],
-          [
-            52,
-            12
-          ],
-          [
-            53,
-            12
-          ],
-          [
-            54,
-            12
-          ],
-          [
-            55,
-            12
-          ],
-          [
-            56,
-            12
-          ]
-        ]
-      },
-      {
-        "tiles": [
-          [
-            20,
-            20
-          ],
-          [
-            21,
-            20
-          ],
-          [
-            22,
-            20
-          ],
-          [
-            23,
-            20
-          ],
-          [
-            24,
-            20
-          ],
-          [
-            25,
-            20
-          ],
-          [
-            26,
-            20
-          ],
-          [
-            27,
-            20
-          ],
-          [
-            28,
-            20
-          ],
-          [
-            29,
-            20
-          ],
-          [
-            30,
-            20
-          ],
-          [
-            31,
-            20
-          ],
-          [
-            32,
-            20
-          ],
-          [
-            33,
-            20
-          ],
-          [
-            34,
-            20
-          ],
-          [
-            35,
-            20
-          ],
-          [
-            36,
-            20
-          ],
-          [
-            37,
-            20
-          ]
-        ]
-      },
-      {
-        "tiles": [
-          [
-            44,
-            20
-          ],
-          [
-            45,
-            20
-          ],
-          [
-            46,
-            20
-          ],
-          [
-            47,
-            20
-          ],
-          [
-            48,
-            20
-          ],
-          [
-            49,
-            20
-          ],
-          [
-            50,
-            20
-          ],
-          [
-            51,
-            20
-          ],
-          [
-            52,
-            20
-          ],
-          [
-            53,
-            20
-          ]
-        ]
-      },
-      {
-        "tiles": [
-          [
-            12,
-            7
-          ],
-          [
-            12,
-            8
-          ],
-          [
-            13,
-            8
-          ],
-          [
-            13,
-            9
-          ]
-        ]
-      },
-      {
-        "tiles": [
-          [
-            13,
-            15
-          ],
-          [
-            13,
-            16
-          ],
-          [
-            12,
-            16
-          ],
-          [
-            12,
-            17
-          ]
-        ]
-      },
-      {
-        "tiles": [
-          [
-            45,
-            6
-          ],
-          [
-            45,
-            7
-          ],
-          [
-            45,
-            8
-          ],
-          [
-            39,
-            8
-          ],
-          [
-            40,
-            8
           ],
           [
             41,
-            8
+            4
           ],
           [
             42,
-            8
+            4
           ],
           [
             43,
-            8
+            4
           ],
           [
             44,
-            8
+            4
           ],
           [
-            39,
-            9
+            45,
+            4
           ],
           [
-            39,
-            10
+            46,
+            4
+          ],
+          [
+            47,
+            4
+          ],
+          [
+            48,
+            4
+          ],
+          [
+            49,
+            4
+          ],
+          [
+            50,
+            4
+          ],
+          [
+            51,
+            4
+          ],
+          [
+            52,
+            4
+          ],
+          [
+            53,
+            4
           ]
         ]
       },
       {
         "tiles": [
           [
-            39,
-            14
+            21,
+            12
           ],
           [
-            39,
-            15
+            22,
+            12
           ],
           [
-            39,
-            16
+            23,
+            12
           ],
           [
-            40,
-            16
+            24,
+            12
           ],
           [
-            41,
-            16
+            25,
+            12
           ],
           [
-            41,
-            17
+            26,
+            12
           ],
           [
-            41,
-            18
+            27,
+            12
+          ],
+          [
+            28,
+            12
+          ],
+          [
+            29,
+            12
+          ],
+          [
+            30,
+            12
           ]
         ]
       },
       {
         "tiles": [
           [
-            67,
+            47,
+            12
+          ],
+          [
+            48,
+            12
+          ],
+          [
+            49,
+            12
+          ],
+          [
+            50,
+            12
+          ],
+          [
+            51,
+            12
+          ],
+          [
+            52,
+            12
+          ],
+          [
+            53,
+            12
+          ],
+          [
+            54,
+            12
+          ]
+        ]
+      },
+      {
+        "tiles": [
+          [
+            14,
+            20
+          ],
+          [
+            15,
+            20
+          ],
+          [
+            16,
+            20
+          ],
+          [
+            17,
+            20
+          ],
+          [
+            18,
+            20
+          ],
+          [
+            19,
+            20
+          ],
+          [
+            20,
+            20
+          ],
+          [
+            21,
+            20
+          ],
+          [
+            22,
+            20
+          ],
+          [
+            23,
+            20
+          ],
+          [
+            24,
+            20
+          ],
+          [
+            25,
+            20
+          ],
+          [
+            26,
+            20
+          ],
+          [
+            27,
+            20
+          ],
+          [
+            28,
+            20
+          ],
+          [
+            29,
+            20
+          ]
+        ]
+      },
+      {
+        "tiles": [
+          [
+            46,
+            20
+          ],
+          [
+            47,
+            20
+          ],
+          [
+            48,
+            20
+          ],
+          [
+            49,
+            20
+          ],
+          [
+            50,
+            20
+          ],
+          [
+            51,
+            20
+          ],
+          [
+            52,
+            20
+          ],
+          [
+            53,
+            20
+          ],
+          [
+            54,
+            20
+          ],
+          [
+            55,
+            20
+          ],
+          [
+            56,
+            20
+          ]
+        ]
+      },
+      {
+        "tiles": [
+          [
+            17,
             7
           ],
           [
-            67,
+            17,
             8
           ],
           [
-            66,
+            14,
             8
           ],
           [
-            66,
+            15,
+            8
+          ],
+          [
+            16,
+            8
+          ],
+          [
+            14,
             9
           ]
         ]
@@ -801,15 +610,139 @@
       {
         "tiles": [
           [
-            66,
+            14,
             14
           ],
           [
-            66,
+            14,
             15
           ],
           [
-            66,
+            9,
+            15
+          ],
+          [
+            10,
+            15
+          ],
+          [
+            11,
+            15
+          ],
+          [
+            12,
+            15
+          ],
+          [
+            13,
+            15
+          ],
+          [
+            9,
+            16
+          ],
+          [
+            9,
+            17
+          ]
+        ]
+      },
+      {
+        "tiles": [
+          [
+            34,
+            7
+          ],
+          [
+            34,
+            8
+          ],
+          [
+            35,
+            8
+          ],
+          [
+            36,
+            8
+          ],
+          [
+            37,
+            8
+          ],
+          [
+            38,
+            8
+          ],
+          [
+            39,
+            8
+          ],
+          [
+            39,
+            9
+          ]
+        ]
+      },
+      {
+        "tiles": [
+          [
+            39,
+            15
+          ],
+          [
+            39,
+            16
+          ],
+          [
+            38,
+            16
+          ],
+          [
+            38,
+            17
+          ]
+        ]
+      },
+      {
+        "tiles": [
+          [
+            59,
+            6
+          ],
+          [
+            59,
+            7
+          ],
+          [
+            60,
+            7
+          ],
+          [
+            61,
+            7
+          ],
+          [
+            62,
+            7
+          ],
+          [
+            62,
+            8
+          ],
+          [
+            62,
+            9
+          ]
+        ]
+      },
+      {
+        "tiles": [
+          [
+            62,
+            15
+          ],
+          [
+            62,
             16
           ],
           [
@@ -825,12 +758,8 @@
             16
           ],
           [
-            63,
+            65,
             17
-          ],
-          [
-            63,
-            18
           ]
         ]
       }
@@ -839,8 +768,8 @@
       {
         "color": "red",
         "position": [
-          67,
-          7
+          47,
+          12
         ],
         "is_locked": true
       },
@@ -848,15 +777,15 @@
         "color": "blue",
         "position": [
           39,
-          14
+          15
         ],
         "is_locked": true
       },
       {
         "color": "yellow",
         "position": [
-          13,
-          15
+          24,
+          4
         ],
         "is_locked": true
       }
@@ -864,155 +793,171 @@
   },
   "fog_of_war": {
     "discovered_rooms": [
-      1
+      2
     ],
     "discovered_corridors": [],
-    "current_room_index": 1,
+    "current_room_index": 2,
     "current_corridor_index": null,
     "visible_tiles": [
       [
-        45,
+        56,
         4
       ],
       [
-        47,
+        55,
+        2
+      ],
+      [
+        55,
+        5
+      ],
+      [
+        58,
         4
       ],
       [
-        42,
-        2
-      ],
-      [
-        42,
-        5
-      ],
-      [
-        41,
+        59,
         3
       ],
       [
-        44,
-        2
-      ],
-      [
-        44,
-        5
-      ],
-      [
-        43,
-        3
-      ],
-      [
-        46,
-        2
-      ],
-      [
-        46,
-        5
-      ],
-      [
-        48,
-        2
-      ],
-      [
-        49,
+        60,
         4
       ],
       [
-        48,
-        5
-      ],
-      [
-        45,
+        61,
         3
       ],
       [
-        47,
-        3
-      ],
-      [
-        42,
-        4
-      ],
-      [
-        41,
+        57,
         2
       ],
       [
-        44,
-        4
-      ],
-      [
-        41,
+        57,
         5
       ],
       [
-        43,
+        62,
+        4
+      ],
+      [
+        63,
+        3
+      ],
+      [
+        54,
+        3
+      ],
+      [
+        55,
+        4
+      ],
+      [
+        56,
+        3
+      ],
+      [
+        59,
         2
       ],
       [
-        43,
-        5
-      ],
-      [
-        46,
-        4
-      ],
-      [
-        48,
-        4
-      ],
-      [
-        49,
+        60,
         3
       ],
       [
-        45,
+        59,
+        5
+      ],
+      [
+        58,
+        3
+      ],
+      [
+        61,
         2
       ],
       [
-        45,
+        61,
         5
       ],
       [
-        47,
-        2
-      ],
-      [
-        47,
-        5
-      ],
-      [
-        41,
+        57,
         4
       ],
       [
-        42,
-        3
-      ],
-      [
-        43,
-        4
-      ],
-      [
-        44,
-        3
-      ],
-      [
-        46,
-        3
-      ],
-      [
-        49,
+        63,
         2
       ],
       [
-        49,
+        63,
         5
       ],
       [
-        48,
+        54,
+        2
+      ],
+      [
+        62,
         3
+      ],
+      [
+        55,
+        3
+      ],
+      [
+        54,
+        5
+      ],
+      [
+        56,
+        2
+      ],
+      [
+        56,
+        5
+      ],
+      [
+        59,
+        4
+      ],
+      [
+        58,
+        2
+      ],
+      [
+        58,
+        5
+      ],
+      [
+        60,
+        2
+      ],
+      [
+        61,
+        4
+      ],
+      [
+        62,
+        5
+      ],
+      [
+        60,
+        5
+      ],
+      [
+        57,
+        3
+      ],
+      [
+        63,
+        4
+      ],
+      [
+        62,
+        2
+      ],
+      [
+        54,
+        4
       ]
     ]
   },
@@ -1041,6 +986,7 @@
   "player_asleep": false,
   "game_over": false,
   "victory": false,
+  "game_state": "PLAYING",
   "message": "Advanced to level 2! (Difficulty: Normal)",
   "death_reason": "",
   "pending_selection": null,
@@ -1062,7 +1008,7 @@
     "adjustment_rate": 0.1
   },
   "camera": {
-    "x": 45.5,
+    "x": 59.5,
     "y": 4.5,
     "angle": 0.0,
     "fov": 60.0

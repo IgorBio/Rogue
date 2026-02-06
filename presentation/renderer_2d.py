@@ -12,6 +12,7 @@ from presentation.colors import (
     COLOR_PLAYER,
     COLOR_EXIT,
     get_enemy_color,
+    get_item_color,
     get_key_door_color,
     COLOR_UI_TEXT,
     COLOR_UI_HIGHLIGHT,
@@ -1005,11 +1006,11 @@ def show_item_selection(stdscr, items, title, allow_zero=False):
     
     # Draw border
     try:
-        stdscr.addstr(menu_y, menu_x, "â”Œ" + "â”€" * (menu_width - 2) + "â”")
+        stdscr.addstr(menu_y, menu_x, "+" + "-" * (menu_width - 2) + "+")
         for y in range(menu_y + 1, menu_y + menu_height - 1):
-            stdscr.addstr(y, menu_x, "â”‚")
-            stdscr.addstr(y, menu_x + menu_width - 1, "â”‚")
-        stdscr.addstr(menu_y + menu_height - 1, menu_x, "â””" + "â”€" * (menu_width - 2) + "â”˜")
+            stdscr.addstr(y, menu_x, "|")
+            stdscr.addstr(y, menu_x + menu_width - 1, "|")
+        stdscr.addstr(menu_y + menu_height - 1, menu_x, "+" + "-" * (menu_width - 2) + "+")
     except:
         pass
     
@@ -1097,34 +1098,36 @@ def _get_item_description(item):
         return f"Scroll of {stat_name} - Permanent +{item.bonus}"
     else:
         return "Unknown Item"
+    
+def _format_header(text, width):
+    """
+    Format a header line with frame characters.
+
+    Example (width=20, text="TITLE"):
+        ╔══╡TITLE╞══╗
+    """
+    padding_char = "═"
+    core = f"╡{text}╞"
+
+    content_width = max(width - 2, len(core))
+    inner = core.center(content_width, padding_char)
+    
+    return f"╔{inner}╗"
 
 
 def show_game_over_screen(stdscr, stats, victory=False):
-    """
-    Display game over screen with final statistics.
-    
-    Shows comprehensive run statistics and provides options
-    to restart, return to menu, or quit.
-    
-    Args:
-        stdscr: Curses screen object
-        stats (dict): Statistics dictionary
-        victory (bool): Whether player won
-    
-    Returns:
-        str: Selected option ('restart', 'menu', 'quit')
-    """
+    """Display game over screen."""
     stdscr.clear()
     max_y, max_x = stdscr.getmaxyx()
-    
+
     title_y = 2
     if victory:
-        title = "â˜… â˜… â˜…  V I C T O R Y  â˜… â˜… â˜… "
+        title = "★ ★ ★  V I C T O R Y  ★ ★ ★ "
         subtitle = "You have conquered all 21 levels!"
     else:
-        title = "â˜  â˜  â˜     G A M E   O V E R  â˜  â˜  â˜    "
+        title = "☠ ☠ ☠   G A M E   O V E R  ☠ ☠ ☠  "
         subtitle = stats.get('death_reason', 'You have fallen in battle!')
-    
+
     try:
         title_x = (max_x - len(title)) // 2
         subtitle_x = (max_x - len(subtitle)) // 2
@@ -1132,13 +1135,14 @@ def show_game_over_screen(stdscr, stats, victory=False):
         stdscr.addstr(title_y + 1, subtitle_x, subtitle, curses.A_DIM)
     except:
         pass
-    
+
     stats_y = title_y + 4
-    col1_x = max_x // 4
-    col2_x = max_x // 2 + 5
-    
+    col1_x = max_x // 2 - 30
+    col2_x = max_x // 2 + 10
+    col_width = 20
+
     try:
-        stdscr.addstr(stats_y, col1_x, "â•”â•â•¡ CHARACTER â•žâ•â•—", curses.A_BOLD)
+        stdscr.addstr(stats_y, col1_x, _format_header("CHARACTER", col_width), curses.A_BOLD)
         stdscr.addstr(stats_y + 2, col1_x, f"Level Reached:  {stats['level_reached']}/21")
         stdscr.addstr(stats_y + 3, col1_x, f"Final Health:   {stats['final_health']}/{stats['max_health']}")
         stdscr.addstr(stats_y + 4, col1_x, f"Strength:       {stats['strength']}")
@@ -1148,7 +1152,7 @@ def show_game_over_screen(stdscr, stats, victory=False):
         pass
     
     try:
-        stdscr.addstr(stats_y, col2_x, "â•”â•â•¡ COMBAT â•žâ•â•—", curses.A_BOLD)
+        stdscr.addstr(stats_y, col2_x, _format_header("COMBAT", col_width), curses.A_BOLD)
         stdscr.addstr(stats_y + 2, col2_x, f"Enemies Killed:   {stats.get('enemies_defeated', 0)}")
         stdscr.addstr(stats_y + 3, col2_x, f"Attacks Made:     {stats.get('attacks_made', 0)}")
         stdscr.addstr(stats_y + 4, col2_x, f"Hits Taken:       {stats.get('hits_taken', 0)}")
@@ -1159,7 +1163,7 @@ def show_game_over_screen(stdscr, stats, victory=False):
     
     stats_y2 = stats_y + 9
     try:
-        stdscr.addstr(stats_y2, col1_x, "â•”â•â•¡ ITEMS â•žâ•â•—", curses.A_BOLD)
+        stdscr.addstr(stats_y2, col1_x, _format_header("ITEMS", col_width), curses.A_BOLD)
         stdscr.addstr(stats_y2 + 2, col1_x, f"Items Collected: {stats.get('items_collected', 0)}")
         stdscr.addstr(stats_y2 + 3, col1_x, f"Food Consumed:   {stats.get('food_consumed', 0)}")
         stdscr.addstr(stats_y2 + 4, col1_x, f"Elixirs Used:    {stats.get('elixirs_used', 0)}")
@@ -1168,36 +1172,36 @@ def show_game_over_screen(stdscr, stats, victory=False):
         pass
     
     try:
-        stdscr.addstr(stats_y2, col2_x, "â•”â•â•¡ EXPLORATION â•žâ•â•—", curses.A_BOLD)
+        stdscr.addstr(stats_y2, col2_x, _format_header("EXPLORATION", col_width), curses.A_BOLD)
         stdscr.addstr(stats_y2 + 2, col2_x, f"Tiles Traversed:  {stats.get('tiles_moved', 0)}")
     except:
         pass
-    
+
     rank_y = stats_y2 + 8
     if stats.get('rank'):
-        rank_msg = f"â—† This run ranked #{stats['rank']} on the leaderboard! â—† "
+        rank_msg = f"◆ This run ranked #{stats['rank']} on the leaderboard! ◆ "
         try:
             rank_x = (max_x - len(rank_msg)) // 2
             stdscr.addstr(rank_y, rank_x, rank_msg, curses.A_BOLD | curses.A_REVERSE)
         except:
             pass
-    
+
     options_y = max_y - 4
     try:
-        separator = "â•" * max_x
+        separator = "=" * max_x
         stdscr.addstr(options_y - 1, 0, separator[:max_x])
-        
-        options = "[R] Restart  â”‚  [M] Main Menu  â”‚  [Q] Quit "
+
+        options = "[R] Restart  |  [M] Main Menu  |  [Q] Quit "
         options_x = (max_x - len(options)) // 2
         stdscr.addstr(options_y, options_x, options, curses.A_BOLD | curses.A_REVERSE)
     except:
         pass
-    
+
     stdscr.refresh()
-    
+
     while True:
         key = stdscr.getch()
-        
+
         if key == ord('r') or key == ord('R'):
             return 'restart'
         elif key == ord('m') or key == ord('M'):
