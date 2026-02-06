@@ -75,6 +75,7 @@ class SaveManager:
                 'player_asleep': game_session.player_asleep,
                 'game_over': game_session.game_over,
                 'victory': game_session.victory,
+                'game_state': game_session.state_machine.current_state.name,
                 'message': game_session.message,
                 'death_reason': game_session.death_reason,
 
@@ -229,10 +230,7 @@ class SaveManager:
 
         game_session.rendering_mode = save_data.get('rendering_mode', '2d')
         # Do not assign via property setters that trigger transitions. Instead
-        # determine saved state and restore it directly at the end of restoration.
-        saved_player_asleep = save_data.get('player_asleep', False)
-        saved_game_over = save_data.get('game_over', False)
-        saved_victory = save_data.get('victory', False)
+        # restore saved state directly at the end of restoration.
         game_session.message = save_data.get('message', '')
         game_session.death_reason = save_data.get('death_reason', '')
 
@@ -240,18 +238,26 @@ class SaveManager:
         pending_data = save_data.get('pending_selection', None)
         game_session.pending_selection = SelectionRequest.from_dict(pending_data)
 
-        # Determine final saved GameState (priority: VICTORY > GAME_OVER > PLAYER_ASLEEP > ITEM_SELECTION > PLAYING)
         from domain.services.game_states import GameState
-        if saved_victory:
-            _saved_state = GameState.VICTORY
-        elif saved_game_over:
-            _saved_state = GameState.GAME_OVER
-        elif saved_player_asleep:
-            _saved_state = GameState.PLAYER_ASLEEP
-        elif game_session.pending_selection is not None:
-            _saved_state = GameState.ITEM_SELECTION
+        saved_state_name = save_data.get('game_state')
+        if isinstance(saved_state_name, str) and saved_state_name in GameState.__members__:
+            _saved_state = GameState[saved_state_name]
         else:
-            _saved_state = GameState.PLAYING
+            # Fallback for old saves (legacy flags)
+            saved_player_asleep = save_data.get('player_asleep', False)
+            saved_game_over = save_data.get('game_over', False)
+            saved_victory = save_data.get('victory', False)
+
+            if saved_victory:
+                _saved_state = GameState.VICTORY
+            elif saved_game_over:
+                _saved_state = GameState.GAME_OVER
+            elif saved_player_asleep:
+                _saved_state = GameState.PLAYER_ASLEEP
+            elif game_session.pending_selection is not None:
+                _saved_state = GameState.ITEM_SELECTION
+            else:
+                _saved_state = GameState.PLAYING
         if 'difficulty_manager' in save_data and save_data['difficulty_manager'] is not None:
             game_session.difficulty_manager = self._deserialize_difficulty_manager(
                 save_data['difficulty_manager']

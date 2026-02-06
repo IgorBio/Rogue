@@ -121,8 +121,12 @@ class LevelManager:
         if not session.test_mode:
             try:
                 session.save_to_file()
-            except (OSError, IOError):
+            except (OSError, IOError) as exc:
                 # Persist failures shouldn't stop the game flow in normal operation.
-                pass
+                log_exception(exc, __name__)
+                if session.message:
+                    session.message += " [Warning: Autosave failed]"
+                else:
+                    session.message = "Warning: Autosave failed"
 
         return new_level_num

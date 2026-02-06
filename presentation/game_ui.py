@@ -51,8 +51,7 @@ class GameUI:
         from presentation.input_handler import InputHandler
         from presentation.ui import CombatFeedback, TargetingReticle, EnemyHealthBar
         
-        self.renderer_3d = Renderer3D(stdscr, viewport_width=70, viewport_height=20,
-                                      use_textures=True, show_minimap=True, show_sprites=True)
+        self.renderer_3d = Renderer3D(stdscr, use_textures=True, show_minimap=True, show_sprites=True)
         self.input_handler_3d = InputHandler(stdscr, mode='3d')
         
         self.combat_feedback = CombatFeedback(stdscr)
@@ -177,6 +176,31 @@ class GameUI:
         
         viewport_x = 2
         viewport_y = 2
+
+        max_y, max_x = self.stdscr.getmaxyx()
+        status_lines = 6
+        status_gap = 2
+        help_lines = 3 if self.show_help else 0
+        min_width = 20
+        min_height = 8
+
+        available_width = max_x - viewport_x - 1
+        available_height = max_y - viewport_y - (status_gap + status_lines + help_lines)
+
+        viewport_width = min(70, max(available_width, 0))
+        viewport_height = min(20, max(available_height, 0))
+
+        if viewport_width < min_width or viewport_height < min_height:
+            self.stdscr.clear()
+            try:
+                self.stdscr.addstr(1, 2, "Terminal too small for 3D view.")
+                self.stdscr.addstr(2, 2, "Resize window or switch to 2D (Tab).")
+            except curses.error:
+                pass
+            self.stdscr.refresh()
+            return
+
+        self.renderer_3d.set_viewport(viewport_width, viewport_height)
         
         self.renderer_3d.render_viewport_border(x_offset=viewport_x, y_offset=viewport_y)
         self.renderer_3d.render_3d_view(camera, level, fog_of_war=fog_of_war,

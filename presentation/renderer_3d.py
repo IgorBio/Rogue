@@ -28,7 +28,7 @@ class Renderer3D:
     # Distance thresholds for shading
     SHADE_DISTANCES = [2.0, 4.0, 7.0, 11.0, 16.0, 20.0]
     
-    def __init__(self, stdscr, viewport_width=70, viewport_height=20, use_textures=True, show_minimap=True, show_sprites=True):
+    def __init__(self, stdscr, viewport_width=None, viewport_height=None, use_textures=True, show_minimap=True, show_sprites=True):
         """
         Initialize 3D renderer.
         
@@ -41,6 +41,11 @@ class Renderer3D:
             show_sprites: Enable sprite rendering (enemies/items)
         """
         self.stdscr = stdscr
+        if viewport_width is None or viewport_height is None:
+            max_y, max_x = stdscr.getmaxyx()
+            viewport_width = min(70, max(10, max_x - 3))
+            viewport_height = min(20, max(8, max_y - 10))
+
         self.viewport_width = viewport_width
         self.viewport_height = viewport_height
         self.num_rays = viewport_width  # One ray per column
@@ -68,6 +73,19 @@ class Renderer3D:
         
         # Cache for performance
         self._shade_cache = {}
+
+    def set_viewport(self, viewport_width: int, viewport_height: int) -> None:
+        """Update viewport size and resize dependent buffers/renderers."""
+        if viewport_width <= 0 or viewport_height <= 0:
+            return
+        if viewport_width == self.viewport_width and viewport_height == self.viewport_height:
+            return
+
+        self.viewport_width = viewport_width
+        self.viewport_height = viewport_height
+        self.num_rays = viewport_width
+        self.sprite_renderer = SpriteRenderer(viewport_width, viewport_height, fov=60.0)
+        self.z_buffer = [float('inf')] * viewport_width
     
     def render_3d_view(self, camera, level, fog_of_war=None, x_offset=0, y_offset=0):
         """
