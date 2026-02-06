@@ -7,8 +7,6 @@ This file deliberately contains a single, unambiguous definition of
 Statistics are now tracked via events published to the EventBus.
 """
 from domain.logging_utils import log_exception
-from domain.event_bus import event_bus
-from domain.events import PlayerMovedEvent
 from config.game_config import GameConfig
 
 
@@ -39,13 +37,13 @@ class MovementHandler:
             session.message = "You can't move there - it's a wall!"
             return False
 
-        mimic_at_pos = session._coordinator.get_disguised_mimic_at(session.level, new_x, new_y)
+        mimic_at_pos = session.get_disguised_mimic_at(new_x, new_y)
         if mimic_at_pos:
             mimic_at_pos.reveal()
             mimic_at_pos.is_chasing = True
             session.message = "It's a MIMIC! The item was a trap!"
 
-            combat_result = session._coordinator.handle_combat(mimic_at_pos)
+            combat_result = session.handle_combat(mimic_at_pos)
 
             # Check terminal state immediately after combat (e.g., player died)
             if session.state_machine.is_terminal():
@@ -53,75 +51,45 @@ class MovementHandler:
 
             if combat_result and not mimic_at_pos.is_alive():
                 session.character.move_to(new_x, new_y)
+                session.notify_character_moved((current_x, current_y), session.character.position)
 
-                if session.is_3d_mode():
-                    session.camera.x = new_x
-                    session.camera.y = new_y
-
-                if session.should_use_fog_of_war():
-                    session.fog_of_war.update_visibility(session.character.position)
-
-                # Publish movement event for statistics tracking
-                try:
-                    event_bus.publish(PlayerMovedEvent(
-                        from_pos=(current_x, current_y),
-                        to_pos=(new_x, new_y)
-                    ))
-                except Exception as exc:
-                        log_exception(exc, __name__)
-
-                item = session._coordinator.get_item_at(session.level, new_x, new_y)
+                item = session.get_item_at(new_x, new_y)
                 if item:
-                    pickup_message = session._coordinator.pickup_item(item)
+                    pickup_message = session.pickup_item(item)
                     if pickup_message:
                         session.message += " | " + pickup_message
 
             if not session.state_machine.is_terminal():
-                session._coordinator.process_enemy_turns()
+                session.process_enemy_turns()
 
             return combat_result
 
-        enemy = session._coordinator.get_revealed_enemy_at(session.level, new_x, new_y)
+        enemy = session.get_revealed_enemy_at(new_x, new_y)
         if enemy:
-            combat_result = session._coordinator.handle_combat(enemy)
+            combat_result = session.handle_combat(enemy)
 
             # Check terminal state immediately after combat (e.g., player died)
             if session.state_machine.is_terminal():
                 return combat_result
 
             if combat_result and not session.state_machine.is_terminal():
-                session._coordinator.process_enemy_turns()
+                session.process_enemy_turns()
             return combat_result
 
-        item = session._coordinator.get_item_at(session.level, new_x, new_y)
+        item = session.get_item_at(new_x, new_y)
         if item:
-            pickup_message = session._coordinator.pickup_item(item)
+            pickup_message = session.pickup_item(item)
             if pickup_message:
                 session.message = pickup_message
 
         session.character.move_to(new_x, new_y)
-
-        if session.is_3d_mode():
-            session.camera.x = new_x
-            session.camera.y = new_y
-
-        if session.should_use_fog_of_war():
-            session.fog_of_war.update_visibility(session.character.position)
-
-        # Publish movement event for statistics tracking
-        try:
-            event_bus.publish(PlayerMovedEvent(
-                from_pos=(current_x, current_y),
-                to_pos=(new_x, new_y)
-            ))
-        except Exception as exc:
-                log_exception(exc, __name__)
+        session.notify_character_moved((current_x, current_y), session.character.position)
 
         if session.level.exit_position == (new_x, new_y):
-            session._coordinator.advance_level(session, GameConfig.TOTAL_LEVELS)
+            session.advance_level()
             return True
 
-        session._coordinator.process_enemy_turns()
+        session.process_enemy_turns()
         return True
 
     def handle_3d_movement(self, direction):
@@ -144,25 +112,15 @@ class MovementHandler:
             return False
 
         # Sync character to new camera position
+        from_pos = session.character.position
         new_x, new_y = session.camera.grid_position
         session.character.move_to(new_x, new_y)
+        session.notify_character_moved(from_pos, session.character.position)
 
-        if session.should_use_fog_of_war():
-            session.fog_of_war.update_visibility(session.character.position)
-
-        # Publish movement event for statistics tracking
-        try:
-            event_bus.publish(PlayerMovedEvent(
-                from_pos=session.character.position,
-                to_pos=(new_x, new_y)
-            ))
-        except Exception as exc:
-                log_exception(exc, __name__)
-
-        session._coordinator.process_enemy_turns()
+        session.process_enemy_turns()
         return True
 
     def wait(self):
         session = self.session
-        session._coordinator.process_enemy_turns()
+        session.process_enemy_turns()
         return True

@@ -8,7 +8,7 @@ from domain.entities.character import Character
 from domain.fog_of_war import FogOfWar
 from domain.dynamic_difficulty import DifficultyManager
 from domain.services.game_states import GameState, StateMachine
-from domain.events import LevelGeneratedEvent, CharacterMovedEvent, GameEndedEvent
+from domain.events import LevelGeneratedEvent, CharacterMovedEvent, PlayerMovedEvent, GameEndedEvent
 from domain.event_bus import event_bus
 from config.game_config import GameConfig, PlayerConfig
 
@@ -277,6 +277,10 @@ class GameSession:
         """Process all enemy turns via coordinator."""
         return self._coordinator.process_enemy_turns()
 
+    def handle_movement(self, direction):
+        """Handle movement via coordinator."""
+        return self._coordinator.handle_movement(direction)
+
 
     @property
     def game_over(self) -> bool:
@@ -324,6 +328,22 @@ class GameSession:
     def complete_item_selection(self, selected_idx):
         """Complete item selection with chosen index."""
         return self._coordinator.complete_item_selection(selected_idx)
+
+    def request_food_selection(self):
+        """Request food selection via coordinator."""
+        return self._coordinator.request_food_selection()
+
+    def request_weapon_selection(self):
+        """Request weapon selection via coordinator."""
+        return self._coordinator.request_weapon_selection()
+
+    def request_elixir_selection(self):
+        """Request elixir selection via coordinator."""
+        return self._coordinator.request_elixir_selection()
+
+    def request_scroll_selection(self):
+        """Request scroll selection via coordinator."""
+        return self._coordinator.request_scroll_selection()
     
     def advance_level(self):
         """Advance to the next dungeon level."""
@@ -452,3 +472,37 @@ class GameSession:
     def get_revealed_enemy_at(self, x: int, y: int):
         """Get revealed enemy at position via coordinator."""
         return self._coordinator.get_revealed_enemy_at(self.level, x, y)
+
+    def get_disguised_mimic_at(self, x: int, y: int):
+        """Get disguised mimic at position via coordinator."""
+        return self._coordinator.get_disguised_mimic_at(self.level, x, y)
+
+    def handle_combat(self, enemy):
+        """Handle combat via coordinator."""
+        return self._coordinator.handle_combat(enemy)
+
+    def pickup_item(self, item):
+        """Pick up an item via coordinator."""
+        return self._coordinator.pickup_item(item)
+
+    def notify_character_moved(self, from_pos, to_pos, is_transition: bool = False) -> None:
+        """Publish movement events and update fog of war."""
+        if self.should_use_fog_of_war() and self.fog_of_war is not None:
+            try:
+                self.fog_of_war.update_visibility(self.character.position)
+            except Exception as exc:
+                log_exception(exc, __name__)
+
+        try:
+            event_bus.publish(PlayerMovedEvent(from_pos=from_pos, to_pos=to_pos))
+        except Exception as exc:
+            log_exception(exc, __name__)
+
+        try:
+            event_bus.publish(CharacterMovedEvent(
+                from_position=from_pos,
+                to_position=to_pos,
+                is_transition=is_transition
+            ))
+        except Exception as exc:
+            log_exception(exc, __name__)

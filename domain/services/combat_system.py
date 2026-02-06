@@ -139,30 +139,19 @@ class CombatSystem:
                         log_exception(exc, __name__)
 
             # Move player onto enemy tile
+            from_pos = session.character.position
             try:
                 session.character.move_to(enemy.position[0], enemy.position[1])
             except Exception as exc:
                     log_exception(exc, __name__)
-
-            # Sync camera in 3D mode
-            if session.is_3d_mode():
-                try:
-                    session.camera.x = enemy.position[0]
-                    session.camera.y = enemy.position[1]
-                except Exception as exc:
-                        log_exception(exc, __name__)
-
-            if session.should_use_fog_of_war():
-                try:
-                    session.fog_of_war.update_visibility(session.character.position)
-                except Exception as exc:
-                        log_exception(exc, __name__)
+            else:
+                session.notify_character_moved(from_pos, session.character.position)
 
             # Pickup item if present
             try:
                 item = session.get_item_at(enemy.position[0], enemy.position[1])
                 if item:
-                    pickup_message = session._pickup_item(item)
+                    pickup_message = session.pickup_item(item)
                     if pickup_message:
                         messages.append(pickup_message)
             except Exception as exc:

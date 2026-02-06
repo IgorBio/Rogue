@@ -60,7 +60,7 @@ class ActionProcessor:
             self.session.state_machine.transition_to(GameState.PLAYING)
             # process enemy turns after being asleep
             try:
-                self.session._coordinator.process_enemy_turns()
+                self.session.process_enemy_turns()
             except Exception as exc:
                     log_exception(exc, __name__)
             return False
@@ -83,15 +83,15 @@ class ActionProcessor:
         """Process actions in 2D mode."""
 
         if action_type == self.ACTION_MOVE:
-            return self.session._coordinator.handle_movement(action_data)
+            return self.session.handle_movement(action_data)
         elif action_type == self.ACTION_USE_FOOD:
-            return self.session._coordinator.request_food_selection()
+            return self.session.request_food_selection()
         elif action_type == self.ACTION_USE_WEAPON:
-            return self.session._coordinator.request_weapon_selection()
+            return self.session.request_weapon_selection()
         elif action_type == self.ACTION_USE_ELIXIR:
-            return self.session._coordinator.request_elixir_selection()
+            return self.session.request_elixir_selection()
         elif action_type == self.ACTION_USE_SCROLL:
-            return self.session._coordinator.request_scroll_selection()
+            return self.session.request_scroll_selection()
         elif action_type == self.ACTION_QUIT:
             self.session.set_game_over("Game quit by player")
             self.session.message = "Game quit by player."
@@ -106,13 +106,13 @@ class ActionProcessor:
         """Process actions in 3D mode."""
 
         if action_type == self.ACTION_MOVE_FORWARD:
-            return self.session._coordinator.handle_movement('forward')
+            return self.session.handle_movement('forward')
         elif action_type == self.ACTION_MOVE_BACKWARD:
-            return self.session._coordinator.handle_movement('backward')
+            return self.session.handle_movement('backward')
         elif action_type == self.ACTION_STRAFE_LEFT:
-            return self.session._coordinator.handle_movement('strafe_left')
+            return self.session.handle_movement('strafe_left')
         elif action_type == self.ACTION_STRAFE_RIGHT:
-            return self.session._coordinator.handle_movement('strafe_right')
+            return self.session.handle_movement('strafe_right')
         elif action_type == self.ACTION_ROTATE_LEFT:
             if self.session.camera_controller:
                 self.session.camera_controller.rotate_left()
@@ -130,13 +130,13 @@ class ActionProcessor:
         elif action_type == self.ACTION_PICKUP:
             return self._handle_3d_pickup()
         elif action_type == self.ACTION_USE_FOOD:
-            return self.session._coordinator.request_food_selection()
+            return self.session.request_food_selection()
         elif action_type == self.ACTION_USE_WEAPON:
-            return self.session._coordinator.request_weapon_selection()
+            return self.session.request_weapon_selection()
         elif action_type == self.ACTION_USE_ELIXIR:
-            return self.session._coordinator.request_elixir_selection()
+            return self.session.request_elixir_selection()
         elif action_type == self.ACTION_USE_SCROLL:
-            return self.session._coordinator.request_scroll_selection()
+            return self.session.request_scroll_selection()
         elif action_type == self.ACTION_QUIT:
             self.session.set_game_over("Game quit by player")
             self.session.message = "Game quit by player."
@@ -158,7 +158,7 @@ class ActionProcessor:
         elif entity_type == 'item':
             return self._handle_3d_pickup()
         elif entity_type == 'exit':
-            return self.session._coordinator.handle_movement('forward')
+            return self.session.handle_movement('forward')
         else:
             success, message = self.session.camera_controller.try_open_door(self.session.character)
             self.session.message = message
@@ -178,7 +178,7 @@ class ActionProcessor:
         if success and enemy:
             # Use coordinator's CombatSystem which carries statistics and full handling
             try:
-                return self.session._coordinator.handle_combat(enemy)
+                return self.session.handle_combat(enemy)
             except Exception:
                 # As a conservative fallback, signal failure but avoid duplicating
                 # statistics or side-effects that may be handled elsewhere.
