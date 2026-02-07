@@ -299,8 +299,7 @@ class CameraController:
     
     def set_position(self, x, y):
         """Set camera position (for teleporting)."""
-        self.camera.x = x
-        self.camera.y = y
+        self.camera.set_position(x, y)
     
     def set_angle(self, angle):
         """Set camera angle (for teleporting/respawn)."""

@@ -83,6 +83,12 @@ def cast_ray(camera: 'Camera', ray_angle: float, level,
             side = 'EW'
             distance = side_dist_y - delta_dist_y
 
+        # Doors should block rays regardless of walkability (open doors are still visible)
+        door = level.get_door_at(map_x, map_y)
+        if door:
+            hit = True
+            break
+
         # Check if ray has hit a wall
         if level.is_wall(map_x, map_y):
             hit = True
