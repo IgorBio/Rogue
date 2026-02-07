@@ -129,6 +129,8 @@ class ViewManager:
         """
         if self.camera is None:
             return
+        if not getattr(event, "sync_camera", True):
+            return
         
         # Sync camera to new position
         to_x, to_y = event.to_position

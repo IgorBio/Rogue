@@ -493,7 +493,13 @@ class GameSession:
         """Pick up an item via coordinator."""
         return self._coordinator.pickup_item(item)
 
-    def notify_character_moved(self, from_pos, to_pos, is_transition: bool = False) -> None:
+    def notify_character_moved(
+        self,
+        from_pos,
+        to_pos,
+        is_transition: bool = False,
+        sync_camera: bool = True,
+    ) -> None:
         """Publish movement events and update fog of war."""
         if self.should_use_fog_of_war() and self.fog_of_war is not None:
             try:
@@ -510,7 +516,8 @@ class GameSession:
             event_bus.publish(CharacterMovedEvent(
                 from_position=from_pos,
                 to_position=to_pos,
-                is_transition=is_transition
+                is_transition=is_transition,
+                sync_camera=sync_camera,
             ))
         except Exception as exc:
             log_exception(exc, __name__)

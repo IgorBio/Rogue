@@ -115,7 +115,7 @@ class MovementHandler:
         from_pos = session.character.position
         new_x, new_y = session.camera.grid_position
         session.character.move_to(new_x, new_y)
-        session.notify_character_moved(from_pos, session.character.position)
+        session.notify_character_moved(from_pos, session.character.position, sync_camera=False)
 
         session.process_enemy_turns()
         return True

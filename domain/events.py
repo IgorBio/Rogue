@@ -45,10 +45,12 @@ class CharacterMovedEvent:
         from_position: Previous position (x, y)
         to_position: New position (x, y)
         is_transition: Whether this is a level transition (teleport)
+        sync_camera: Whether presentation should sync camera to character
     """
     from_position: Tuple[int, int]
     to_position: Tuple[int, int]
     is_transition: bool = False
+    sync_camera: bool = True
 
 
 @dataclass(frozen=True)
