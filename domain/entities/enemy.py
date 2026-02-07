@@ -64,9 +64,9 @@ class Enemy:
         self.direction_cooldown = 0  # For Snake
     
     @property
-    def position(self) -> Position:
-        """Get enemy position as Position object."""
-        return self._position
+    def position(self):
+        """Get enemy position as (x, y) tuple."""
+        return self._position.tuple
     
     @position.setter
     def position(self, value):
@@ -75,6 +75,11 @@ class Enemy:
             self._position = value
         else:
             self._position = Position(value[0], value[1])
+
+    @property
+    def position_obj(self) -> Position:
+        """Get enemy position as Position object."""
+        return self._position
     
     def is_alive(self) -> bool:
         """Check if enemy is still alive."""

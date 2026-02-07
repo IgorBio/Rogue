@@ -174,6 +174,12 @@ class FogOfWar:
             for rx in range(room.x + 1, room.x + room.width - 1):
                 for ry in range(room.y + 1, room.y + room.height - 1):
                     self.visible_tiles.add((rx, ry))
+
+            # Include doors on room walls so they can be rendered while in room
+            for door in self.level.doors:
+                dx, dy = door.position
+                if room.is_on_wall(dx, dy) or room.is_in_room(dx, dy):
+                    self.visible_tiles.add((dx, dy))
     
     def is_room_discovered(self, room_idx):
         """Check if a room has been discovered."""
@@ -252,14 +258,7 @@ class FogOfWar:
         Returns:
             bool: True if tile is visible
         """
-        if self.current_room_index is not None:
-            room = self.level.rooms[self.current_room_index]
-            return room.is_in_room(x, y)
-        
-        if self.current_corridor_index is not None:
-            return (x, y) in self.visible_tiles
-        
-        return False
+        return (x, y) in self.visible_tiles
     
     def is_position_visible(self, x, y):
         """
@@ -274,23 +273,7 @@ class FogOfWar:
         Returns:
             bool: True if entities at this position should render
         """
-        if self.current_room_index is not None:
-            room = self.level.rooms[self.current_room_index]
-            return room.contains_point(x, y)
-        
-        if self.current_corridor_index is not None:
-            in_visible_tiles = (x, y) in self.visible_tiles
-            if in_visible_tiles:
-                current_corridor = self.level.corridors[self.current_corridor_index]
-                if current_corridor.contains_point(x, y):
-                    return True
-                
-                for room_idx in self.discovered_rooms:
-                    room = self.level.rooms[room_idx]
-                    if room.contains_point(x, y):
-                        return True
-        
-        return False
+        return (x, y) in self.visible_tiles
     
     def reset(self):
         """Reset fog of war (for new level)."""

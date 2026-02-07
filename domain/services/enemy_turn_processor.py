@@ -39,10 +39,7 @@ class EnemyTurnProcessor:
         for enemy in enemies:
             enemy_pos = enemy.position
             # Use Position.manhattan_distance_to to avoid dependency on utils.pathfinding
-            if isinstance(enemy_pos, tuple):
-                enemy_pos_obj = Position(enemy_pos[0], enemy_pos[1])
-            else:
-                enemy_pos_obj = enemy_pos
+            enemy_pos_obj = enemy.position_obj
 
             distance = enemy_pos_obj.manhattan_distance_to(player_pos)
 
