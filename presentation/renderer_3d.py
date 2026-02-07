@@ -11,6 +11,7 @@ from presentation.rendering.minimap_renderer import MiniMapRenderer
 from presentation.rendering.sprite_renderer_3d import SpriteRenderer
 from presentation.colors import (
     init_colors,
+    get_key_door_color,
     COLOR_WALL,
     COLOR_FLOOR,
     COLOR_CORRIDOR,
@@ -162,7 +163,7 @@ class Renderer3D:
         wall_bottom = min(self.viewport_height, wall_bottom)
         
         # Get color based on wall type
-        color = self._get_wall_color(hit.wall_type, hit.side)
+        color = self._get_wall_color(hit.wall_type, hit.side, hit.door)
         
         # Render ceiling (above wall)
         for y in range(wall_top):
@@ -198,13 +199,15 @@ class Renderer3D:
                 )
         else:
             # Fallback to simple shading
-            shade_char = self._get_shade_char(hit.distance)
-            
+            wall_char = self._get_simple_wall_char(hit)
+            if wall_char == ' ':
+                wall_char = self._get_shade_char(hit.distance)
+
             for y in range(wall_top, wall_bottom):
                 self._draw_char(
                     y_offset + y,
                     x_offset + column,
-                    shade_char,
+                    wall_char,
                     color
                 )
         
@@ -258,14 +261,23 @@ class Renderer3D:
         self._shade_cache[distance_key] = char
         return char
     
-    def _get_wall_color(self, wall_type, side):
+    def _get_wall_color(self, wall_type, side, door=None):
         """Get color for wall based on type and side."""
         if wall_type == 'corridor_wall':
             return COLOR_CORRIDOR
-        elif wall_type == 'door':
-            return COLOR_WALL
-        else:
-            return COLOR_WALL
+        if wall_type in ('door_open', 'door_locked', 'door') and door is not None:
+            if door.is_locked:
+                return get_key_door_color(door.color)
+            return COLOR_CORRIDOR
+        return COLOR_WALL
+
+    def _get_simple_wall_char(self, hit):
+        """Get non-textured wall character for a hit."""
+        if hit.wall_type == 'door_locked':
+            return '+'
+        if hit.wall_type == 'door_open':
+            return '/'
+        return ' '
     
     def _get_floor_char(self, wall_bottom, viewport_height):
         """Get character for floor based on distance from camera."""

@@ -12,17 +12,18 @@ class RayHit:
     """Represents the result of a ray cast."""
 
     def __init__(self, distance: float, wall_type: str, texture_x: float,
-                 hit_x: int, hit_y: int, side: str):
+                 hit_x: int, hit_y: int, side: str, door=None):
         """
         Initialize a ray hit result.
 
         Args:
             distance: Perpendicular distance to wall (fisheye corrected)
-            wall_type: Type of wall hit ('room_wall', 'corridor_wall', 'door')
+            wall_type: Type of wall hit ('room_wall', 'corridor_wall', 'door_open', 'door_locked')
             texture_x: X coordinate on texture (0.0 - 1.0)
             hit_x: Grid X coordinate where ray hit
             hit_y: Grid Y coordinate where ray hit
             side: Which side was hit ('NS' for north/south, 'EW' for east/west)
+            door: Door object if the hit wall is a door (optional)
         """
         self.distance = distance
         self.wall_type = wall_type
@@ -30,6 +31,7 @@ class RayHit:
         self.hit_x = hit_x
         self.hit_y = hit_y
         self.side = side
+        self.door = door
 
 
 class Camera:

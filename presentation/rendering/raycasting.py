@@ -105,8 +105,8 @@ def cast_ray(camera: 'Camera', ray_angle: float, level,
 
     wall_x -= math.floor(wall_x)  # Keep only fractional part (0.0 - 1.0)
 
-    # Determine wall type
-    wall_type = _determine_wall_type(level, map_x, map_y)
+    # Determine wall type (and door info if applicable)
+    wall_type, door = _determine_wall_hit(level, map_x, map_y)
 
     return RayHit(
         distance=perp_distance,
@@ -114,7 +114,8 @@ def cast_ray(camera: 'Camera', ray_angle: float, level,
         texture_x=wall_x,
         hit_x=map_x,
         hit_y=map_y,
-        side=side
+        side=side,
+        door=door
     )
 
 
@@ -144,7 +145,7 @@ def cast_fov_rays(camera: 'Camera', level, num_rays: int = 80) -> List[Optional[
     return results
 
 
-def _determine_wall_type(level, x: int, y: int) -> str:
+def _determine_wall_hit(level, x: int, y: int):
     """
     Determine what type of wall is at the given position.
 
@@ -154,20 +155,22 @@ def _determine_wall_type(level, x: int, y: int) -> str:
         y: Grid Y coordinate
 
     Returns:
-        Wall type string: 'room_wall', 'corridor_wall', or 'door'
+        (wall_type, door) tuple where wall_type is one of:
+        'room_wall', 'corridor_wall', 'door_open', 'door_locked'
     """
     # Check if it's a door
     door = level.get_door_at(x, y)
     if door:
-        return 'door'
+        wall_type = 'door_locked' if door.is_locked else 'door_open'
+        return wall_type, door
 
     # Check if in a room
     for room in level.rooms:
         if room.is_on_wall(x, y):
-            return 'room_wall'
+            return 'room_wall', None
 
     # Must be a corridor wall or out of bounds
-    return 'corridor_wall'
+    return 'corridor_wall', None
 
 
 def world_to_screen_column(camera: 'Camera', ray_index: int, num_rays: int,

@@ -197,7 +197,7 @@ class TexturedRenderer:
         Get character for a wall position with texture and shading.
         
         Args:
-            wall_type: Type of wall ('room_wall', 'corridor_wall', 'door')
+            wall_type: Type of wall ('room_wall', 'corridor_wall', 'door_open', 'door_locked')
             texture_x: X coordinate on texture (0.0 - 1.0)
             texture_y: Y coordinate on texture (0.0 - 1.0)
             distance: Distance to wall (for shading)
@@ -206,7 +206,13 @@ class TexturedRenderer:
             Character to render
         """
         # Get base texture character
-        char = self.texture_manager.sample_texture(wall_type, texture_x, texture_y)
+        texture_name = wall_type
+        if wall_type == 'door_open':
+            texture_name = 'door'
+        elif wall_type == 'door_locked':
+            texture_name = 'locked_door'
+
+        char = self.texture_manager.sample_texture(texture_name, texture_x, texture_y)
         
         # Apply distance-based shading
         char = self._apply_distance_shading(char, distance)
