@@ -200,12 +200,11 @@ class Renderer:
                     if fog_of_war.is_position_visible(ex, ey):
                         self._render_enemy(enemy)
         
-        # Render doors near current room
-        if fog_of_war.current_room_index is not None:
-            current_room = level.rooms[fog_of_war.current_room_index]
-            for door in level.doors:
-                if self._is_door_near_room(door, current_room):
-                    self._render_door(door)
+        # Render doors based on visibility
+        for door in level.doors:
+            dx, dy = door.position
+            if fog_of_war.is_position_visible(dx, dy):
+                self._render_door(door)
     
     def _render_corridor_line_of_sight(self, level, character, fog_of_war):
         """
@@ -239,7 +238,8 @@ class Renderer:
         
         # Fourth pass: render doors in visible tiles
         for door in level.doors:
-            if door.position in fog_of_war.visible_tiles:
+            dx, dy = door.position
+            if fog_of_war.is_position_visible(dx, dy):
                 self._render_door(door)
         
         # Fifth pass: render exit if visible
@@ -401,25 +401,6 @@ class Renderer:
             color = get_key_door_color(door.color)
             self._draw_char(y, x, char, color)
     
-    def _is_door_near_room(self, door, room):
-        """
-        Check if a door is adjacent to a room.
-        
-        Args:
-            door: Door object
-            room: Room object
-        
-        Returns:
-            bool: True if door is near room
-        """
-        dx, dy = door.position
-        
-        for x in range(room.x - 2, room.x + room.width + 2):
-            for y in range(room.y - 2, room.y + room.height + 2):
-                if (x, y) == door.position:
-                    return True
-        return False
-
     
     def _render_ui(self, character, level):
         """
