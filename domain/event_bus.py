@@ -3,7 +3,7 @@ Event bus for publish-subscribe communication between layers.
 """
 
 from typing import Type, Callable, List, Dict, Any
-from domain.logging_utils import log_exception
+from common.logging_utils import log_exception
 
 
 class EventBus:

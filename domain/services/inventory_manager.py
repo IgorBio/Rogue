@@ -5,7 +5,7 @@ This manager owns pending selections and pickup/drop logic so the
 
 Statistics are now tracked via events published to the EventBus.
 """
-from domain.logging_utils import log_exception
+from common.logging_utils import log_exception
 from config.game_config import ItemType, PlayerConfig
 from domain.services.item_selection import SelectionRequest
 from domain.event_bus import event_bus

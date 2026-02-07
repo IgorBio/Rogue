@@ -4,6 +4,7 @@
 import curses
 from collections import deque
 from config.game_config import GameConfig, ItemType, EnemyType
+from common.logging_utils import get_logger
 from presentation.colors import (
     init_colors,
     COLOR_WALL,
@@ -45,6 +46,9 @@ class Renderer:
         self.map_height = GameConfig.MAP_HEIGHT
         self.map_width = GameConfig.MAP_WIDTH
         self.message_log = MessageLog(max_messages=5)
+        self._logger = get_logger(__name__)
+        self._curses_error_count = 0
+        self._curses_error_limit = 5
         
         # Configure curses for game display
         curses.curs_set(0)
@@ -458,8 +462,8 @@ class Renderer:
         """
         try:
             self.stdscr.addch(y, x, char, curses.color_pair(color_pair))
-        except curses.error:
-            pass
+        except curses.error as exc:
+            self._log_curses_error(exc, y, x)
     
     def _draw_string(self, y, x, string, color_pair):
         """
@@ -473,8 +477,15 @@ class Renderer:
         """
         try:
             self.stdscr.addstr(y, x, string, curses.color_pair(color_pair))
-        except curses.error:
-            pass
+        except curses.error as exc:
+            self._log_curses_error(exc, y, x)
+
+    def _log_curses_error(self, exc, y, x):
+        """Log a limited number of curses rendering errors."""
+        if self._curses_error_count >= self._curses_error_limit:
+            return
+        self._curses_error_count += 1
+        self._logger.warning("curses render error at (%s,%s): %s", x, y, exc)
     
     def display_message(self, message, y=None):
         """

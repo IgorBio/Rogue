@@ -5,7 +5,7 @@ state checks (sleep, terminal states) so the session stays thin.
 
 Statistics are now tracked via events published to the EventBus.
 """
-from domain.logging_utils import log_exception
+from common.logging_utils import log_exception
 from domain.services.game_states import GameState
 from domain.services.action_types import ActionType
 from domain.event_bus import event_bus

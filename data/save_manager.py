@@ -2,7 +2,7 @@
 Save and load game state persistence.
 """
 
-from domain.logging_utils import log_exception
+from common.logging_utils import log_exception
 import json
 import os
 from datetime import datetime

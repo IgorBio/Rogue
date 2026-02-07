@@ -5,7 +5,7 @@ coordinates level-number tracking and difficulty adjustments.
 
 Statistics are now tracked via events published to the EventBus.
 """
-from domain.logging_utils import log_exception
+from common.logging_utils import log_exception
 from typing import Optional
 
 from domain.level_generator import generate_level

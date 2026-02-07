@@ -2,7 +2,7 @@
 Game session management and core game loop logic.
 """
 
-from domain.logging_utils import log_exception
+from common.logging_utils import log_exception
 from domain.level_generator import generate_level, spawn_emergency_healing
 from domain.entities.character import Character
 from domain.fog_of_war import FogOfWar

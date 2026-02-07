@@ -7,7 +7,7 @@ effects) without changing callers.
 Statistics are now tracked via events published to the EventBus,
 eliminating direct coupling between CombatSystem and Statistics.
 """
-from domain.logging_utils import log_exception
+from common.logging_utils import log_exception
 from typing import Optional, Any
 
 from domain import combat as _combat

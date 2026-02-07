@@ -17,6 +17,7 @@ from presentation.colors import (
     COLOR_UI_TEXT,
 )
 from config.game_config import GameConfig
+from common.logging_utils import get_logger
 
 
 class Renderer3D:
@@ -41,6 +42,9 @@ class Renderer3D:
             show_sprites: Enable sprite rendering (enemies/items)
         """
         self.stdscr = stdscr
+        self._logger = get_logger(__name__)
+        self._curses_error_count = 0
+        self._curses_error_limit = 5
         if viewport_width is None or viewport_height is None:
             max_y, max_x = stdscr.getmaxyx()
             viewport_width = min(70, max(10, max_x - 3))
@@ -278,8 +282,8 @@ class Renderer3D:
         """Safely draw a character at given position."""
         try:
             self.stdscr.addch(y, x, char, curses.color_pair(color_pair))
-        except curses.error:
-            pass
+        except curses.error as exc:
+            self._log_curses_error(exc, y, x)
     
     def render_viewport_border(self, x_offset=0, y_offset=0):
         """Render a border around the 3D viewport."""
@@ -313,8 +317,15 @@ class Renderer3D:
         """Safely draw a string at given position."""
         try:
             self.stdscr.addstr(y, x, string, curses.color_pair(color_pair))
-        except curses.error:
-            pass
+        except curses.error as exc:
+            self._log_curses_error(exc, y, x)
+
+    def _log_curses_error(self, exc, y, x):
+        """Log a limited number of curses rendering errors."""
+        if self._curses_error_count >= self._curses_error_limit:
+            return
+        self._curses_error_count += 1
+        self._logger.warning("curses render error at (%s,%s): %s", x, y, exc)
     
     def render_mode_indicator(self, y_offset=0):
         """Render an indicator showing 3D mode is active."""

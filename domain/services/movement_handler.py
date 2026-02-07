@@ -6,7 +6,7 @@ This file deliberately contains a single, unambiguous definition of
 
 Statistics are now tracked via events published to the EventBus.
 """
-from domain.logging_utils import log_exception
+from common.logging_utils import log_exception
 from config.game_config import GameConfig
 
 

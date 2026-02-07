@@ -4,7 +4,7 @@ Main entry point for the roguelike game with 3D rendering mode support.
 import curses
 import sys
 sys.path.insert(0, '.')
-from domain.logging_utils import setup_logging
+from common.logging_utils import setup_logging
 
 
 def main(stdscr):
