@@ -56,7 +56,7 @@ class SaveManager:
         if filename is None:
             filename = self.autosave_file
         else:
-            filename = os.path.join(self.save_dir, filename)
+            filename = self._safe_save_path(filename)
 
         try:
             save_data = {
@@ -117,7 +117,7 @@ class SaveManager:
         if filename is None:
             filename = self.autosave_file
         else:
-            filename = os.path.join(self.save_dir, filename)
+            filename = self._safe_save_path(filename)
 
         if not os.path.exists(filename):
             return None
@@ -142,7 +142,7 @@ class SaveManager:
         if filename is None:
             filename = self.autosave_file
         else:
-            filename = os.path.join(self.save_dir, filename)
+            filename = self._safe_save_path(filename)
 
         return os.path.exists(filename)
 
@@ -290,6 +290,17 @@ class SaveManager:
     # ========================================================================
     # SERIALIZATION METHODS
     # ========================================================================
+    def _safe_save_path(self, filename: str) -> str:
+        """
+        Validate and normalize save filename to prevent path traversal.
+        """
+        base_name = os.path.basename(filename)
+        if not base_name or base_name != filename:
+            raise ValueError("Invalid save filename")
+        if any(sep in base_name for sep in ("..", "/", "\\")):
+            raise ValueError("Invalid save filename")
+        return os.path.join(self.save_dir, base_name)
+
 
     def _serialize_character(self, character):
         """Serialize character to dictionary."""
