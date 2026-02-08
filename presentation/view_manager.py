@@ -10,15 +10,18 @@ Usage:
     from presentation.camera import CameraController
     
     # Create view manager manually
-    vm = ViewManager(auto_subscribe=False)
-    vm.set_factories(
+    vm = ViewManager(
+        auto_subscribe=False,
         camera_factory=lambda x, y, angle, fov: Camera(x, y, angle=angle, fov=fov),
         camera_controller_factory=lambda cam, lvl: CameraController(cam, lvl)
     )
     
     # Or use event-driven mode
-    vm = ViewManager(auto_subscribe=True)
-    vm.set_factories(camera_factory, controller_factory)
+    vm = ViewManager(
+        auto_subscribe=True,
+        camera_factory=camera_factory,
+        camera_controller_factory=controller_factory
+    )
     # Camera will be created automatically when LevelGeneratedEvent is published
     
     # Access camera and controller
@@ -54,38 +57,32 @@ class ViewManager:
         _subscribed: Whether event subscriptions are active
     """
     
-    def __init__(self, auto_subscribe: bool = False):
+    def __init__(
+        self,
+        auto_subscribe: bool = False,
+        camera_factory: Optional[Callable] = None,
+        camera_controller_factory: Optional[Callable] = None
+    ):
         """
         Initialize ViewManager.
         
         Args:
             auto_subscribe: If True, automatically subscribe to domain events
+            camera_factory: Callable that creates Camera (x, y, angle, fov)
+            camera_controller_factory: Callable that creates CameraController (camera, level)
         """
         self.camera: Optional[Any] = None
         self.camera_controller: Optional[Any] = None
-        self._camera_factory: Optional[Callable] = None
-        self._camera_controller_factory: Optional[Callable] = None
+        self._camera_factory: Optional[Callable] = camera_factory
+        self._camera_controller_factory: Optional[Callable] = camera_controller_factory
         self._level: Optional[Any] = None
         self._subscribed = False
         
         if auto_subscribe:
             self.subscribe()
     
-    def set_factories(
-        self,
-        camera_factory: Optional[Callable] = None,
-        camera_controller_factory: Optional[Callable] = None
-    ) -> None:
-        """
-        Set camera and controller factories.
-        
-        Args:
-            camera_factory: Callable that creates Camera (x, y, angle, fov)
-            camera_controller_factory: Callable that creates CameraController (camera, level)
-        """
-        self._camera_factory = camera_factory
-        self._camera_controller_factory = camera_controller_factory
-    
+
+
     def subscribe(self) -> None:
         """Subscribe to domain events for camera management."""
         if self._subscribed:
@@ -301,22 +298,3 @@ def reset_view_manager() -> None:
     view_manager._level = None
     view_manager._camera_factory = None
     view_manager._camera_controller_factory = None
-
-
-def create_view_manager(
-    camera_factory: Optional[Callable] = None,
-    camera_controller_factory: Optional[Callable] = None
-) -> ViewManager:
-    """
-    Factory function to create and configure a ViewManager.
-    
-    Args:
-        camera_factory: Factory for creating Camera instances
-        camera_controller_factory: Factory for creating CameraController instances
-    
-    Returns:
-        Configured ViewManager instance with event subscriptions
-    """
-    vm = ViewManager(auto_subscribe=True)
-    vm.set_factories(camera_factory, camera_controller_factory)
-    return vm

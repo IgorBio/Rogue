@@ -58,13 +58,15 @@ class TestViewManagerBasic:
         assert vm.camera is None
         assert vm.camera_controller is None
     
-    def test_set_factories(self):
-        """Test setting camera factories."""
-        vm = ViewManager(auto_subscribe=False)
+    def test_init_factories(self):
+        """Test initializing camera factories."""
         camera_factory = Mock()
         controller_factory = Mock()
-        
-        vm.set_factories(camera_factory, controller_factory)
+        vm = ViewManager(
+            auto_subscribe=False,
+            camera_factory=camera_factory,
+            camera_controller_factory=controller_factory
+        )
         
         assert vm._camera_factory is camera_factory
         assert vm._camera_controller_factory is controller_factory
@@ -97,13 +99,15 @@ class TestViewManagerCameraCreation:
     
     def test_create_camera_for_level_3d_with_factory(self):
         """Test camera creation with factory."""
-        vm = ViewManager(auto_subscribe=False)
-        
         # Factory that creates MockCamera with provided arguments
         def camera_factory(x, y, angle=0.0, fov=60.0):
             return MockCamera(x, y, angle, fov)
         
-        vm.set_factories(camera_factory, None)
+        vm = ViewManager(
+            auto_subscribe=False,
+            camera_factory=camera_factory,
+            camera_controller_factory=None
+        )
         
         level = MockLevel()
         character = MockCharacter(10, 20)
@@ -118,9 +122,12 @@ class TestViewManagerCameraCreation:
     
     def test_create_camera_factory_exception(self):
         """Test handling of camera factory exception."""
-        vm = ViewManager(auto_subscribe=False)
         camera_factory = Mock(side_effect=Exception("Camera error"))
-        vm.set_factories(camera_factory, None)
+        vm = ViewManager(
+            auto_subscribe=False,
+            camera_factory=camera_factory,
+            camera_controller_factory=None
+        )
         
         level = MockLevel()
         character = MockCharacter(10, 20)
@@ -132,14 +139,17 @@ class TestViewManagerCameraCreation:
     
     def test_create_camera_and_controller(self):
         """Test creation of both camera and controller."""
-        vm = ViewManager(auto_subscribe=False)
         mock_camera = MockCamera()
         mock_controller = Mock()
         
         camera_factory = Mock(return_value=mock_camera)
         controller_factory = Mock(return_value=mock_controller)
         
-        vm.set_factories(camera_factory, controller_factory)
+        vm = ViewManager(
+            auto_subscribe=False,
+            camera_factory=camera_factory,
+            camera_controller_factory=controller_factory
+        )
         
         level = MockLevel()
         character = MockCharacter(10, 20)
@@ -193,10 +203,13 @@ class TestViewManagerEventHandling:
     
     def test_level_generated_event_creates_camera(self):
         """Test that LevelGeneratedEvent triggers camera creation."""
-        vm = ViewManager(auto_subscribe=True)
         mock_camera = MockCamera()
         camera_factory = Mock(return_value=mock_camera)
-        vm.set_factories(camera_factory, None)
+        vm = ViewManager(
+            auto_subscribe=True,
+            camera_factory=camera_factory,
+            camera_controller_factory=None
+        )
         
         level = MockLevel()
         event = LevelGeneratedEvent(
@@ -278,13 +291,16 @@ class TestViewManagerApplyCameraState:
 
     def test_apply_camera_state_creates_camera_and_controller(self):
         """Test applying camera state creates camera and controller."""
-        vm = ViewManager(auto_subscribe=False)
         mock_camera = MockCamera()
         mock_controller = Mock()
 
         camera_factory = Mock(return_value=mock_camera)
         controller_factory = Mock(return_value=mock_controller)
-        vm.set_factories(camera_factory, controller_factory)
+        vm = ViewManager(
+            auto_subscribe=False,
+            camera_factory=camera_factory,
+            camera_controller_factory=controller_factory
+        )
 
         level = MockLevel()
         state = {"x": 5.5, "y": 6.5, "angle": 10.0, "fov": 70.0}
@@ -298,8 +314,11 @@ class TestViewManagerApplyCameraState:
 
     def test_apply_camera_state_no_factory(self):
         """Test applying camera state without factory does nothing."""
-        vm = ViewManager(auto_subscribe=False)
-        vm.set_factories(None, None)
+        vm = ViewManager(
+            auto_subscribe=False,
+            camera_factory=None,
+            camera_controller_factory=None
+        )
 
         level = MockLevel()
         state = {"x": 5.5, "y": 6.5, "angle": 10.0, "fov": 70.0}
@@ -334,10 +353,13 @@ class TestViewManagerUnsubscribe:
     
     def test_unsubscribe_stops_receiving_events(self):
         """Test that unsubscribe stops event handling."""
-        vm = ViewManager(auto_subscribe=True)
         mock_camera = MockCamera()
         camera_factory = Mock(return_value=mock_camera)
-        vm.set_factories(camera_factory, None)
+        vm = ViewManager(
+            auto_subscribe=True,
+            camera_factory=camera_factory,
+            camera_controller_factory=None
+        )
         
         # First event should create camera
         event1 = LevelGeneratedEvent(

@@ -18,7 +18,7 @@ def main(stdscr):
 
     from domain.game_session import GameSession
     from presentation.game_ui import GameUI
-    from presentation.view_manager import create_view_manager
+    from presentation.view_manager import ViewManager
     from data.save_manager import SaveManager
     from data.statistics import StatisticsManager, Statistics
     from presentation.camera import Camera
@@ -29,7 +29,8 @@ def main(stdscr):
     stats_manager = StatisticsManager()
     ui = GameUI(stdscr)
     
-    view_manager = create_view_manager(
+    view_manager = ViewManager(
+        auto_subscribe=True,
         camera_factory=lambda x, y, angle=0.0, fov=60.0: Camera(x, y, angle=angle, fov=fov),
         camera_controller_factory=lambda cam, lvl: CameraController(cam, lvl)
     )
