@@ -23,6 +23,7 @@ from typing import Tuple, Optional, Any
 from domain.entities.position import Position
 from domain.entities.character import Character
 from presentation.camera.camera import Camera
+from config.game_config import CameraConfig
 
 
 class CameraSync:
@@ -42,7 +43,7 @@ class CameraSync:
         camera_sync.sync_camera_to_character(camera, character)
     """
     
-    def __init__(self, center_offset: float = 0.5):
+    def __init__(self, center_offset: float = CameraConfig.CAMERA_OFFSET):
         """
         Initialize camera sync.
         
@@ -191,7 +192,7 @@ class CameraSync:
 
 
 def create_synced_pair(character_pos: Tuple[int, int], angle: float = 0.0,
-                       fov: float = 60.0, center_offset: float = 0.5) -> Tuple[Character, Camera]:
+                       fov: float = 60.0, center_offset: float = CameraConfig.CAMERA_OFFSET) -> Tuple[Character, Camera]:
     """
     Create a synchronized Character and Camera pair.
 

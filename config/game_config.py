@@ -169,6 +169,15 @@ class PlayerConfig:
     ]
 
 
+class CameraConfig:
+    """Конфигурация 3D камеры."""
+    GRID_CELL_SIZE = 1.0  # Размер одной клетки в мировых единицах
+    CAMERA_OFFSET = 0.5   # Смещение камеры от угла клетки (центрирование)
+    MOVE_SPEED = 1.0      # Скорость = 1 клетка за шаг
+    ROTATION_SPEED = 15.0  # градусов за шаг
+    COLLISION_RADIUS = 0.3  # радиус коллизии в мировых единицах
+
+
 # Type classes
 class ItemType:
     TREASURE = "treasure"

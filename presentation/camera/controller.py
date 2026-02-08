@@ -3,12 +3,13 @@ Camera controller for 3D mode with combat and item interaction support.
 """
 import math
 from presentation.camera.camera import Camera
+from config.game_config import CameraConfig
 
 
 class CameraController:
     """Manages camera movement, collision detection, and 3D interactions."""
     
-    def __init__(self, camera, level, move_speed=0.3, rotation_speed=15):
+    def __init__(self, camera, level, move_speed=CameraConfig.MOVE_SPEED, rotation_speed=CameraConfig.ROTATION_SPEED):
         """
         Initialize camera controller.
         
@@ -28,7 +29,7 @@ class CameraController:
         self.velocity_y = 0.0
         
         # Collision padding (prevents getting too close to walls)
-        self.collision_radius = 0.25
+        self.collision_radius = CameraConfig.COLLISION_RADIUS
         
         # Interaction range
         self.interaction_range = 1.5  # Distance to interact with entities
@@ -85,7 +86,7 @@ class CameraController:
             Boolean indicating if movement was successful
         """
         # Check if new position is valid
-        if self.level.is_walkable(int(new_x), int(new_y)):
+        if self._is_position_valid(new_x, new_y):
             self.camera.set_position(new_x, new_y)
             return True
         

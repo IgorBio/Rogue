@@ -34,7 +34,7 @@ from domain.events import (
     CharacterMovedEvent,
 )
 from presentation.camera.sync import camera_sync
-from config.game_config import GameConfig
+from config.game_config import GameConfig, CameraConfig
 
 
 class ViewManager:
@@ -266,8 +266,8 @@ class ViewManager:
 
         try:
             self.camera = self._camera_factory(
-                grid_x + 0.5,
-                grid_y + 0.5,
+                grid_x + CameraConfig.CAMERA_OFFSET,
+                grid_y + CameraConfig.CAMERA_OFFSET,
                 GameConfig.DEFAULT_CAMERA_ANGLE,
                 GameConfig.DEFAULT_CAMERA_FOV,
             )
