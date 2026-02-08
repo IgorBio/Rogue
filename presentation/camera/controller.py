@@ -46,7 +46,7 @@ class CameraController:
     
     def strafe_left(self):
         """Move camera left (perpendicular to facing direction)."""
-        perpendicular_angle = self.camera.angle + 90
+        perpendicular_angle = self.camera.angle - 90
         rad = math.radians(perpendicular_angle)
         
         new_x = self.camera.x + math.cos(rad) * self.move_speed
@@ -56,7 +56,7 @@ class CameraController:
     
     def strafe_right(self):
         """Move camera right (perpendicular to facing direction)."""
-        perpendicular_angle = self.camera.angle - 90
+        perpendicular_angle = self.camera.angle + 90
         rad = math.radians(perpendicular_angle)
         
         new_x = self.camera.x + math.cos(rad) * self.move_speed
@@ -126,49 +126,50 @@ class CameraController:
         """
         if check_distance is None:
             check_distance = self.interaction_range
-        
-        # Calculate position in front of camera
-        rad = math.radians(self.camera.angle)
-        
-        # Check multiple distances (stepped ray)
-        steps = int(check_distance * 4)  # Check every 0.25 units
-        
-        for step in range(1, steps + 1):
-            dist = step * 0.25
-            check_x = self.camera.x + math.cos(rad) * dist
-            check_y = self.camera.y + math.sin(rad) * dist
-            
-            # Check for enemies
-            for room in level.rooms:
-                for enemy in room.enemies:
-                    if not enemy.is_alive():
-                        continue
-                    
-                    ex, ey = enemy.position
-                    
-                    # Check if enemy is at this position (with tolerance)
-                    if abs(ex - check_x) < 0.5 and abs(ey - check_y) < 0.5:
-                        return (enemy, 'enemy', dist)
-            
-            # Check for items
-            for room in level.rooms:
-                for item in room.items:
-                    if not item.position:
-                        continue
-                    
-                    ix, iy = item.position
-                    
-                    # Check if item is at this position (with tolerance)
-                    if abs(ix - check_x) < 0.5 and abs(iy - check_y) < 0.5:
-                        return (item, 'item', dist)
-            
-            # Check for exit
-            if level.exit_position:
-                ex, ey = level.exit_position
-                if abs(ex - check_x) < 0.5 and abs(ey - check_y) < 0.5:
-                    return ('exit', 'exit', dist)
-        
-        return (None, None, None)
+
+        dir_x, dir_y = self.camera.get_direction_vector()
+        cos_threshold = 0.95  # ~18 degrees
+        best = (None, None, None)
+
+        def _consider_entity(entity, entity_type):
+            nonlocal best
+            if entity_type == 'exit':
+                tx, ty = entity
+            else:
+                if not entity.position:
+                    return
+                tx, ty = entity.position
+
+            dx = tx - self.camera.x
+            dy = ty - self.camera.y
+            dist = math.sqrt(dx * dx + dy * dy)
+            if dist < 0.01 or dist > check_distance:
+                return
+
+            cos_val = (dx * dir_x + dy * dir_y) / dist
+            if cos_val < cos_threshold:
+                return
+
+            if best[2] is None or dist < best[2]:
+                best = (entity, entity_type, dist)
+
+        # Enemies
+        for room in level.rooms:
+            for enemy in room.enemies:
+                if not enemy.is_alive():
+                    continue
+                _consider_entity(enemy, 'enemy')
+
+        # Items
+        for room in level.rooms:
+            for item in room.items:
+                _consider_entity(item, 'item')
+
+        # Exit
+        if level.exit_position:
+            _consider_entity(level.exit_position, 'exit')
+
+        return best
     
     def attack_entity_in_front(self, character, level):
         """
@@ -269,12 +270,17 @@ class CameraController:
         Returns:
             Tuple of (success, message)
         """
-        # Check position in front of camera
+        # Scan forward within interaction range for the nearest door
         rad = math.radians(self.camera.angle)
-        check_x = self.camera.x + math.cos(rad) * self.interaction_range
-        check_y = self.camera.y + math.sin(rad) * self.interaction_range
-        
-        door = self.level.get_door_at(int(check_x), int(check_y))
+        steps = int(self.interaction_range * 4)  # 0.25 step
+        door = None
+        for step in range(1, steps + 1):
+            dist = step * 0.25
+            check_x = self.camera.x + math.cos(rad) * dist
+            check_y = self.camera.y + math.sin(rad) * dist
+            door = self.level.get_door_at(int(check_x), int(check_y))
+            if door:
+                break
         
         if not door:
             return (False, "No door nearby")

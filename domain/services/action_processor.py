@@ -116,12 +116,10 @@ class ActionProcessor:
         elif action_type == self.ACTION_ROTATE_LEFT:
             if self.session.camera_controller:
                 self.session.camera_controller.rotate_left()
-                self.session.message = f"Facing {self.session.camera_controller.get_direction_name()}"
             return True
         elif action_type == self.ACTION_ROTATE_RIGHT:
             if self.session.camera_controller:
                 self.session.camera_controller.rotate_right()
-                self.session.message = f"Facing {self.session.camera_controller.get_direction_name()}"
             return True
         elif action_type == self.ACTION_INTERACT:
             return self._handle_3d_interact()
@@ -157,6 +155,8 @@ class ActionProcessor:
         door_success, door_message = self.session.camera_controller.try_open_door(self.session.character)
         if door_success or door_message != "No door nearby":
             self.session.message = door_message
+            if not self.session.state_machine.is_terminal():
+                self.session.process_enemy_turns()
             return door_success
 
         if entity_type == 'enemy':
@@ -167,6 +167,8 @@ class ActionProcessor:
             return self.session.handle_movement('forward')
 
         self.session.message = "Nothing to interact with"
+        if not self.session.state_machine.is_terminal():
+            self.session.process_enemy_turns()
         return False
 
     def _handle_3d_attack(self):
@@ -183,7 +185,10 @@ class ActionProcessor:
         if success and enemy:
             # Use coordinator's CombatSystem which carries statistics and full handling
             try:
-                return self.session.handle_combat(enemy)
+                result = self.session.handle_combat(enemy)
+                if not self.session.state_machine.is_terminal():
+                    self.session.process_enemy_turns()
+                return result
             except Exception:
                 # As a conservative fallback, signal failure but avoid duplicating
                 # statistics or side-effects that may be handled elsewhere.
@@ -215,5 +220,7 @@ class ActionProcessor:
                 ))
             except Exception as exc:
                     log_exception(exc, __name__)
+            if not self.session.state_machine.is_terminal():
+                self.session.process_enemy_turns()
 
         return success

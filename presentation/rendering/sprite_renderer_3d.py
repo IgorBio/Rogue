@@ -152,6 +152,10 @@ class SpriteRenderer:
         """
         visible_sprites = []
         
+        # Camera basis vectors
+        dx, dy = camera.get_direction_vector()
+        right_x, right_y = -dy, dx
+
         for sprite in sprites:
             # Calculate relative position to camera
             sprite_x = sprite.x - camera.x
@@ -164,15 +168,9 @@ class SpriteRenderer:
             if distance > self.max_sprite_distance or distance < 0.1:
                 continue
             
-            # Transform to camera space
-            # Rotate sprite position by camera angle
-            angle_rad = math.radians(-camera.angle)
-            cos_a = math.cos(angle_rad)
-            sin_a = math.sin(angle_rad)
-            
-            # Rotated coordinates
-            transformed_x = sprite_x * cos_a - sprite_y * sin_a
-            transformed_y = sprite_x * sin_a + sprite_y * cos_a
+            # Transform to camera space using forward/right basis
+            transformed_y = (sprite_x * dx) + (sprite_y * dy)  # forward
+            transformed_x = (sprite_x * right_x) + (sprite_y * right_y)  # right
             
             # Check if sprite is in front of camera
             if transformed_y <= 0:
@@ -185,9 +183,22 @@ class SpriteRenderer:
             
             screen_x = int((transformed_x / transformed_y) * projection_plane_distance + self.viewport_width / 2)
             
-            # Calculate sprite height based on distance
-            sprite_height = int((self.sprite_base_height / distance) * self.viewport_height * 2)
-            sprite_height = max(1, min(sprite_height, self.viewport_height))
+            # Calculate sprite height based on distance and type
+            if sprite.sprite_type == 'enemy':
+                base_height = self.sprite_base_height * 1.4
+                min_height = 3
+            elif sprite.sprite_type == 'item':
+                base_height = self.sprite_base_height * 1.1
+                min_height = 2
+            elif sprite.sprite_type == 'exit':
+                base_height = self.sprite_base_height * 1.2
+                min_height = 2
+            else:
+                base_height = self.sprite_base_height
+                min_height = 1
+
+            sprite_height = int((base_height / distance) * self.viewport_height * 2)
+            sprite_height = max(min_height, min(sprite_height, self.viewport_height))
             
             # Store calculated values
             sprite.distance = distance
@@ -232,8 +243,11 @@ class SpriteRenderer:
             sprite_top = max(0, sprite_top)
             sprite_bottom = min(self.viewport_height, sprite_bottom)
             
-            # Get shaded character based on distance
-            display_char = self._shade_sprite_char(sprite.char, sprite.distance)
+            # Get display character based on type
+            if sprite.sprite_type in ('item', 'exit'):
+                display_char = sprite.char
+            else:
+                display_char = self._shade_sprite_char(sprite.char, sprite.distance)
             
             # Draw sprite column
             for y in range(sprite_top, sprite_bottom):

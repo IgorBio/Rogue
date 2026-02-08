@@ -8,6 +8,7 @@ import pytest
 import math
 from presentation.camera import Camera
 from domain.entities.position import Position
+from config.game_config import CameraConfig
 
 
 class TestCameraPositionIntegration:
@@ -22,8 +23,8 @@ class TestCameraPositionIntegration:
 
     def test_camera_creation_with_float(self):
         """Создание камеры с float координатами"""
-        cam = Camera(10.5, 20.7)
-        assert cam.x == 10.5
+        cam = Camera(10 + CameraConfig.CAMERA_OFFSET, 20.7)
+        assert cam.x == 10 + CameraConfig.CAMERA_OFFSET
         assert cam.y == 20.7
         assert cam.grid_position == (10, 20)  # Grid-aligned
 
@@ -229,15 +230,15 @@ class TestCameraBackwardCompatibility:
 
     def test_old_style_access_still_works(self):
         """Старый стиль доступа работает"""
-        cam = Camera(10.5, 20.5)
+        cam = Camera(10 + CameraConfig.CAMERA_OFFSET, 20 + CameraConfig.CAMERA_OFFSET)
 
         # Старый стиль через свойства x, y
-        assert cam.x == 10.5
-        assert cam.y == 20.5
+        assert cam.x == 10 + CameraConfig.CAMERA_OFFSET
+        assert cam.y == 20 + CameraConfig.CAMERA_OFFSET
 
         # Доступ через position
         x, y = cam.position
-        assert x == 10.5 and y == 20.5
+        assert x == 10 + CameraConfig.CAMERA_OFFSET and y == 20 + CameraConfig.CAMERA_OFFSET
 
 
 class TestCameraRepr:
@@ -245,10 +246,12 @@ class TestCameraRepr:
 
     def test_repr_shows_float_and_grid(self):
         """__repr__ должен показывать float и grid позиции"""
-        cam = Camera(10.5, 20.7, angle=45.0, fov=60.0)
+        cam = Camera(10 + CameraConfig.CAMERA_OFFSET, 20.7, angle=45.0, fov=60.0)
         repr_str = repr(cam)
 
-        assert "pos=(10.50, 20.70)" in repr_str or "pos=(10.5, 20.7)" in repr_str
+        expected_x = 10 + CameraConfig.CAMERA_OFFSET
+        assert (f"pos=({expected_x:.2f}, 20.70)" in repr_str or
+                f"pos=({expected_x}, 20.7)" in repr_str)
         assert "grid=(10, 20)" in repr_str
         assert "angle=45" in repr_str
         assert "fov=60" in repr_str
@@ -263,30 +266,30 @@ class TestCameraIntegrationScenarios:
         char_pos = (10, 20)
 
         # Camera at character center (fractional position)
-        cam = Camera(char_pos[0] + 0.5, char_pos[1] + 0.5)
+        cam = Camera(char_pos[0] + CameraConfig.CAMERA_OFFSET, char_pos[1] + CameraConfig.CAMERA_OFFSET)
 
         assert cam.grid_position == char_pos
-        assert cam.x == 10.5
-        assert cam.y == 20.5
+        assert cam.x == 10 + CameraConfig.CAMERA_OFFSET
+        assert cam.y == 20 + CameraConfig.CAMERA_OFFSET
 
     def test_camera_movement_sequence(self):
         """Последовательность движений камеры"""
-        cam = Camera(5.5, 5.5, angle=0.0)
+        cam = Camera(5 + CameraConfig.CAMERA_OFFSET, 5 + CameraConfig.CAMERA_OFFSET, angle=0.0)
 
         # Move forward (East)
         new_x, new_y = cam.move_forward(1.0)
         cam.set_position(new_x, new_y)
-        assert abs(cam.x - 6.5) < 0.01
+        assert abs(cam.x - (6 + CameraConfig.CAMERA_OFFSET)) < 0.01
 
         # Rotate and move
         cam.rotate(90.0)  # Now facing North
         new_x, new_y = cam.move_forward(1.0)
         cam.set_position(new_x, new_y)
-        assert abs(cam.y - 6.5) < 0.01
+        assert abs(cam.y - (6 + CameraConfig.CAMERA_OFFSET)) < 0.01
 
     def test_raycasting_position_compatibility(self):
         """Позиция камеры совместима с raycasting"""
-        cam = Camera(5.5, 5.5, angle=0.0)
+        cam = Camera(5 + CameraConfig.CAMERA_OFFSET, 5 + CameraConfig.CAMERA_OFFSET, angle=0.0)
 
         # В raycasting используется int(camera.x) для grid
         grid_x = int(cam.x)

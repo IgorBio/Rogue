@@ -138,9 +138,22 @@ class CombatFeedback:
     
     def _render_flash(self):
         """Render screen flash effect (invert colors briefly)."""
-        # This is a simple implementation - could be enhanced
-        # For now, we just note the flash is active
-        pass
+        max_y, max_x = self.stdscr.getmaxyx()
+        if max_y <= 0 or max_x <= 0:
+            return
+
+        # Draw a simple top/bottom flash band for visibility
+        try:
+            flash_attr = curses.color_pair(self._get_color_pair(curses.COLOR_RED)) | curses.A_REVERSE
+        except curses.error:
+            flash_attr = curses.A_REVERSE
+
+        for y in (0, 1, max_y - 2, max_y - 1):
+            if 0 <= y < max_y:
+                try:
+                    self.stdscr.addstr(y, 0, " " * (max_x - 1), flash_attr)
+                except curses.error:
+                    pass
     
     def _get_color_pair(self, color):
         """Get color pair ID for curses color."""

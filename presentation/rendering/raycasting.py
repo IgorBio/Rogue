@@ -173,6 +173,11 @@ def _determine_wall_hit(level, x: int, y: int):
     # Check if in a room
     for room in level.rooms:
         if room.is_on_wall(x, y):
+            # Highlight room walls adjacent to corridor entrances
+            for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                corridor, _ = level.get_corridor_at(x + dx, y + dy)
+                if corridor is not None:
+                    return 'room_wall_entrance', None
             return 'room_wall', None
 
     # Must be a corridor wall or out of bounds

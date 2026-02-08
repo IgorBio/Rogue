@@ -6,6 +6,7 @@ import pytest
 from unittest.mock import Mock
 from presentation.camera.sync import CameraSync, camera_sync
 from domain.entities.position import Position
+from config.game_config import CameraConfig
 
 
 class MockCamera:
@@ -39,7 +40,7 @@ class TestCameraSyncBasic:
     def test_init_default_offset(self):
         """Test default center offset."""
         sync = CameraSync()
-        assert sync.center_offset == 0.5
+        assert sync.center_offset == CameraConfig.CAMERA_OFFSET
     
     def test_init_custom_offset(self):
         """Test custom center offset."""
@@ -63,8 +64,8 @@ class TestCameraSyncToPosition:
         
         sync.sync_camera_to_position(camera, position)
         
-        assert camera.x == 10.5
-        assert camera.y == 20.5
+        assert camera.x == 10 + CameraConfig.CAMERA_OFFSET
+        assert camera.y == 20 + CameraConfig.CAMERA_OFFSET
     
     def test_sync_to_position_custom_offset(self):
         """Test syncing camera to position with custom offset."""
@@ -96,8 +97,8 @@ class TestCameraSyncToPosition:
         sync.sync_camera_to_position(camera, position, preserve_angle=False)
         
         # Position updated, angle may change or stay
-        assert camera.x == 10.5
-        assert camera.y == 20.5
+        assert camera.x == 10 + CameraConfig.CAMERA_OFFSET
+        assert camera.y == 20 + CameraConfig.CAMERA_OFFSET
 
 
 class TestCameraSyncToCharacter:
@@ -111,8 +112,8 @@ class TestCameraSyncToCharacter:
         
         sync.sync_camera_to_character(camera, character)
         
-        assert camera.x == 10.5
-        assert camera.y == 20.5
+        assert camera.x == 10 + CameraConfig.CAMERA_OFFSET
+        assert camera.y == 20 + CameraConfig.CAMERA_OFFSET
 
 
 class TestCameraSyncFromCamera:
@@ -158,7 +159,7 @@ class TestCameraSyncIsAtPosition:
     def test_is_at_position_true(self):
         """Test when camera is at expected position."""
         sync = CameraSync()
-        camera = MockCamera(10.5, 20.5)  # Center of (10, 20)
+        camera = MockCamera(10 + CameraConfig.CAMERA_OFFSET, 20 + CameraConfig.CAMERA_OFFSET)  # Center of (10, 20)
         position = Position(10, 20)
         
         result = sync.is_camera_at_position(camera, position)
@@ -168,7 +169,7 @@ class TestCameraSyncIsAtPosition:
     def test_is_at_position_false(self):
         """Test when camera is not at expected position."""
         sync = CameraSync()
-        camera = MockCamera(10.5, 20.7)  # Different Y offset
+        camera = MockCamera(10 + CameraConfig.CAMERA_OFFSET, 20.7)  # Different Y offset
         position = Position(10, 20)
         
         result = sync.is_camera_at_position(camera, position)
@@ -198,8 +199,8 @@ class TestCameraSyncCalculateOffset:
         offset_x, offset_y = sync.calculate_offset(camera, position)
         
         # Expected: camera_pos - (position + offset)
-        assert offset_x == pytest.approx(0.2)  # 10.7 - (10 + 0.5)
-        assert offset_y == pytest.approx(0.3)  # 20.8 - (20 + 0.5)
+        assert offset_x == pytest.approx(10.7 - (10 + CameraConfig.CAMERA_OFFSET))
+        assert offset_y == pytest.approx(20.8 - (20 + CameraConfig.CAMERA_OFFSET))
 
 
 class TestCameraSyncReset:

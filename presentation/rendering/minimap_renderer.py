@@ -235,7 +235,8 @@ class MiniMapRenderer:
         Returns:
             Arrow character
         """
-        angle = angle % 360
+        # Invert angle for screen Y-axis (down is positive Y)
+        angle = (360 - angle) % 360
         
         # 8-direction arrows
         if angle < 22.5 or angle >= 337.5:

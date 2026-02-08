@@ -86,6 +86,19 @@ class TextureManager:
         ]
         self.textures['corridor_wall'] = WallTexture('corridor_wall', stone_pattern)
         
+        # Corridor entrance texture (room wall with opening)
+        corridor_entrance_pattern = [
+            "▓▓▓▓▓▓▓▓",
+            "▓▓▓  ▓▓▓",
+            "▓▓▓  ▓▓▓",
+            "▓▓▓  ▓▓▓",
+            "▓▓▓  ▓▓▓",
+            "▓▓▓  ▓▓▓",
+            "▓▓▓  ▓▓▓",
+            "▓▓▓▓▓▓▓▓",
+        ]
+        self.textures['room_wall_entrance'] = WallTexture('room_wall_entrance', corridor_entrance_pattern)
+        
         # Door texture
         door_pattern = [
             "╔═══════╗",
@@ -211,6 +224,8 @@ class TexturedRenderer:
             texture_name = 'door'
         elif wall_type == 'door_locked':
             texture_name = 'locked_door'
+        elif wall_type == 'room_wall_entrance':
+            texture_name = 'room_wall_entrance'
 
         char = self.texture_manager.sample_texture(texture_name, texture_x, texture_y)
         

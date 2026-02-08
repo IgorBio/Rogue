@@ -168,6 +168,7 @@ class GameUI:
     
     def _render_game_3d(self, game_session):
         """Render game in 3D mode."""
+        self.stdscr.clear()
         level = game_session.get_current_level()
         character = game_session.get_character()
         camera = game_session.get_camera()
@@ -230,13 +231,22 @@ class GameUI:
                                              self.renderer_3d.viewport_height,
                                              x_offset=viewport_x, y_offset=viewport_y)
         
+        # Log messages for 3D mode and render feedback
+        message = game_session.get_message()
+        if message:
+            self.renderer_2d.display_message(message)
+
         self.combat_feedback.update()
         self.combat_feedback.render(x_offset=viewport_x, y_offset=viewport_y,
                                     max_width=self.renderer_3d.viewport_width)
         
-        from presentation.renderer_2d import render_status_panel
+        from presentation.renderer_2d import render_status_panel, render_message_log
         status_y = viewport_y + self.renderer_3d.viewport_height + 2
         render_status_panel(self.stdscr, character, level, game_session.stats, y_offset=status_y)
+
+        # Render message log below status panel (3D mode)
+        message_log_y = status_y + 7
+        render_message_log(self.stdscr, self.renderer_2d.message_log, y_offset=message_log_y, max_messages=4)
         
         if self.show_help:
             help_y = status_y + 10

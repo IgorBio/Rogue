@@ -5,6 +5,7 @@ Tests for the view manager.
 import pytest
 from unittest.mock import Mock, MagicMock
 from presentation.view_manager import ViewManager, view_manager, reset_view_manager
+from config.game_config import CameraConfig
 from domain.events import LevelGeneratedEvent, CharacterMovedEvent
 from domain.event_bus import event_bus, reset_event_bus
 
@@ -111,9 +112,9 @@ class TestViewManagerCameraCreation:
         
         assert camera is not None
         assert controller is None  # No controller factory
-        # Camera positioned at character position + 0.5 offset
-        assert camera.x == 10.5
-        assert camera.y == 20.5
+        # Camera positioned at character position + offset
+        assert camera.x == 10 + CameraConfig.CAMERA_OFFSET
+        assert camera.y == 20 + CameraConfig.CAMERA_OFFSET
     
     def test_create_camera_factory_exception(self):
         """Test handling of camera factory exception."""
@@ -162,9 +163,9 @@ class TestViewManagerSync:
         
         vm.sync_camera_to_character(character)
         
-        # Camera should be at character position + 0.5 offset
-        assert mock_camera.x == 10.5
-        assert mock_camera.y == 20.5
+        # Camera should be at character position + offset
+        assert mock_camera.x == 10 + CameraConfig.CAMERA_OFFSET
+        assert mock_camera.y == 20 + CameraConfig.CAMERA_OFFSET
 
     def test_sync_camera_to_character_coords_preserves_angle(self):
         """Test syncing camera to grid coords preserves angle."""
@@ -174,8 +175,8 @@ class TestViewManagerSync:
 
         vm.sync_camera_to_character_coords(10, 20, preserve_angle=True)
 
-        assert mock_camera.x == 10.5
-        assert mock_camera.y == 20.5
+        assert mock_camera.x == 10 + CameraConfig.CAMERA_OFFSET
+        assert mock_camera.y == 20 + CameraConfig.CAMERA_OFFSET
         assert mock_camera.angle == 30.0
 
     def test_sync_camera_to_character_coords_no_camera(self):
@@ -221,8 +222,8 @@ class TestViewManagerEventHandling:
         event_bus.publish(event)
         
         # Camera should be synced to new position + offset
-        assert mock_camera.x == 10.5
-        assert mock_camera.y == 20.5
+        assert mock_camera.x == 10 + CameraConfig.CAMERA_OFFSET
+        assert mock_camera.y == 20 + CameraConfig.CAMERA_OFFSET
     
     def test_character_moved_no_camera_does_nothing(self):
         """Test that CharacterMovedEvent does nothing if no camera."""
