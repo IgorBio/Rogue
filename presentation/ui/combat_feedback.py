@@ -161,14 +161,8 @@ class CombatFeedback:
 
 class TargetingReticle:
     """Displays a targeting reticle in the center of the screen."""
-    
-    # Reticle designs
-    RETICLE_SIMPLE = "+"
-    RETICLE_CROSS = "╬"
-    RETICLE_CIRCLE = "◎"
-    RETICLE_DOT = "·"
-    
-    def __init__(self, stdscr, design=RETICLE_CROSS):
+
+    def __init__(self, stdscr, design=None):
         """
         Initialize targeting reticle.
         
@@ -179,7 +173,18 @@ class TargetingReticle:
         self.stdscr = stdscr
         self.design = design
         self.enabled = True
-        self.enemy_locked = False
+        self.target_type = None
+        self.target_entity = None
+
+        # Reticle symbols per target type
+        self.reticle_chars = {
+            'enemy': '╬',     # враг
+            'item': '◎',      # предмет
+            'door_locked': '▣',  # дверь (закрыта)
+            'door_open': '□',    # дверь (открыта)
+            'exit': '►',      # выход
+            None: '·'         # ничего
+        }
     
     def render(self, viewport_width, viewport_height, x_offset=0, y_offset=0):
         """
@@ -198,20 +203,30 @@ class TargetingReticle:
         center_x = x_offset + viewport_width // 2
         center_y = y_offset + viewport_height // 2
         
-        # Choose color based on lock status
-        if self.enemy_locked:
-            color = curses.color_pair(7) | curses.A_BOLD  # Red when locked
+        # Choose symbol and color based on target type
+        char = self.reticle_chars.get(self.target_type, self.reticle_chars[None])
+        if self.target_type == 'enemy':
+            color = curses.color_pair(7) | curses.A_BOLD  # Red
+        elif self.target_type == 'item':
+            color = curses.color_pair(4) | curses.A_BOLD  # Cyan
+        elif self.target_type == 'door_locked':
+            color = curses.color_pair(9) | curses.A_BOLD  # Yellow
+        elif self.target_type == 'door_open':
+            color = curses.color_pair(6) | curses.A_BOLD  # Green
+        elif self.target_type == 'exit':
+            color = curses.color_pair(5) | curses.A_BOLD  # Magenta
         else:
-            color = curses.color_pair(1) | curses.A_DIM   # White when idle
+            color = curses.color_pair(1) | curses.A_DIM   # White/dim
         
         try:
-            self.stdscr.addch(center_y, center_x, self.design, color)
+            self.stdscr.addch(center_y, center_x, char, color)
         except curses.error:
             pass
     
-    def set_locked(self, locked):
-        """Set whether reticle is locked onto target."""
-        self.enemy_locked = locked
+    def set_target(self, target_type, entity=None):
+        """Set current target type for reticle rendering."""
+        self.target_type = target_type
+        self.target_entity = entity
     
     def toggle(self):
         """Toggle reticle visibility."""

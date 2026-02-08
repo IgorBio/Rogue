@@ -7,6 +7,7 @@ facade for the entire presentation layer.
 """
 from common.logging_utils import log_exception
 import curses
+import math
 
 
 class GameUI:
@@ -208,7 +209,18 @@ class GameUI:
         self.renderer_3d.render_mode_indicator(y_offset=viewport_y - 1)
         
         entity, entity_type, distance = camera_controller.get_entity_in_front(level)
-        self.reticle.set_locked(entity_type == 'enemy')
+
+        # Door detection in front of camera (without triggering interaction)
+        rad = math.radians(camera.angle)
+        check_x = camera.x + math.cos(rad) * camera_controller.interaction_range
+        check_y = camera.y + math.sin(rad) * camera_controller.interaction_range
+        door = level.get_door_at(int(check_x), int(check_y))
+
+        if door:
+            door_target = 'door_locked' if door.is_locked else 'door_open'
+            self.reticle.set_target(door_target, door)
+        else:
+            self.reticle.set_target(entity_type, entity)
         
         self.reticle.render(self.renderer_3d.viewport_width, self.renderer_3d.viewport_height,
                            x_offset=viewport_x, y_offset=viewport_y)

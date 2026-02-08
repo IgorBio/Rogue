@@ -220,13 +220,34 @@ class ViewManager:
         if camera_state is None or self._camera_factory is None:
             return
 
+        x = camera_state.get('x', 0.0)
+        y = camera_state.get('y', 0.0)
+        angle = camera_state.get('angle', GameConfig.DEFAULT_CAMERA_ANGLE)
+        fov = camera_state.get('fov', GameConfig.DEFAULT_CAMERA_FOV)
+
+        # Validate camera position against level to avoid spawning in walls.
+        grid_x, grid_y = int(x), int(y)
+        if hasattr(level, "is_walkable") and not level.is_walkable(grid_x, grid_y):
+            fallback_positions = [
+                (grid_x, grid_y),
+                (grid_x + 1, grid_y),
+                (grid_x - 1, grid_y),
+                (grid_x, grid_y + 1),
+                (grid_x, grid_y - 1),
+            ]
+            found = False
+            for test_x, test_y in fallback_positions:
+                if level.is_walkable(test_x, test_y):
+                    x, y = test_x + 0.5, test_y + 0.5
+                    found = True
+                    break
+            if not found:
+                self.camera = None
+                self.camera_controller = None
+                return
+
         try:
-            self.camera = self._camera_factory(
-                camera_state.get('x', 0.0),
-                camera_state.get('y', 0.0),
-                camera_state.get('angle', GameConfig.DEFAULT_CAMERA_ANGLE),
-                camera_state.get('fov', GameConfig.DEFAULT_CAMERA_FOV),
-            )
+            self.camera = self._camera_factory(x, y, angle, fov)
         except Exception:
             self.camera = None
             self.camera_controller = None

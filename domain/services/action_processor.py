@@ -153,16 +153,21 @@ class ActionProcessor:
 
         entity, entity_type, distance = self.session.camera_controller.get_entity_in_front(self.session.level)
 
+        # Priority order: doors -> enemies -> items -> exit
+        door_success, door_message = self.session.camera_controller.try_open_door(self.session.character)
+        if door_success or door_message != "No door nearby":
+            self.session.message = door_message
+            return door_success
+
         if entity_type == 'enemy':
             return self._handle_3d_attack()
         elif entity_type == 'item':
             return self._handle_3d_pickup()
         elif entity_type == 'exit':
             return self.session.handle_movement('forward')
-        else:
-            success, message = self.session.camera_controller.try_open_door(self.session.character)
-            self.session.message = message
-            return success
+
+        self.session.message = "Nothing to interact with"
+        return False
 
     def _handle_3d_attack(self):
         """Handle attack in 3D mode."""
