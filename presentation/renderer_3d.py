@@ -78,6 +78,8 @@ class Renderer3D:
         
         # Cache for performance
         self._shade_cache = {}
+        self._ray_cache = None
+        self._last_camera_state = None
 
     def set_viewport(self, viewport_width: int, viewport_height: int) -> None:
         """Update viewport size and resize dependent buffers/renderers."""
@@ -91,6 +93,8 @@ class Renderer3D:
         self.num_rays = viewport_width
         self.sprite_renderer = SpriteRenderer(viewport_width, viewport_height, fov=60.0)
         self.z_buffer = [float('inf')] * viewport_width
+        self._ray_cache = None
+        self._last_camera_state = None
     
     def render_3d_view(self, camera, level, fog_of_war=None, x_offset=0, y_offset=0):
         """
@@ -107,8 +111,20 @@ class Renderer3D:
         # FIXED: Reset Z-buffer at start of each frame
         self.z_buffer = [float('inf')] * self.viewport_width
         
-        # Cast rays across FOV
-        ray_hits = cast_fov_rays(camera, level, num_rays=self.num_rays)
+        # Cast rays across FOV (cache when camera is stationary)
+        camera_state = (
+            round(camera.x, 2),
+            round(camera.y, 2),
+            round(camera.angle, 2),
+            round(camera.fov, 2),
+            self.num_rays,
+        )
+        if camera_state == self._last_camera_state and self._ray_cache is not None:
+            ray_hits = self._ray_cache
+        else:
+            ray_hits = cast_fov_rays(camera, level, num_rays=self.num_rays)
+            self._ray_cache = ray_hits
+            self._last_camera_state = camera_state
         
         # Render each column and update Z-buffer
         for column in range(self.viewport_width):
@@ -124,6 +140,8 @@ class Renderer3D:
         
         # FIXED: Render sprites after walls (using Z-buffer for occlusion)
         if self.show_sprites:
+            # Keep sprite FOV in sync with camera
+            self.sprite_renderer.fov = camera.fov
             sprites = self.sprite_renderer.collect_sprites(level, fog_of_war)
             visible_sprites = self.sprite_renderer.calculate_sprite_positions(sprites, camera)
             self.sprite_renderer.render_sprites(
