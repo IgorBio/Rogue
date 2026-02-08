@@ -320,7 +320,7 @@ class Renderer3D:
         # Top border
         self._draw_string(
             y_offset - 1,
-            x_offset,
+            x_offset - 1,
             "┌" + "─" * self.viewport_width + "┐",
             COLOR_UI_TEXT
         )
@@ -328,7 +328,7 @@ class Renderer3D:
         # Bottom border
         self._draw_string(
             y_offset + self.viewport_height,
-            x_offset,
+            x_offset - 1,
             "└" + "─" * self.viewport_width + "┘",
             COLOR_UI_TEXT
         )

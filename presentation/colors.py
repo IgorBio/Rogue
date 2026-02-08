@@ -48,7 +48,7 @@ def init_colors():
     # Map elements
     curses.init_pair(COLOR_WALL, curses.COLOR_WHITE, curses.COLOR_BLACK)
     curses.init_pair(COLOR_FLOOR, curses.COLOR_WHITE, curses.COLOR_BLACK)
-    curses.init_pair(COLOR_CORRIDOR, curses.COLOR_BLUE, curses.COLOR_BLACK)
+    curses.init_pair(COLOR_CORRIDOR, curses.COLOR_WHITE, curses.COLOR_BLACK)
     curses.init_pair(COLOR_PLAYER, curses.COLOR_CYAN, curses.COLOR_BLACK)
     curses.init_pair(COLOR_EXIT, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
     

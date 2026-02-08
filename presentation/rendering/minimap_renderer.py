@@ -151,7 +151,7 @@ class MiniMapRenderer:
                                 y_offset + 1 + map_y,
                                 x_offset + 1 + map_x,
                                 char,
-                                curses.color_pair(color)
+                                curses.color_pair(color) | (curses.A_BOLD if is_current else 0)
                             )
                         except:
                             pass

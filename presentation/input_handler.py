@@ -135,11 +135,9 @@ class InputHandler:
             elif key == curses.KEY_RIGHT:
                 return self.ACTION_ROTATE_RIGHT
 
-        # Strafing - Q/E
+        # Quit - Q
         if key == ord('q') or key == ord('Q'):
-            return self.ACTION_STRAFE_LEFT
-        elif key == ord('e') or key == ord('E'):
-            return self.ACTION_STRAFE_RIGHT
+            return self.ACTION_QUIT
 
         # Combat & Interaction - F or Space
         elif key == ord('f') or key == ord('F') or key == ord(' '):
@@ -160,8 +158,7 @@ class InputHandler:
             return self.ACTION_USE_FOOD
         elif key == ord('k') or key == ord('K'):
             return self.ACTION_USE_ELIXIR
-        # 'e' is strafe, so use different key for scrolls
-        elif key == ord('r') or key == ord('R'):
+        elif key == ord('e') or key == ord('E'):
             return self.ACTION_USE_SCROLL
 
         # Mode toggling
@@ -210,9 +207,6 @@ class InputHandler:
             help_text.append("?   - Rotate Left")
             help_text.append("?   - Rotate Right")
 
-        help_text.append("Q   - Strafe Left")
-        help_text.append("E   - Strafe Right")
-
         help_text.append("")
         help_text.append("??? COMBAT ???")
         help_text.append("F/Space - Interact")
@@ -224,7 +218,7 @@ class InputHandler:
         help_text.append("H - Use Weapon")
         help_text.append("J - Use Food")
         help_text.append("K - Use Elixir")
-        help_text.append("R - Use Scroll")
+        help_text.append("E - Use Scroll")
 
         help_text.append("")
         help_text.append("??? VIEW ???")
@@ -234,7 +228,7 @@ class InputHandler:
         help_text.append("N   - Toggle Sprites")
         help_text.append("I   - Toggle Debug")
         help_text.append("?   - Toggle Help")
-        help_text.append("ESC - Quit")
+        help_text.append("Q/ESC - Quit")
 
         return help_text
 

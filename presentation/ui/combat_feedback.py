@@ -19,6 +19,9 @@ class CombatFeedback:
         self.messages = []
         self.flash_frames = 0
         self.damage_indicators = []
+        self.marker_frames = 0
+        self.marker_char = None
+        self.marker_color = curses.COLOR_RED
     
     def show_attack_hit(self, damage, enemy_name="Enemy"):
         """
@@ -37,6 +40,9 @@ class CombatFeedback:
         
         # Flash effect
         self.flash_frames = 3
+        self.marker_frames = 6
+        self.marker_char = 'X'
+        self.marker_color = curses.COLOR_RED
     
     def show_attack_miss(self, enemy_name="Enemy"):
         """Display attack miss feedback."""
@@ -46,6 +52,9 @@ class CombatFeedback:
             'color': curses.COLOR_YELLOW,
             'frames_left': 20
         })
+        self.marker_frames = 4
+        self.marker_char = 'o'
+        self.marker_color = curses.COLOR_YELLOW
     
     def show_enemy_killed(self, enemy_name="Enemy", treasure=0):
         """Display enemy killed feedback."""
@@ -58,6 +67,9 @@ class CombatFeedback:
         
         # Strong flash for kill
         self.flash_frames = 5
+        self.marker_frames = 8
+        self.marker_char = '*'
+        self.marker_color = curses.COLOR_GREEN
     
     def show_item_pickup(self, item_name):
         """Display item pickup feedback."""
@@ -67,6 +79,9 @@ class CombatFeedback:
             'color': curses.COLOR_CYAN,
             'frames_left': 30
         })
+        self.marker_frames = 4
+        self.marker_char = '+'
+        self.marker_color = curses.COLOR_CYAN
     
     def show_damage_taken(self, damage):
         """Display player damage feedback."""
@@ -79,6 +94,9 @@ class CombatFeedback:
         
         # Red flash for player damage
         self.flash_frames = 5
+        self.marker_frames = 10
+        self.marker_char = '!'
+        self.marker_color = curses.COLOR_RED
     
     def update(self):
         """Update feedback state (call each frame)."""
@@ -94,8 +112,11 @@ class CombatFeedback:
         # Update flash
         if self.flash_frames > 0:
             self.flash_frames -= 1
+
+        if self.marker_frames > 0:
+            self.marker_frames -= 1
     
-    def render(self, x_offset=0, y_offset=0, max_width=70):
+    def render(self, x_offset=0, y_offset=0, max_width=70, viewport_width=None, viewport_height=None):
         """
         Render combat feedback messages.
         
@@ -103,10 +124,29 @@ class CombatFeedback:
             x_offset: X position to render
             y_offset: Y position to render
             max_width: Maximum width for messages
+            viewport_width: Width of 3D viewport (optional)
+            viewport_height: Height of 3D viewport (optional)
         """
         # Render flash effect (optional - full screen flash)
         if self.flash_frames > 0:
-            self._render_flash()
+            self._render_flash(
+                x_offset=x_offset,
+                y_offset=y_offset,
+                viewport_width=viewport_width,
+                viewport_height=viewport_height
+            )
+
+        # Render hit marker in center of viewport
+        if self.marker_frames > 0 and viewport_width and viewport_height:
+            cx = x_offset + viewport_width // 2
+            cy = y_offset + viewport_height // 2
+            attr = curses.color_pair(self._get_color_pair(self.marker_color)) | curses.A_BOLD
+            try:
+                self.stdscr.addch(cy, cx, self.marker_char or 'X', attr)
+                for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    self.stdscr.addch(cy + dy, cx + dx, self.marker_char or 'X', attr)
+            except curses.error:
+                pass
         
         # Render messages (top-down)
         for i, msg in enumerate(self.messages[:5]):  # Show up to 5 messages
@@ -136,24 +176,34 @@ class CombatFeedback:
             except curses.error:
                 pass
     
-    def _render_flash(self):
+    def _render_flash(self, x_offset=0, y_offset=0, viewport_width=None, viewport_height=None):
         """Render screen flash effect (invert colors briefly)."""
         max_y, max_x = self.stdscr.getmaxyx()
         if max_y <= 0 or max_x <= 0:
             return
 
-        # Draw a simple top/bottom flash band for visibility
         try:
             flash_attr = curses.color_pair(self._get_color_pair(curses.COLOR_RED)) | curses.A_REVERSE
         except curses.error:
             flash_attr = curses.A_REVERSE
 
-        for y in (0, 1, max_y - 2, max_y - 1):
-            if 0 <= y < max_y:
-                try:
-                    self.stdscr.addstr(y, 0, " " * (max_x - 1), flash_attr)
-                except curses.error:
-                    pass
+        if viewport_width and viewport_height:
+            top = y_offset
+            bottom = y_offset + viewport_height - 1
+            for y in (top, top + 1, bottom - 1, bottom):
+                if 0 <= y < max_y:
+                    try:
+                        self.stdscr.addstr(y, x_offset, " " * min(viewport_width, max_x - x_offset - 1), flash_attr)
+                    except curses.error:
+                        pass
+        else:
+            # Fallback: full-width bands
+            for y in (0, 1, max_y - 2, max_y - 1):
+                if 0 <= y < max_y:
+                    try:
+                        self.stdscr.addstr(y, 0, " " * (max_x - 1), flash_attr)
+                    except curses.error:
+                        pass
     
     def _get_color_pair(self, color):
         """Get color pair ID for curses color."""

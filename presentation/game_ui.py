@@ -237,8 +237,13 @@ class GameUI:
             self.renderer_2d.display_message(message)
 
         self.combat_feedback.update()
-        self.combat_feedback.render(x_offset=viewport_x, y_offset=viewport_y,
-                                    max_width=self.renderer_3d.viewport_width)
+        self.combat_feedback.render(
+            x_offset=viewport_x,
+            y_offset=viewport_y,
+            max_width=self.renderer_3d.viewport_width,
+            viewport_width=self.renderer_3d.viewport_width,
+            viewport_height=self.renderer_3d.viewport_height
+        )
         
         from presentation.renderer_2d import render_status_panel, render_message_log
         status_y = viewport_y + self.renderer_3d.viewport_height + 2
