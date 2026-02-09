@@ -31,14 +31,16 @@ class GameUI:
         show_help (bool): Whether to show help text
     """
     
-    def __init__(self, stdscr):
+    def __init__(self, stdscr, view_manager):
         """
         Initialize game UI coordinator.
         
         Args:
             stdscr: Curses standard screen object
+            view_manager: ViewManager instance managing camera
         """
         self.stdscr = stdscr
+        self.view_manager = view_manager
         
         # Initialize 2D components
         from presentation.renderer_2d import Renderer
@@ -171,8 +173,11 @@ class GameUI:
         self.stdscr.clear()
         level = game_session.get_current_level()
         character = game_session.get_character()
-        camera = game_session.get_camera()
-        camera_controller = game_session.get_camera_controller()
+        camera = None
+        camera_controller = None
+        if self.view_manager is not None:
+            camera = self.view_manager.camera
+            camera_controller = self.view_manager.camera_controller
         
         fog_of_war = game_session.get_fog_of_war() if game_session.should_use_fog_of_war() else None
         
@@ -286,6 +291,10 @@ class GameUI:
             
             from presentation.input_handler import InputHandler
             
+            camera_controller = None
+            if self.view_manager is not None:
+                camera_controller = self.view_manager.camera_controller
+            
             if action == InputHandler.ACTION_TOGGLE_MODE:
                 new_mode = game_session.toggle_rendering_mode()
                 return ('toggle_mode', {'new_mode': new_mode})
@@ -305,6 +314,18 @@ class GameUI:
                 self.renderer_3d.toggle_sprites()
                 return (InputHandler.ACTION_NONE, None)
             
+            if action in (
+                InputHandler.ACTION_ROTATE_LEFT,
+                InputHandler.ACTION_ROTATE_RIGHT,
+                InputHandler.ACTION_INTERACT,
+                InputHandler.ACTION_ATTACK,
+                InputHandler.ACTION_PICKUP,
+                InputHandler.ACTION_MOVE_FORWARD,
+                InputHandler.ACTION_MOVE_BACKWARD,
+                InputHandler.ACTION_STRAFE_LEFT,
+                InputHandler.ACTION_STRAFE_RIGHT,
+            ):
+                return (action, {'camera_controller': camera_controller})
             return (action, None)
         else:
             action_type, action_data = self.input_handler_2d.get_action()

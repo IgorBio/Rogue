@@ -146,7 +146,9 @@ class TestSessionCoordinatorDelegation:
 
         result = coordinator.handle_movement('forward')
 
-        coordinator._movement_handler.handle_3d_movement.assert_called_once_with('forward')
+        coordinator._movement_handler.handle_3d_movement.assert_called_once_with(
+            'forward', camera_controller=None
+        )
         assert result is True
     
     def test_handle_combat_delegates(self, coordinator):

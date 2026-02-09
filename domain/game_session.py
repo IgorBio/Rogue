@@ -28,15 +28,13 @@ class GameSession:
         death_reason (str): Cause of death if game over
         pending_selection: Pending item selection data
         rendering_mode (str): Current rendering mode ('2d' or '3d')
-        camera_provider: Provider of camera/controller (managed by ViewManager)
         difficulty_manager: DifficultyManager instance
         stats: Statistics instance
         state_machine: StateMachine for explicit state management
     """
     
     def __init__(self, test_mode=False, test_level=1, test_fog_of_war=False,
-                 statistics_factory=None, save_manager_factory=None,
-                 camera_provider=None):
+                 statistics_factory=None, save_manager_factory=None):
         """
         Initialize a new game session.
         
@@ -46,7 +44,6 @@ class GameSession:
             test_fog_of_war (bool): Enable fog of war in test mode
             statistics_factory: Factory for creating Statistics instance
             save_manager_factory: Factory for creating SaveManager instance
-            camera_provider: Provider for camera/controller (presentation layer)
         """
         self.test_mode = test_mode
         self.test_fog_of_war_enabled = test_fog_of_war
@@ -64,8 +61,6 @@ class GameSession:
         self.pending_selection = None
         
         self.rendering_mode = '2d'
-        self._camera_provider = camera_provider
-
         self.state_machine = StateMachine()
         
         # Position synchronizer for 2D ↔ 3D coordinate sync
@@ -277,9 +272,9 @@ class GameSession:
         """Process all enemy turns via coordinator."""
         return self._coordinator.process_enemy_turns()
 
-    def handle_movement(self, direction):
+    def handle_movement(self, direction, camera_controller=None):
         """Handle movement via coordinator."""
-        return self._coordinator.handle_movement(direction)
+        return self._coordinator.handle_movement(direction, camera_controller=camera_controller)
 
 
     @property
@@ -412,7 +407,6 @@ class GameSession:
         except Exception:
             self.stats = None
         self.difficulty_manager = DifficultyManager()
-        # Camera and camera_controller are managed by ViewManager (via provider)
         # They will be reset via LevelGeneratedEvent when _generate_new_level is called
         self.rendering_mode = '2d'
         self.state_machine.reset_to_initial()
@@ -434,32 +428,6 @@ class GameSession:
     def get_fog_of_war(self):
         """Get the fog of war system."""
         return self.fog_of_war
-    
-    def set_camera_provider(self, provider) -> None:
-        """Set camera provider (presentation layer)."""
-        self._camera_provider = provider
-
-    @property
-    def camera(self):
-        """Get the 3D camera (from provider)."""
-        if self._camera_provider is None:
-            return None
-        return getattr(self._camera_provider, 'camera', None)
-
-    @property
-    def camera_controller(self):
-        """Get the camera controller (from provider)."""
-        if self._camera_provider is None:
-            return None
-        return getattr(self._camera_provider, 'camera_controller', None)
-
-    def get_camera(self):
-        """Get the 3D camera (compat)."""
-        return self.camera
-    
-    def get_camera_controller(self):
-        """Get the camera controller (compat)."""
-        return self.camera_controller
     
     def get_message(self):
         """Get the current message."""

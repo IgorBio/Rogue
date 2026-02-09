@@ -27,13 +27,13 @@ def main(stdscr):
     # Initialize managers and UI
     save_manager = SaveManager()
     stats_manager = StatisticsManager()
-    ui = GameUI(stdscr)
     
     view_manager = ViewManager(
         auto_subscribe=True,
         camera_factory=lambda x, y, angle=0.0, fov=60.0: Camera(x, y, angle=angle, fov=fov),
         camera_controller_factory=lambda cam, lvl: CameraController(cam, lvl)
     )
+    ui = GameUI(stdscr, view_manager)
     
     try:
         while True:  # Main menu loop
@@ -61,7 +61,6 @@ def main(stdscr):
                     test_fog_of_war=test_config['fog_of_war'],
                     statistics_factory=Statistics,
                     save_manager_factory=lambda: save_manager,
-                    camera_provider=view_manager
                 )
                 ui.display_message(f"TEST MODE: Level {test_config['level']}, Fog of War: {test_config['fog_of_war']}")
             
@@ -70,7 +69,6 @@ def main(stdscr):
                 game_session = GameSession(
                     statistics_factory=Statistics,
                     save_manager_factory=lambda: save_manager,
-                    camera_provider=view_manager
                 )
                 ui.display_message("Welcome to the dungeon! Find the exit to proceed.")
             
@@ -85,7 +83,6 @@ def main(stdscr):
                 # Restore game session
                 game_session = save_manager.restore_game_session(
                     save_data,
-                    camera_provider=view_manager
                 )
                 ui.display_message("Game loaded! Welcome back!")
             

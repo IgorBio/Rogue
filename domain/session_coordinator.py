@@ -239,7 +239,7 @@ class SessionCoordinator:
         """
         return self.level_manager.advance_and_setup(session, total_levels)
     
-    def handle_movement(self, direction) -> bool:
+    def handle_movement(self, direction, camera_controller=None) -> bool:
         """
         Handle movement action.
 
@@ -250,7 +250,7 @@ class SessionCoordinator:
             bool: Whether movement succeeded
         """
         if isinstance(direction, str):
-            return self.movement_handler.handle_3d_movement(direction)
+            return self.movement_handler.handle_3d_movement(direction, camera_controller=camera_controller)
         return self.movement_handler.handle_2d_movement(direction)
     
     def handle_combat(self, enemy: Any) -> Any:

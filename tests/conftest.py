@@ -179,7 +179,6 @@ def game_session(statistics, save_manager):
         test_fog_of_war=False,
         statistics_factory=lambda: statistics,
         save_manager_factory=lambda: save_manager,
-        camera_provider=view_manager,
     )
 
 
@@ -201,7 +200,6 @@ def game_session_with_fog(statistics, save_manager):
         test_fog_of_war=True,
         statistics_factory=lambda: statistics,
         save_manager_factory=lambda: save_manager,
-        camera_provider=view_manager,
     )
 
 

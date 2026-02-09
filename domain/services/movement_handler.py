@@ -92,18 +92,21 @@ class MovementHandler:
         session.process_enemy_turns()
         return True
 
-    def handle_3d_movement(self, direction):
+    def handle_3d_movement(self, direction, camera_controller=None):
         session = self.session
+
+        if not camera_controller:
+            return False
 
         # Move camera according to direction
         if direction == "forward":
-            success = session.camera_controller.move_forward()
+            success = camera_controller.move_forward()
         elif direction == "backward":
-            success = session.camera_controller.move_backward()
+            success = camera_controller.move_backward()
         elif direction == "strafe_left":
-            success = session.camera_controller.strafe_left()
+            success = camera_controller.strafe_left()
         elif direction == "strafe_right":
-            success = session.camera_controller.strafe_right()
+            success = camera_controller.strafe_right()
         else:
             return False
 
@@ -113,7 +116,7 @@ class MovementHandler:
 
         # Sync character to new camera position
         from_pos = session.character.position
-        new_x, new_y = session.camera.grid_position
+        new_x, new_y = camera_controller.camera.grid_position
         session.character.move_to(new_x, new_y)
         session.notify_character_moved(from_pos, session.character.position, sync_camera=False)
 

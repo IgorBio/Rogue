@@ -88,7 +88,7 @@ class SaveManager:
                     game_session.difficulty_manager
                 ),
 
-                'camera': self._serialize_camera(game_session.camera),
+                'camera': self._serialize_camera(getattr(game_session, 'camera', None)),
 
                 # Test mode flags
                 'test_mode': game_session.test_mode,
@@ -165,8 +165,7 @@ class SaveManager:
             test_mode=test_mode,
             test_fog_of_war=test_fog,
             statistics_factory=Statistics,
-            save_manager_factory=lambda: self,
-            camera_provider=camera_provider
+            save_manager_factory=lambda: self
         )
 
         # Restore level number
