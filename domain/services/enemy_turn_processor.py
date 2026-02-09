@@ -14,7 +14,7 @@ from domain.enemy_ai import (
 )
 from domain.combat import get_combat_message
 from domain.entities.position import Position
-from config.game_config import EnemyType
+from config.game_config import EnemyType, CombatConfig
 
 
 class EnemyTurnProcessor:
@@ -43,7 +43,7 @@ class EnemyTurnProcessor:
 
             distance = enemy_pos_obj.manhattan_distance_to(player_pos)
 
-            if distance == 1:
+            if distance <= CombatConfig.MELEE_ATTACK_RANGE:
                 if enemy.enemy_type == EnemyType.MIMIC and enemy.is_disguised:
                     continue
 

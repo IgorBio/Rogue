@@ -178,6 +178,11 @@ class CameraConfig:
     COLLISION_RADIUS = 0.3  # радиус коллизии в мировых единицах
 
 
+
+class CombatConfig:
+    """Combat configuration."""
+    MELEE_ATTACK_RANGE = 1.5  # Unified melee attack range for players and enemies
+
 # Type classes
 class ItemType:
     TREASURE = "treasure"

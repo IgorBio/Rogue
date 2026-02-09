@@ -152,6 +152,25 @@ class ActionProcessor:
         if not camera_controller:
             return False
 
+        camera = self.session.get_camera()
+        if camera is not None:
+            current_pos = (int(camera.x), int(camera.y))
+            if self.session.level.exit_position == current_pos:
+                self.session.advance_level()
+                self.session.message = "Descending to the next level..."
+                return True
+            exit_pos = self.session.level.exit_position
+            if exit_pos is not None:
+                exit_x, exit_y = exit_pos
+                target_x = exit_x + 0.5
+                target_y = exit_y + 0.5
+                dx = camera.x - target_x
+                dy = camera.y - target_y
+                if (dx * dx + dy * dy) <= 2.25:
+                    self.session.advance_level()
+                    self.session.message = "Descending to the next level..."
+                    return True
+
         entity, entity_type, distance = camera_controller.get_entity_in_front(self.session.level)
 
         # Priority order: doors -> enemies -> items -> exit

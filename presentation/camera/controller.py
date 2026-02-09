@@ -3,7 +3,7 @@ Camera controller for 3D mode with combat and item interaction support.
 """
 import math
 from presentation.camera.camera import Camera
-from config.game_config import CameraConfig
+from config.game_config import CameraConfig, CombatConfig
 
 
 class CameraController:
@@ -32,7 +32,7 @@ class CameraController:
         self.collision_radius = CameraConfig.COLLISION_RADIUS
         
         # Interaction range
-        self.interaction_range = 1.5  # Distance to interact with entities
+        self.interaction_range = CombatConfig.MELEE_ATTACK_RANGE  # Unified melee attack range
     
     def move_forward(self):
         """Move camera forward in facing direction."""
@@ -127,8 +127,12 @@ class CameraController:
         if check_distance is None:
             check_distance = self.interaction_range
 
+        grid_x, grid_y = int(self.camera.x), int(self.camera.y)
+        if level.exit_position and level.exit_position == (grid_x, grid_y):
+            return (level.exit_position, 'exit', 0.0)
+
         dir_x, dir_y = self.camera.get_direction_vector()
-        cos_threshold = 0.95  # ~18 degrees
+        cos_threshold = 0.85  # ~32 degrees
         best = (None, None, None)
 
         def _consider_entity(entity, entity_type):

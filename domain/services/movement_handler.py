@@ -123,6 +123,22 @@ class MovementHandler:
         session.character.move_to(new_x, new_y)
         session.notify_character_moved(from_pos, session.character.position, sync_camera=False)
 
+        exit_pos = session.level.exit_position
+        if exit_pos is not None:
+            exit_x, exit_y = exit_pos
+            if (new_x, new_y) == (exit_x, exit_y):
+                session.advance_level()
+                return True
+            # Fallback: float-based proximity check to handle offsets
+            if camera is not None:
+                target_x = exit_x + 0.5
+                target_y = exit_y + 0.5
+                dx = camera.x - target_x
+                dy = camera.y - target_y
+                if (dx * dx + dy * dy) <= 0.26:
+                    session.advance_level()
+                    return True
+
         session.process_enemy_turns()
         return True
 

@@ -49,6 +49,7 @@ class SpriteRenderer:
         # Sprite rendering constants
         self.sprite_base_height = 1.0  # Height of sprite in world units
         self.max_sprite_distance = 20.0  # Don't render sprites beyond this
+        self.sprite_width = 3  # Sprite width in screen columns
     
     def collect_sprites(self, level, fog_of_war=None):
         """
@@ -185,13 +186,13 @@ class SpriteRenderer:
             
             # Calculate sprite height based on distance and type
             if sprite.sprite_type == 'enemy':
-                base_height = self.sprite_base_height * 1.4
+                base_height = self.sprite_base_height * 1.0
                 min_height = 3
             elif sprite.sprite_type == 'item':
-                base_height = self.sprite_base_height * 1.1
+                base_height = self.sprite_base_height * 0.8
                 min_height = 2
             elif sprite.sprite_type == 'exit':
-                base_height = self.sprite_base_height * 1.2
+                base_height = self.sprite_base_height * 0.9
                 min_height = 2
             else:
                 base_height = self.sprite_base_height
@@ -227,14 +228,6 @@ class SpriteRenderer:
         import curses
         
         for sprite in sprites:
-            # Check if sprite is on screen
-            if sprite.screen_x < 0 or sprite.screen_x >= self.viewport_width:
-                continue
-            
-            # Check Z-buffer (don't draw if behind wall)
-            if sprite.screen_x < len(z_buffer) and z_buffer[sprite.screen_x] < sprite.distance:
-                continue
-            
             # Calculate vertical position
             sprite_top = (self.viewport_height - sprite.height) // 2
             sprite_bottom = sprite_top + sprite.height
@@ -248,18 +241,29 @@ class SpriteRenderer:
                 display_char = sprite.char
             else:
                 display_char = self._shade_sprite_char(sprite.char, sprite.distance)
-            
-            # Draw sprite column
-            for y in range(sprite_top, sprite_bottom):
-                try:
-                    stdscr.addch(
-                        y_offset + y,
-                        x_offset + sprite.screen_x,
-                        display_char,
-                        curses.color_pair(sprite.color) | curses.A_BOLD
-                    )
-                except curses.error:
-                    pass
+
+            half_width = self.sprite_width // 2
+            for col_offset in range(-half_width, half_width + 1):
+                render_x = sprite.screen_x + col_offset
+
+                if render_x < 0 or render_x >= self.viewport_width:
+                    continue
+
+                # Check Z-buffer per column (don't draw if behind wall)
+                if render_x < len(z_buffer) and z_buffer[render_x] < sprite.distance:
+                    continue
+
+                # Draw sprite column
+                for y in range(sprite_top, sprite_bottom):
+                    try:
+                        stdscr.addch(
+                            y_offset + y,
+                            x_offset + render_x,
+                            display_char,
+                            curses.color_pair(sprite.color) | curses.A_BOLD
+                        )
+                    except curses.error:
+                        pass
     
     def _shade_sprite_char(self, char, distance):
         """
