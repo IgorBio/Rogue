@@ -59,6 +59,21 @@ class SaveManager:
             filename = self._safe_save_path(filename)
 
         try:
+            camera_state = None
+            camera = None
+            if hasattr(game_session, "get_camera"):
+                try:
+                    camera = game_session.get_camera()
+                except Exception:
+                    camera = None
+            elif hasattr(game_session, "camera"):
+                camera = game_session.camera
+            if camera is not None:
+                try:
+                    camera_state = self._serialize_camera(camera)
+                except Exception:
+                    camera_state = None
+
             save_data = {
                 # Version and metadata
                 'version': SAVE_VERSION,
@@ -88,7 +103,7 @@ class SaveManager:
                     game_session.difficulty_manager
                 ),
 
-                'camera': self._serialize_camera(game_session.camera),
+                'camera': camera_state,
 
                 # Test mode flags
                 'test_mode': game_session.test_mode,
@@ -146,13 +161,13 @@ class SaveManager:
 
         return os.path.exists(filename)
 
-    def restore_game_session(self, save_data, camera_provider=None):
+    def restore_game_session(self, save_data, view_manager=None):
         """
         Restore complete GameSession from saved data.
 
         Args:
             save_data (dict): Dictionary loaded from save file
-            camera_provider: Optional camera provider (presentation layer)
+            view_manager: Optional ViewManager for camera restoration (presentation layer)
 
         Returns:
             GameSession: Restored game session instance
@@ -165,9 +180,13 @@ class SaveManager:
             test_mode=test_mode,
             test_fog_of_war=test_fog,
             statistics_factory=Statistics,
-            save_manager_factory=lambda: self,
-            camera_provider=camera_provider
+            save_manager_factory=lambda: self
         )
+        if view_manager is not None and hasattr(game_session, "set_view_adapter"):
+            try:
+                game_session.set_view_adapter(view_manager)
+            except Exception as exc:
+                log_exception(exc, __name__)
 
         # Restore level number
         game_session.current_level_number = save_data['current_level_number']
@@ -269,9 +288,9 @@ class SaveManager:
 
         # Preserve camera state for presentation layer to restore
         camera_state = save_data.get('camera')
-        if camera_provider is not None and hasattr(camera_provider, 'apply_camera_state'):
+        if view_manager is not None and hasattr(view_manager, 'apply_camera_state'):
             try:
-                camera_provider.apply_camera_state(camera_state, game_session.level)
+                view_manager.apply_camera_state(camera_state, game_session.level)
             except Exception as exc:
                     log_exception(exc, __name__)
 

@@ -20,6 +20,7 @@ class GameUI:
     
     Attributes:
         stdscr: Curses standard screen object
+        view_manager: ViewManager for camera/controller access
         renderer_2d: Renderer instance for 2D mode
         input_handler_2d: InputHandler for 2D controls
         renderer_3d: Renderer3D instance for 3D mode
@@ -31,14 +32,16 @@ class GameUI:
         show_help (bool): Whether to show help text
     """
     
-    def __init__(self, stdscr):
+    def __init__(self, stdscr, view_manager):
         """
         Initialize game UI coordinator.
         
         Args:
             stdscr: Curses standard screen object
+            view_manager: ViewManager for camera/controller access
         """
         self.stdscr = stdscr
+        self.view_manager = view_manager
         
         # Initialize 2D components
         from presentation.renderer_2d import Renderer
@@ -171,8 +174,18 @@ class GameUI:
         self.stdscr.clear()
         level = game_session.get_current_level()
         character = game_session.get_character()
-        camera = game_session.get_camera()
-        camera_controller = game_session.get_camera_controller()
+        camera = self.view_manager.camera
+        camera_controller = self.view_manager.camera_controller
+
+        if camera is None or camera_controller is None:
+            self.stdscr.clear()
+            try:
+                self.stdscr.addstr(1, 2, "3D camera not initialized. Switching to 2D...")
+            except curses.error:
+                pass
+            self.stdscr.refresh()
+            game_session.rendering_mode = '2d'
+            return
         
         fog_of_war = game_session.get_fog_of_war() if game_session.should_use_fog_of_war() else None
         

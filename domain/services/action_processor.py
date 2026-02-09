@@ -114,12 +114,14 @@ class ActionProcessor:
         elif action_type == self.ACTION_STRAFE_RIGHT:
             return self.session.handle_movement('strafe_right')
         elif action_type == self.ACTION_ROTATE_LEFT:
-            if self.session.camera_controller:
-                self.session.camera_controller.rotate_left()
+            camera_controller = self.session.get_camera_controller()
+            if camera_controller:
+                camera_controller.rotate_left()
             return True
         elif action_type == self.ACTION_ROTATE_RIGHT:
-            if self.session.camera_controller:
-                self.session.camera_controller.rotate_right()
+            camera_controller = self.session.get_camera_controller()
+            if camera_controller:
+                camera_controller.rotate_right()
             return True
         elif action_type == self.ACTION_INTERACT:
             return self._handle_3d_interact()
@@ -146,13 +148,14 @@ class ActionProcessor:
 
     def _handle_3d_interact(self):
         """Handle smart interaction in 3D mode."""
-        if not self.session.camera_controller:
+        camera_controller = self.session.get_camera_controller()
+        if not camera_controller:
             return False
 
-        entity, entity_type, distance = self.session.camera_controller.get_entity_in_front(self.session.level)
+        entity, entity_type, distance = camera_controller.get_entity_in_front(self.session.level)
 
         # Priority order: doors -> enemies -> items -> exit
-        door_success, door_message = self.session.camera_controller.try_open_door(self.session.character)
+        door_success, door_message = camera_controller.try_open_door(self.session.character)
         if door_success or door_message != "No door nearby":
             self.session.message = door_message
             if not self.session.state_machine.is_terminal():
@@ -173,10 +176,11 @@ class ActionProcessor:
 
     def _handle_3d_attack(self):
         """Handle attack in 3D mode."""
-        if not self.session.camera_controller:
+        camera_controller = self.session.get_camera_controller()
+        if not camera_controller:
             return False
 
-        success, message, enemy = self.session.camera_controller.attack_entity_in_front(
+        success, message, enemy = camera_controller.attack_entity_in_front(
             self.session.character, self.session.level
         )
 
@@ -201,10 +205,11 @@ class ActionProcessor:
 
     def _handle_3d_pickup(self):
         """Handle item pickup in 3D mode."""
-        if not self.session.camera_controller:
+        camera_controller = self.session.get_camera_controller()
+        if not camera_controller:
             return False
 
-        success, message, item = self.session.camera_controller.pickup_item_in_front(
+        success, message, item = camera_controller.pickup_item_in_front(
             self.session.character, self.session.level
         )
 
