@@ -241,12 +241,12 @@ class TargetingReticle:
 
         # Reticle symbols per target type
         self.reticle_chars = {
-            'enemy': '╬',     # враг
-            'item': '◎',      # предмет
-            'door_locked': '▣',  # дверь (закрыта)
-            'door_open': '□',    # дверь (открыта)
-            'exit': '►',      # выход
-            None: '·'         # ничего
+            'enemy': '╬',     # enemy
+            'item': '◎',      # item
+            'door_locked': '▣',  # door (locked)
+            'door_open': '□',    # door (open)
+            'exit': '►',      # exit
+            None: '·'         # none
         }
     
     def render(self, viewport_width, viewport_height, x_offset=0, y_offset=0):

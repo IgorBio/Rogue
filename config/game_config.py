@@ -1,4 +1,4 @@
-"""
+﻿"""
 Centralized game configuration.
 All magic numbers and settings in one place.
 """
@@ -170,12 +170,12 @@ class PlayerConfig:
 
 
 class CameraConfig:
-    """Конфигурация 3D камеры."""
-    GRID_CELL_SIZE = 1.0  # Размер одной клетки в мировых единицах
-    CAMERA_OFFSET = 0.5   # Смещение камеры от угла клетки (центрирование)
-    MOVE_SPEED = 1.0      # Скорость = 1 клетка за шаг
-    ROTATION_SPEED = 15.0  # градусов за шаг
-    COLLISION_RADIUS = 0.3  # радиус коллизии в мировых единицах
+    """3D camera configuration."""
+    GRID_CELL_SIZE = 1.0  # Size of one grid cell in world units
+    CAMERA_OFFSET = 0.5   # Camera offset from cell corner (centering)
+    MOVE_SPEED = 1.0      # Speed: 1 cell per step
+    ROTATION_SPEED = 15.0  # Degrees per step
+    COLLISION_RADIUS = 0.3  # Collision radius in world units
 
 
 

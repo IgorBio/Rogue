@@ -63,11 +63,7 @@ class GameSession:
         self.rendering_mode = '2d'
         # Optional view adapter (presentation layer). Keeps domain free of imports.
         self._view_adapter = None
-
         self.state_machine = StateMachine()
-        
-        # Position synchronizer for 2D ↔ 3D coordinate sync
-        
         self.difficulty_manager = DifficultyManager()
 
         # Dependency factories injected from outer layer to avoid direct

@@ -1,39 +1,39 @@
-"""
+﻿"""
 Pytest configuration and fixtures for Dungeon Crawler tests.
 
-Этот файл содержит общие фикстуры, которые могут использоваться
-во всех тестах проекта.
+English description.
+English description.
 """
 
 import pytest
 import sys
 import os
 
-# Добавляем корневую директорию проекта в PYTHONPATH
+# English comment
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
-# === ФИКСТУРЫ СУЩНОСТЕЙ ===
+# English comment
 
 @pytest.fixture
 def character():
-    """Фикстура для создания персонажа с дефолтными параметрами"""
+    """English description."""
     from domain.entities.character import Character
     return Character(x=10, y=10)
 
 
 @pytest.fixture
 def character_damaged():
-    """Фикстура для поврежденного персонажа"""
+    """English description."""
     from domain.entities.character import Character
     char = Character(x=10, y=10)
-    char.take_damage(50)  # 50% здоровья
+    char.take_damage(50)  # English comment
     return char
 
 
 @pytest.fixture
 def zombie_enemy():
-    """Фикстура для создания зомби врага"""
+    """English description."""
     from domain.entities.enemy import create_enemy
     from config.game_config import EnemyType
     return create_enemy(EnemyType.ZOMBIE, x=15, y=15)
@@ -41,7 +41,7 @@ def zombie_enemy():
 
 @pytest.fixture
 def vampire_enemy():
-    """Фикстура для создания вампира врага"""
+    """English description."""
     from domain.entities.enemy import create_enemy
     from config.game_config import EnemyType
     return create_enemy(EnemyType.VAMPIRE, x=15, y=15)
@@ -49,7 +49,7 @@ def vampire_enemy():
 
 @pytest.fixture
 def mimic_enemy():
-    """Фикстура для создания мимика врага"""
+    """English description."""
     from domain.entities.enemy import create_enemy
     from config.game_config import EnemyType
     return create_enemy(EnemyType.MIMIC, x=15, y=15, disguise_type='%')
@@ -57,7 +57,7 @@ def mimic_enemy():
 
 @pytest.fixture
 def food_item():
-    """Фикстура для еды"""
+    """English description."""
     from domain.entities.item import Food
     food = Food(health_restoration=30)
     food.position = (10, 10)
@@ -66,7 +66,7 @@ def food_item():
 
 @pytest.fixture
 def weapon_item():
-    """Фикстура для оружия"""
+    """English description."""
     from domain.entities.item import Weapon
     weapon = Weapon(name="Test Sword", strength_bonus=5)
     weapon.position = (10, 10)
@@ -75,7 +75,7 @@ def weapon_item():
 
 @pytest.fixture
 def elixir_item():
-    """Фикстура для эликсира"""
+    """English description."""
     from domain.entities.item import Elixir
     from config.game_config import StatType
     elixir = Elixir(stat_type=StatType.STRENGTH, bonus=5, duration=10)
@@ -85,7 +85,7 @@ def elixir_item():
 
 @pytest.fixture
 def scroll_item():
-    """Фикстура для свитка"""
+    """English description."""
     from domain.entities.item import Scroll
     from config.game_config import StatType
     scroll = Scroll(stat_type=StatType.STRENGTH, bonus=3)
@@ -93,18 +93,18 @@ def scroll_item():
     return scroll
 
 
-# === ФИКСТУРЫ УРОВНЕЙ ===
+# English comment
 
 @pytest.fixture
 def simple_room():
-    """Фикстура для создания простой комнаты"""
+    """English description."""
     from domain.entities.room import Room
     return Room(x=10, y=10, width=10, height=8)
 
 
 @pytest.fixture
 def room_with_enemies(simple_room, zombie_enemy, vampire_enemy):
-    """Фикстура для комнаты с врагами"""
+    """English description."""
     simple_room.add_enemy(zombie_enemy)
     simple_room.add_enemy(vampire_enemy)
     return simple_room
@@ -112,7 +112,7 @@ def room_with_enemies(simple_room, zombie_enemy, vampire_enemy):
 
 @pytest.fixture
 def room_with_items(simple_room, food_item, weapon_item):
-    """Фикстура для комнаты с предметами"""
+    """English description."""
     simple_room.add_item(food_item)
     simple_room.add_item(weapon_item)
     return simple_room
@@ -120,10 +120,10 @@ def room_with_items(simple_room, food_item, weapon_item):
 
 @pytest.fixture
 def simple_corridor():
-    """Фикстура для создания простого коридора"""
+    """English description."""
     from domain.entities.corridor import Corridor
     corridor = Corridor()
-    # Добавляем несколько клеток
+    # English comment
     for i in range(5):
         corridor.add_tile(20 + i, 20)
     return corridor
@@ -131,39 +131,39 @@ def simple_corridor():
 
 @pytest.fixture
 def test_level():
-    """Фикстура для создания тестового уровня"""
+    """English description."""
     from domain.level_generator import generate_level
     return generate_level(level_number=1, difficulty_adjustments=None)
 
 
-# === ФИКСТУРЫ СИСТЕМ ===
+# English comment
 
 @pytest.fixture
 def statistics():
-    """Фикстура для системы статистики"""
+    """English description."""
     from data.statistics import Statistics
     return Statistics()
 
 
 @pytest.fixture
 def difficulty_manager():
-    """Фикстура для менеджера сложности"""
+    """English description."""
     from domain.dynamic_difficulty import DifficultyManager
     return DifficultyManager()
 
 
 @pytest.fixture
 def save_manager(tmp_path):
-    """Фикстура для менеджера сохранений (с временной директорией)"""
+    """English description."""
     from data.save_manager import SaveManager
     return SaveManager(save_dir=str(tmp_path))
 
 
-# === ФИКСТУРА ИГРОВОЙ СЕССИИ ===
+# English comment
 
 @pytest.fixture
 def game_session(statistics, save_manager):
-    """Фикстура для игровой сессии в тестовом режиме"""
+    """English description."""
     from domain.game_session import GameSession
 
     return GameSession(
@@ -177,7 +177,7 @@ def game_session(statistics, save_manager):
 
 @pytest.fixture
 def game_session_with_fog(statistics, save_manager):
-    """Фикстура для игровой сессии с туманом войны"""
+    """English description."""
     from domain.game_session import GameSession
 
     return GameSession(
@@ -189,34 +189,34 @@ def game_session_with_fog(statistics, save_manager):
     )
 
 
-# === ФИКСТУРЫ КАМЕРЫ ===
+# English comment
 
 @pytest.fixture
 def camera():
-    """Фикстура для 3D камеры"""
+    """English description."""
     from presentation.camera import Camera
     return Camera(x=10, y=10, angle=0.0, fov=60.0)
 
 
-# === УТИЛИТЫ ДЛЯ ТЕСТОВ ===
+# English comment
 
 @pytest.fixture
 def mock_level_simple():
-    """Создать простой уровень для тестов без генерации"""
+    """English description."""
     from domain.entities.level import Level
     from domain.entities.room import Room
     from domain.entities.corridor import Corridor
 
     level = Level(level_number=1)
 
-    # Добавить 2 простые комнаты
+    # English comment
     room1 = Room(x=5, y=5, width=10, height=8)
     room2 = Room(x=20, y=5, width=10, height=8)
 
     level.add_room(room1)
     level.add_room(room2)
 
-    # Коридор между комнатами
+    # English comment
     corridor = Corridor()
     for x in range(15, 20):
         corridor.add_tile(x, 9)
@@ -229,10 +229,10 @@ def mock_level_simple():
     return level
 
 
-# === МАРКЕРЫ ===
+# English comment
 
 def pytest_configure(config):
-    """Регистрация кастомных маркеров"""
+    """English description."""
     config.addinivalue_line(
         "markers", """slow: marks tests as slow (deselect with '-m "not slow"')"""
     )
@@ -244,14 +244,14 @@ def pytest_configure(config):
     )
 
 
-# === ХЕЛПЕРЫ ===
+# English comment
 
 class TestHelper:
-    """Вспомогательные функции для тестов"""
+    """English description."""
 
     @staticmethod
     def create_character_at_health_percent(percent):
-        """Создать персонажа с определенным процентом здоровья"""
+        """English description."""
         from domain.entities.character import Character
         char = Character(0, 0)
         char.health = int(char.max_health * percent)
@@ -259,7 +259,7 @@ class TestHelper:
 
     @staticmethod
     def create_enemy_with_stats(enemy_type, health, strength, dexterity):
-        """Создать врага с кастомными статами"""
+        """English description."""
         from domain.entities.enemy import create_enemy
         enemy = create_enemy(enemy_type, 0, 0)
         enemy.health = health
@@ -271,5 +271,5 @@ class TestHelper:
 
 @pytest.fixture
 def test_helper():
-    """Фикстура для вспомогательных функций"""
+    """English description."""
     return TestHelper()

@@ -1,5 +1,5 @@
-"""
-Тесты для системы координат Position.
+﻿"""
+English description.
 """
 
 import pytest
@@ -7,7 +7,7 @@ from domain.entities.position import Position, create_position, positions_equal
 
 
 class TestPositionCreation:
-    """Тесты создания Position"""
+    """English description."""
     
     def test_create_from_int(self):
         pos = Position(10, 20)
@@ -15,7 +15,7 @@ class TestPositionCreation:
         assert pos.y == 20
     
     def test_create_from_float(self):
-        """Float автоматически приводится к int"""
+        """English description."""
         pos = Position(10.7, 20.3)
         assert pos.x == 10
         assert pos.y == 20
@@ -23,7 +23,7 @@ class TestPositionCreation:
 
 
 class TestPositionEquality:
-    """Тесты сравнения"""
+    """English description."""
     
     def test_equality_with_tuple(self):
         pos = Position(10, 20)
@@ -35,15 +35,15 @@ class TestPositionEquality:
         assert pos == (10, 20)
     
     def test_hash_for_set(self):
-        """Position можно использовать в set"""
+        """English description."""
         pos1 = Position(10, 20)
         pos2 = Position(10, 20)
         pos_set = {pos1, pos2}
-        assert len(pos_set) == 1  # Дубликат
+        assert len(pos_set) == 1  # English comment
 
 
 class TestPositionUpdate:
-    """Тесты обновления"""
+    """English description."""
     
     def test_update_from_float(self):
         pos = Position(0, 0)
@@ -58,7 +58,7 @@ class TestPositionUpdate:
 
 
 class TestPositionDistance:
-    """Тесты расстояний"""
+    """English description."""
     
     def test_euclidean_distance(self):
         pos1 = Position(0, 0)
@@ -72,7 +72,7 @@ class TestPositionDistance:
 
 
 class TestPositionAdjacency:
-    """Тесты соседства"""
+    """English description."""
     
     def test_adjacent_horizontal(self):
         pos1 = Position(10, 10)

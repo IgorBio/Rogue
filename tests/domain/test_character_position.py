@@ -1,7 +1,7 @@
-"""
-Тесты для Character с интеграцией Position.
+﻿"""
+English description.
 
-Проверяет корректность работы Character после интеграции Position класса.
+English description.
 """
 
 import pytest
@@ -10,31 +10,31 @@ from domain.entities.position import Position
 
 
 class TestCharacterPositionIntegration:
-    """Тесты интеграции Position в Character"""
+    """English description."""
 
     def test_character_creation_with_int(self):
-        """Создание персонажа с int координатами"""
+        """English description."""
         char = Character(10, 20)
         assert char.position == (10, 20)
         assert char.get_x() == 10
         assert char.get_y() == 20
 
     def test_character_creation_with_float(self):
-        """Создание персонажа с float координатами (должны стать int)"""
+        """English description."""
         char = Character(10.7, 20.3)
         assert char.position == (10, 20)
         assert char.get_x() == 10
         assert char.get_y() == 20
 
     def test_position_property_returns_tuple(self):
-        """position property должно возвращать tuple для обратной совместимости"""
+        """English description."""
         char = Character(15, 25)
         pos = char.position
         assert isinstance(pos, tuple)
         assert pos == (15, 25)
 
     def test_position_obj_property_returns_position(self):
-        """position_obj property должно возвращать Position объект"""
+        """English description."""
         char = Character(15, 25)
         pos_obj = char.position_obj
         assert isinstance(pos_obj, Position)
@@ -42,7 +42,7 @@ class TestCharacterPositionIntegration:
         assert pos_obj.y == 25
 
     def test_move_to_with_int(self):
-        """Перемещение персонажа с int координатами"""
+        """English description."""
         char = Character(0, 0)
         char.move_to(10, 20)
         assert char.position == (10, 20)
@@ -50,7 +50,7 @@ class TestCharacterPositionIntegration:
         assert char.get_y() == 20
 
     def test_move_to_with_float(self):
-        """Перемещение персонажа с float координатами"""
+        """English description."""
         char = Character(0, 0)
         char.move_to(10.9, 20.1)
         assert char.position == (10, 20)
@@ -58,7 +58,7 @@ class TestCharacterPositionIntegration:
         assert char.get_y() == 20
 
     def test_move_by_method(self):
-        """Новый метод move_by"""
+        """English description."""
         char = Character(10, 10)
         char.move_by(3, -2)
         assert char.position == (13, 8)
@@ -67,13 +67,13 @@ class TestCharacterPositionIntegration:
         assert char.position == (8, 13)
 
     def test_move_by_with_float_delta(self):
-        """move_by с float delta"""
+        """English description."""
         char = Character(10, 10)
         char.move_by(2.7, -1.3)
         assert char.position == (12, 9)  # int(2.7)=2, int(-1.3)=-1
 
     def test_get_x_and_get_y(self):
-        """get_x() и get_y() должны возвращать int"""
+        """English description."""
         char = Character(15, 25)
         x = char.get_x()
         y = char.get_y()
@@ -85,10 +85,10 @@ class TestCharacterPositionIntegration:
 
 
 class TestCharacterDistanceMethods:
-    """Тесты новых методов расчета расстояний"""
+    """English description."""
 
     def test_distance_to_position(self):
-        """Расстояние до Position объекта"""
+        """English description."""
         char = Character(0, 0)
         target = Position(3, 4)
 
@@ -96,13 +96,13 @@ class TestCharacterDistanceMethods:
         assert distance == 5.0
 
     def test_distance_to_tuple(self):
-        """Расстояние до tuple"""
+        """English description."""
         char = Character(0, 0)
         distance = char.distance_to((3, 4))
         assert distance == 5.0
 
     def test_manhattan_distance_to_position(self):
-        """Manhattan расстояние до Position"""
+        """English description."""
         char = Character(0, 0)
         target = Position(3, 4)
 
@@ -110,13 +110,13 @@ class TestCharacterDistanceMethods:
         assert distance == 7
 
     def test_manhattan_distance_to_tuple(self):
-        """Manhattan расстояние до tuple"""
+        """English description."""
         char = Character(0, 0)
         distance = char.manhattan_distance_to((3, 4))
         assert distance == 7
 
     def test_distance_to_self(self):
-        """Расстояние до самого себя"""
+        """English description."""
         char = Character(10, 10)
         distance = char.distance_to((10, 10))
         assert distance == 0.0
@@ -126,40 +126,40 @@ class TestCharacterDistanceMethods:
 
 
 class TestCharacterAdjacency:
-    """Тесты метода is_adjacent_to"""
+    """English description."""
 
     def test_adjacent_horizontal(self):
-        """Соседняя позиция по горизонтали"""
+        """English description."""
         char = Character(10, 10)
         assert char.is_adjacent_to((11, 10)) == True
         assert char.is_adjacent_to((9, 10)) == True
 
     def test_adjacent_vertical(self):
-        """Соседняя позиция по вертикали"""
+        """English description."""
         char = Character(10, 10)
         assert char.is_adjacent_to((10, 11)) == True
         assert char.is_adjacent_to((10, 9)) == True
 
     def test_adjacent_diagonal(self):
-        """Соседняя позиция по диагонали"""
+        """English description."""
         char = Character(10, 10)
         assert char.is_adjacent_to((11, 11)) == True
         assert char.is_adjacent_to((9, 9)) == True
 
     def test_not_adjacent(self):
-        """Не соседняя позиция"""
+        """English description."""
         char = Character(10, 10)
         assert char.is_adjacent_to((12, 10)) == False
         assert char.is_adjacent_to((10, 12)) == False
         assert char.is_adjacent_to((12, 12)) == False
 
     def test_not_adjacent_to_self(self):
-        """Не соседняя сама себе"""
+        """English description."""
         char = Character(10, 10)
         assert char.is_adjacent_to((10, 10)) == False
 
     def test_adjacent_with_position_object(self):
-        """is_adjacent_to с Position объектом"""
+        """English description."""
         char = Character(10, 10)
         adjacent_pos = Position(11, 10)
         not_adjacent_pos = Position(12, 10)
@@ -169,49 +169,49 @@ class TestCharacterAdjacency:
 
 
 class TestCharacterBackwardCompatibility:
-    """Тесты обратной совместимости"""
+    """English description."""
 
     def test_position_comparison_with_tuple(self):
-        """position можно сравнивать с tuple"""
+        """English description."""
         char = Character(10, 20)
         assert char.position == (10, 20)
         assert (10, 20) == char.position
 
     def test_position_unpacking(self):
-        """position можно распаковать"""
+        """English description."""
         char = Character(15, 25)
         x, y = char.position
         assert x == 15
         assert y == 25
 
     def test_position_indexing(self):
-        """position можно индексировать"""
+        """English description."""
         char = Character(15, 25)
         assert char.position[0] == 15
         assert char.position[1] == 25
 
     def test_old_code_still_works(self):
-        """Старый код должен продолжать работать"""
+        """English description."""
         char = Character(10, 10)
 
-        # Старый стиль доступа
+        # English comment
         x, y = char.position
         assert x == 10 and y == 10
 
-        # Старый стиль перемещения
+        # English comment
         char.move_to(20, 30)
         assert char.position == (20, 30)
 
-        # Старые методы
+        # English comment
         assert char.get_x() == 20
         assert char.get_y() == 30
 
 
 class TestCharacterRepr:
-    """Тест строкового представления"""
+    """English description."""
 
     def test_repr_shows_tuple_position(self):
-        """__repr__ должен показывать позицию как tuple"""
+        """English description."""
         char = Character(10, 20)
         repr_str = repr(char)
 
@@ -222,37 +222,37 @@ class TestCharacterRepr:
 
 
 class TestCharacterMovementScenarios:
-    """Интеграционные тесты движения"""
+    """English description."""
 
     def test_movement_sequence(self):
-        """Последовательность движений"""
+        """English description."""
         char = Character(0, 0)
 
-        # Абсолютное перемещение
+        # English comment
         char.move_to(5, 5)
         assert char.position == (5, 5)
 
-        # Относительное перемещение
+        # English comment
         char.move_by(3, -2)
         assert char.position == (8, 3)
 
-        # Еще одно абсолютное
+        # English comment
         char.move_to(10, 10)
         assert char.position == (10, 10)
 
-        # Проверяем методы доступа
+        # English comment
         assert char.get_x() == 10
         assert char.get_y() == 10
 
     def test_movement_with_mixed_types(self):
-        """Движение со смешанными типами координат"""
-        char = Character(10.5, 20.7)  # float при создании
+        """English description."""
+        char = Character(10.5, 20.7)  # English comment
         assert char.position == (10, 20)
 
-        char.move_to(15.9, 25.1)  # float при move_to
+        char.move_to(15.9, 25.1)  # English comment
         assert char.position == (15, 25)
 
-        char.move_by(2.8, -1.2)  # float при move_by
+        char.move_by(2.8, -1.2)  # English comment
         assert char.position == (17, 24)
 
 
