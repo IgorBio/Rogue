@@ -42,6 +42,7 @@ class InputHandler:
     ACTION_TOGGLE_DEBUG = "toggle_debug"
     ACTION_TOGGLE_HELP = "toggle_help"
     ACTION_TOGGLE_MINIMAP = "toggle_minimap"
+    ACTION_TOGGLE_MINIMAP_MODE = "toggle_minimap_mode"
     ACTION_TOGGLE_SPRITES = "toggle_sprites"
 
     # Direction tuples (dx, dy) for 2D
@@ -172,6 +173,8 @@ class InputHandler:
             return self.ACTION_TOGGLE_DEBUG
         elif key == ord('m') or key == ord('M'):
             return self.ACTION_TOGGLE_MINIMAP
+        elif key == ord('l') or key == ord('L'):
+            return self.ACTION_TOGGLE_MINIMAP_MODE
         elif key == ord('n') or key == ord('N'):
             return self.ACTION_TOGGLE_SPRITES
         elif key == ord('?') or key == ord('/'):
@@ -225,6 +228,7 @@ class InputHandler:
         help_text.append("Tab - Toggle 2D/3D")
         help_text.append("T   - Toggle Textures")
         help_text.append("M   - Toggle Mini-map")
+        help_text.append("L   - Local/Global Map")
         help_text.append("N   - Toggle Sprites")
         help_text.append("I   - Toggle Debug")
         help_text.append("?   - Toggle Help")

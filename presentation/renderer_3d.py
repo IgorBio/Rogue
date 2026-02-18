@@ -159,6 +159,11 @@ class Renderer3D:
         self.show_minimap = not self.show_minimap
         return self.show_minimap
 
+    def toggle_minimap_mode(self):
+        if not self.minimap_renderer:
+            return None
+        return self.minimap_renderer.toggle_mode()
+
     def toggle_sprites(self):
         self.show_sprites = not self.show_sprites
         return self.show_sprites

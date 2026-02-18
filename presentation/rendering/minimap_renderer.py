@@ -1,6 +1,6 @@
 """
 Mini-map renderer for 3D mode navigation.
-Shows scaled-down 2D overview with player position and orientation.
+Shows a local tactical window by default and supports global overview mode.
 """
 import curses
 import math
@@ -12,396 +12,309 @@ from presentation.colors import (
     COLOR_EXIT,
     COLOR_UI_TEXT,
     COLOR_UI_HIGHLIGHT,
+    get_enemy_color,
 )
+from presentation.rendering.item_rendering import get_item_render_data
 
 
 class MiniMapRenderer:
     """Renders a mini-map overlay for 3D mode."""
-    
+
+    WALL_CHAR = '#'
+    FLOOR_CHAR = '.'
+    CORRIDOR_CHAR = ':'
+    UNKNOWN_CHAR = ' '
+    PLAYER_CHAR = '@'
+    EXIT_CHAR = '>'
+
+    MODE_LOCAL = 'local'
+    MODE_GLOBAL = 'global'
+
     def __init__(self, map_width, map_height, minimap_size=12):
-        """
-        Initialize mini-map renderer.
-        
-        Args:
-            map_width: Full map width
-            map_height: Full map height
-            minimap_size: Size of mini-map in characters (width and height)
-        """
         self.map_width = map_width
         self.map_height = map_height
         self.minimap_size = minimap_size
-        
-        # Calculate scale factors
+
         self.scale_x = map_width / minimap_size
         self.scale_y = map_height / minimap_size
-        
-        # Display options
+
         self.show_discovered_only = True
         self.show_fog = True
-        self.show_enemies = False
-        self.show_items = False
-    
-    def render_minimap(self, stdscr, level, camera, fog_of_war=None, 
+        self.show_enemies = True
+        self.show_items = True
+
+        # New defaults for better readability.
+        self.mode = self.MODE_LOCAL
+        self.local_radius = max(3, minimap_size // 2)
+
+    def render_minimap(self, stdscr, level, camera, fog_of_war=None,
                       x_offset=0, y_offset=0):
-        """
-        Render the mini-map.
-        
-        Args:
-            stdscr: Curses screen object
-            level: Level object
-            camera: Camera object with position and angle
-            fog_of_war: FogOfWar object (optional)
-            x_offset: X position to render mini-map
-            y_offset: Y position to render mini-map
-        """
-        # Draw border
         self._draw_border(stdscr, x_offset, y_offset)
-        
-        # Draw level elements
-        self._draw_rooms(stdscr, level, fog_of_war, x_offset, y_offset)
-        self._draw_corridors(stdscr, level, fog_of_war, x_offset, y_offset)
-        self._draw_exit(stdscr, level, fog_of_war, x_offset, y_offset)
-        
-        # Draw player last (on top)
-        self._draw_player(stdscr, camera, x_offset, y_offset)
-        
-        # Draw title
+
+        if self.mode == self.MODE_LOCAL:
+            self._draw_local_window(stdscr, level, camera, fog_of_war, x_offset, y_offset)
+        else:
+            self._draw_global_window(stdscr, level, camera, fog_of_war, x_offset, y_offset)
+
         self._draw_title(stdscr, x_offset, y_offset)
-    
     def _draw_border(self, stdscr, x_offset, y_offset):
-        """Draw border around mini-map."""
-        # Top border
         try:
             stdscr.addstr(
                 y_offset,
                 x_offset,
-                "┌" + "─" * self.minimap_size + "┐",
+                '+' + '-' * self.minimap_size + '+',
                 curses.color_pair(COLOR_UI_TEXT)
             )
-        except:
-            from config.game_config import GameConfig
-            self.map_width = GameConfig.MAP_WIDTH
-            self.map_height = GameConfig.MAP_HEIGHT
-        # Side borders
-        for y in range(self.minimap_size):
-            try:
-                stdscr.addch(y_offset + y + 1, x_offset, '│', 
-                           curses.color_pair(COLOR_UI_TEXT))
-                stdscr.addch(y_offset + y + 1, x_offset + self.minimap_size + 1, '│',
-                           curses.color_pair(COLOR_UI_TEXT))
-            except:
-                pass
-        
-        # Bottom border
-        try:
+            for y in range(self.minimap_size):
+                stdscr.addch(y_offset + y + 1, x_offset, '|', curses.color_pair(COLOR_UI_TEXT))
+                stdscr.addch(
+                    y_offset + y + 1,
+                    x_offset + self.minimap_size + 1,
+                    '|',
+                    curses.color_pair(COLOR_UI_TEXT),
+                )
             stdscr.addstr(
                 y_offset + self.minimap_size + 1,
                 x_offset,
-                "└" + "─" * self.minimap_size + "┘",
+                '+' + '-' * self.minimap_size + '+',
                 curses.color_pair(COLOR_UI_TEXT)
             )
-        except:
+        except curses.error:
             pass
-    
+
     def _draw_title(self, stdscr, x_offset, y_offset):
-        """Draw mini-map title."""
-        title = "MAP"
+        mode_tag = 'L' if self.mode == self.MODE_LOCAL else 'G'
+        title = f'MAP {mode_tag}'
         try:
             stdscr.addstr(
                 y_offset,
-                x_offset + (self.minimap_size - len(title)) // 2 + 1,
+                x_offset + max(1, (self.minimap_size - len(title)) // 2),
                 title,
-                curses.color_pair(COLOR_UI_HIGHLIGHT) | curses.A_BOLD
+                curses.color_pair(COLOR_UI_HIGHLIGHT) | curses.A_BOLD,
             )
-        except:
+        except curses.error:
             pass
-    
-    def _draw_rooms(self, stdscr, level, fog_of_war, x_offset, y_offset):
-        """Draw rooms on mini-map."""
-        for room_idx, room in enumerate(level.rooms):
-            # Check if room should be visible
-            if fog_of_war and self.show_discovered_only:
-                if not fog_of_war.is_room_discovered(room_idx):
-                    continue
-            
-            # Scale room coordinates
-            scaled_x = int(room.x / self.scale_x)
-            scaled_y = int(room.y / self.scale_y)
-            scaled_width = max(1, int(room.width / self.scale_x))
-            scaled_height = max(1, int(room.height / self.scale_y))
-            
-            # Determine if this is the current room
-            is_current = False
-            if fog_of_war:
-                is_current = fog_of_war.is_room_current(room_idx)
-            
-            # Draw room
-            char = '■' if is_current else '□'
-            color = COLOR_UI_HIGHLIGHT if is_current else COLOR_WALL
-            
-            # Draw as single character or small rectangle
-            for dy in range(scaled_height):
-                for dx in range(scaled_width):
-                    map_x = scaled_x + dx
-                    map_y = scaled_y + dy
-                    
-                    if 0 <= map_x < self.minimap_size and 0 <= map_y < self.minimap_size:
-                        try:
-                            stdscr.addch(
-                                y_offset + 1 + map_y,
-                                x_offset + 1 + map_x,
-                                char,
-                                curses.color_pair(color) | (curses.A_BOLD if is_current else 0)
-                            )
-                        except:
-                            pass
-    
-    def _draw_corridors(self, stdscr, level, fog_of_war, x_offset, y_offset):
-        """Draw corridors on mini-map."""
-        for corridor_idx, corridor in enumerate(level.corridors):
-            # Check if corridor should be visible
-            if fog_of_war and self.show_discovered_only:
-                if not fog_of_war.is_corridor_discovered(corridor_idx):
-                    continue
-            
-            # Draw corridor tiles
-            for tile_x, tile_y in corridor.tiles:
-                scaled_x = int(tile_x / self.scale_x)
-                scaled_y = int(tile_y / self.scale_y)
-                
-                if 0 <= scaled_x < self.minimap_size and 0 <= scaled_y < self.minimap_size:
-                    try:
-                        stdscr.addch(
-                            y_offset + 1 + scaled_y,
-                            x_offset + 1 + scaled_x,
-                            '·',
-                            curses.color_pair(COLOR_CORRIDOR)
-                        )
-                    except:
-                        pass
-    
-    def _draw_exit(self, stdscr, level, fog_of_war, x_offset, y_offset):
-        """Draw exit marker on mini-map."""
-        if not level.exit_position:
-            return
-        
-        # Check if exit room is discovered
+
+    def _draw_local_window(self, stdscr, level, camera, fog_of_war, x_offset, y_offset):
+        cx = int(camera.x)
+        cy = int(camera.y)
+        half = self.minimap_size // 2
+        world_span = (self.local_radius * 2) + 1
+        sample_step = world_span / self.minimap_size
+
+        for my in range(self.minimap_size):
+            for mx in range(self.minimap_size):
+                wx = cx + int(round((mx - half) * sample_step))
+                wy = cy + int(round((my - half) * sample_step))
+                char, color, attr = self._tile_style(level, fog_of_war, wx, wy)
+                self._put(stdscr, x_offset, y_offset, mx, my, char, color, attr)
+
+        self._draw_local_entities(stdscr, level, fog_of_war, cx, cy, half, sample_step, x_offset, y_offset)
+
+        # Exit marker in local coordinates.
+        if getattr(level, 'exit_position', None):
+            ex, ey = level.exit_position
+            mx, my = self._world_to_local_map(cx, cy, half, sample_step, ex, ey)
+            if 0 <= mx < self.minimap_size and 0 <= my < self.minimap_size:
+                if self._should_show_exit(level, fog_of_war):
+                    self._put(
+                        stdscr, x_offset, y_offset, mx, my,
+                        self.EXIT_CHAR, COLOR_EXIT, curses.A_BOLD,
+                    )
+
+        self._draw_player_local(stdscr, camera, x_offset, y_offset)
+
+    def _draw_global_window(self, stdscr, level, camera, fog_of_war, x_offset, y_offset):
+        for my in range(self.minimap_size):
+            for mx in range(self.minimap_size):
+                wx = min(self.map_width - 1, max(0, int((mx + 0.5) * self.scale_x)))
+                wy = min(self.map_height - 1, max(0, int((my + 0.5) * self.scale_y)))
+                char, color, attr = self._tile_style(level, fog_of_war, wx, wy)
+                self._put(stdscr, x_offset, y_offset, mx, my, char, color, attr)
+
+        if getattr(level, 'exit_position', None) and self._should_show_exit(level, fog_of_war):
+            ex, ey = level.exit_position
+            mx = int(ex / self.scale_x)
+            my = int(ey / self.scale_y)
+            if 0 <= mx < self.minimap_size and 0 <= my < self.minimap_size:
+                self._put(stdscr, x_offset, y_offset, mx, my, self.EXIT_CHAR, COLOR_EXIT, curses.A_BOLD)
+
+        self._draw_player_global(stdscr, camera, x_offset, y_offset)
+
+    def _draw_player_local(self, stdscr, camera, x_offset, y_offset):
+        half = self.minimap_size // 2
+        self._put(stdscr, x_offset, y_offset, half, half, self.PLAYER_CHAR, COLOR_PLAYER, curses.A_BOLD)
+
+    def _draw_player_global(self, stdscr, camera, x_offset, y_offset):
+        mx = int(camera.x / self.scale_x)
+        my = int(camera.y / self.scale_y)
+        if 0 <= mx < self.minimap_size and 0 <= my < self.minimap_size:
+            self._put(stdscr, x_offset, y_offset, mx, my, self.PLAYER_CHAR, COLOR_PLAYER, curses.A_BOLD)
+
+    def _tile_style(self, level, fog_of_war, x, y):
+        if x < 0 or y < 0 or x >= self.map_width or y >= self.map_height:
+            return self.UNKNOWN_CHAR, COLOR_UI_TEXT, curses.A_DIM
+
+        visible = True
+        discovered = True
         if fog_of_war and self.show_discovered_only:
-            if not fog_of_war.is_room_discovered(level.exit_room_index):
-                return
-        
-        exit_x, exit_y = level.exit_position
-        scaled_x = int(exit_x / self.scale_x)
-        scaled_y = int(exit_y / self.scale_y)
-        
-        if 0 <= scaled_x < self.minimap_size and 0 <= scaled_y < self.minimap_size:
-            try:
-                stdscr.addch(
-                    y_offset + 1 + scaled_y,
-                    x_offset + 1 + scaled_x,
-                    '>',
-                    curses.color_pair(COLOR_EXIT) | curses.A_BOLD
-                )
-            except:
-                pass
-    
-    def _draw_player(self, stdscr, camera, x_offset, y_offset):
-        """Draw player position and facing direction."""
-        # Scale player position
-        scaled_x = int(camera.x / self.scale_x)
-        scaled_y = int(camera.y / self.scale_y)
-        
-        if 0 <= scaled_x < self.minimap_size and 0 <= scaled_y < self.minimap_size:
-            # Get direction arrow
-            arrow = self._get_direction_arrow(camera.angle)
-            
-            try:
-                stdscr.addch(
-                    y_offset + 1 + scaled_y,
-                    x_offset + 1 + scaled_x,
-                    arrow,
-                    curses.color_pair(COLOR_PLAYER) | curses.A_BOLD
-                )
-            except:
-                pass
-    
-    def _get_direction_arrow(self, angle):
-        """
-        Get arrow character for direction.
-        
-        Args:
-            angle: Angle in degrees
-        
-        Returns:
-            Arrow character
-        """
-        # Invert angle for screen Y-axis (down is positive Y)
-        angle = (360 - angle) % 360
-        
-        # 8-direction arrows
-        if angle < 22.5 or angle >= 337.5:
-            return '→'
-        elif angle < 67.5:
-            return '↗'
-        elif angle < 112.5:
-            return '↑'
-        elif angle < 157.5:
-            return '↖'
-        elif angle < 202.5:
-            return '←'
-        elif angle < 247.5:
-            return '↙'
-        elif angle < 292.5:
-            return '↓'
-        elif angle < 337.5:
-            return '↘'
-        
-        return '@'
-    
+            visible = fog_of_war.is_tile_visible(x, y)
+            discovered = self._is_tile_discovered(level, fog_of_war, x, y)
+
+        if self.show_fog and not discovered:
+            return self.UNKNOWN_CHAR, COLOR_UI_TEXT, curses.A_DIM
+
+        if level.is_wall(x, y):
+            char = self.WALL_CHAR
+            color = COLOR_WALL
+        elif level.is_walkable(x, y):
+            corridor, _ = level.get_corridor_at(x, y)
+            if corridor is not None:
+                char = self.CORRIDOR_CHAR
+                color = COLOR_CORRIDOR
+            else:
+                char = self.FLOOR_CHAR
+                color = COLOR_FLOOR
+        else:
+            char = self.UNKNOWN_CHAR
+            color = COLOR_UI_TEXT
+
+        attr = curses.A_NORMAL
+        if fog_of_war and self.show_discovered_only and not visible:
+            attr |= curses.A_DIM
+        return char, color, attr
+
+    def _draw_local_entities(self, stdscr, level, fog_of_war, cx, cy, half, sample_step, x_offset, y_offset):
+        if self.show_items:
+            for item in self._iter_level_items(level):
+                if not getattr(item, 'position', None):
+                    continue
+                ix, iy = item.position
+                if not self._is_entity_visible(fog_of_war, ix, iy):
+                    continue
+                mx, my = self._world_to_local_map(cx, cy, half, sample_step, ix, iy)
+                if 0 <= mx < self.minimap_size and 0 <= my < self.minimap_size:
+                    char, color = get_item_render_data(item)
+                    self._put(stdscr, x_offset, y_offset, mx, my, char, color, curses.A_BOLD)
+
+        if self.show_enemies:
+            for enemy in self._iter_level_enemies(level):
+                if not getattr(enemy, 'position', None):
+                    continue
+                if hasattr(enemy, 'is_alive') and not enemy.is_alive():
+                    continue
+                if getattr(enemy, 'is_invisible', False):
+                    continue
+                ex, ey = enemy.position
+                if not self._is_entity_visible(fog_of_war, ex, ey):
+                    continue
+                mx, my = self._world_to_local_map(cx, cy, half, sample_step, ex, ey)
+                if 0 <= mx < self.minimap_size and 0 <= my < self.minimap_size:
+                    self._put(
+                        stdscr, x_offset, y_offset, mx, my,
+                        getattr(enemy, 'char', 'e'),
+                        get_enemy_color(getattr(enemy, 'char', 'e')),
+                        curses.A_BOLD,
+                    )
+
+    @staticmethod
+    def _iter_level_items(level):
+        for room in getattr(level, 'rooms', []):
+            for item in getattr(room, 'items', []):
+                yield item
+
+    @staticmethod
+    def _iter_level_enemies(level):
+        for room in getattr(level, 'rooms', []):
+            for enemy in getattr(room, 'enemies', []):
+                yield enemy
+
+    def _is_entity_visible(self, fog_of_war, x, y):
+        if not fog_of_war or not self.show_discovered_only:
+            return True
+        if hasattr(fog_of_war, 'is_position_visible'):
+            return fog_of_war.is_position_visible(x, y)
+        if hasattr(fog_of_war, 'is_tile_visible'):
+            return fog_of_war.is_tile_visible(x, y)
+        return True
+
+    @staticmethod
+    def _world_to_local_map(cx, cy, half, sample_step, wx, wy):
+        mx = int(round(((wx - cx) / sample_step) + half))
+        my = int(round(((wy - cy) / sample_step) + half))
+        return mx, my
+
+    @staticmethod
+    def _is_tile_discovered(level, fog_of_war, x, y):
+        room, room_idx = level.get_room_at(x, y)
+        if room is not None:
+            return fog_of_war.is_room_discovered(room_idx)
+
+        corridor, corridor_idx = level.get_corridor_at(x, y)
+        if corridor is not None:
+            return fog_of_war.is_corridor_discovered(corridor_idx)
+
+        return False
+
+    @staticmethod
+    def _direction_step(angle):
+        # World coordinates: +X east, +Y south on terminal map.
+        rad = math.radians(angle)
+        dx = int(round(math.cos(rad)))
+        dy = int(round(math.sin(rad)))
+        if dx == 0 and dy == 0:
+            return (1, 0)
+        return (dx, dy)
+
+    def _put(self, stdscr, x_offset, y_offset, mx, my, char, color, attr=0):
+        try:
+            stdscr.addch(
+                y_offset + 1 + my,
+                x_offset + 1 + mx,
+                char,
+                curses.color_pair(color) | attr,
+            )
+        except curses.error:
+            pass
+
+    def _should_show_exit(self, level, fog_of_war):
+        if not getattr(level, 'exit_position', None):
+            return False
+        if fog_of_war and self.show_discovered_only:
+            return fog_of_war.is_room_discovered(level.exit_room_index)
+        return True
+
     def render_minimap_simple(self, stdscr, level, camera, x_offset=0, y_offset=0):
-        """
-        Render simplified mini-map (no fog of war).
-        Shows entire level for testing/debugging.
-        
-        Args:
-            stdscr: Curses screen object
-            level: Level object
-            camera: Camera object
-            x_offset: X position
-            y_offset: Y position
-        """
+        """Render mini-map without fog restrictions."""
         self._draw_border(stdscr, x_offset, y_offset)
-        
-        # Draw all rooms (simplified)
-        for room in level.rooms:
-            scaled_x = int(room.x / self.scale_x)
-            scaled_y = int(room.y / self.scale_y)
-            scaled_width = max(1, int(room.width / self.scale_x))
-            scaled_height = max(1, int(room.height / self.scale_y))
-            
-            for dy in range(scaled_height):
-                for dx in range(scaled_width):
-                    map_x = scaled_x + dx
-                    map_y = scaled_y + dy
-                    
-                    if 0 <= map_x < self.minimap_size and 0 <= map_y < self.minimap_size:
-                        try:
-                            stdscr.addch(
-                                y_offset + 1 + map_y,
-                                x_offset + 1 + map_x,
-                                '□',
-                                curses.color_pair(COLOR_WALL)
-                            )
-                        except:
-                            pass
-        
-        # Draw player
-        self._draw_player(stdscr, camera, x_offset, y_offset)
-        self._draw_title(stdscr, x_offset, y_offset)
-    
+        prev_show = self.show_discovered_only
+        try:
+            self.show_discovered_only = False
+            if self.mode == self.MODE_LOCAL:
+                self._draw_local_window(stdscr, level, camera, None, x_offset, y_offset)
+            else:
+                self._draw_global_window(stdscr, level, camera, None, x_offset, y_offset)
+            self._draw_title(stdscr, x_offset, y_offset)
+        finally:
+            self.show_discovered_only = prev_show
+
     def toggle_fog(self):
-        """Toggle fog of war display."""
         self.show_fog = not self.show_fog
         return self.show_fog
-    
+
     def toggle_discovered_only(self):
-        """Toggle showing only discovered areas."""
         self.show_discovered_only = not self.show_discovered_only
         return self.show_discovered_only
-    
+
+    def toggle_mode(self):
+        self.mode = self.MODE_GLOBAL if self.mode == self.MODE_LOCAL else self.MODE_LOCAL
+        return self.mode
+
+    def set_local_radius(self, radius):
+        self.local_radius = max(3, int(radius))
+
     def set_size(self, size):
-        """
-        Change mini-map size.
-        
-        Args:
-            size: New size in characters
-        """
         self.minimap_size = max(8, min(size, 20))
         self.scale_x = self.map_width / self.minimap_size
         self.scale_y = self.map_height / self.minimap_size
-
-
-def test_minimap():
-    """Test mini-map rendering."""
-    print("=" * 60)
-    print("MINI-MAP RENDERER TEST")
-    print("=" * 60)
-    
-    from config.game_config import GameConfig
-
-    # Create mini-map renderer
-    minimap = MiniMapRenderer(GameConfig.MAP_WIDTH, GameConfig.MAP_HEIGHT, minimap_size=12)
-
-    print(f"\nMini-map Configuration:")
-    print(f"  Full map size: {GameConfig.MAP_WIDTH}x{GameConfig.MAP_HEIGHT}")
-    print(f"  Mini-map size: {minimap.minimap_size}x{minimap.minimap_size}")
-    print(f"  Scale X: {minimap.scale_x:.2f}")
-    print(f"  Scale Y: {minimap.scale_y:.2f}")
-    
-    # Test coordinate scaling
-    print(f"\n" + "=" * 60)
-    print("COORDINATE SCALING TEST")
-    print("=" * 60)
-    
-    test_coords = [
-        (0, 0, "Top-left corner"),
-        (GameConfig.MAP_WIDTH // 2, GameConfig.MAP_HEIGHT // 2, "Center"),
-        (GameConfig.MAP_WIDTH - 1, GameConfig.MAP_HEIGHT - 1, "Bottom-right corner"),
-        (10, 10, "Room position"),
-    ]
-    
-    print("\n  World Coord    | Mini-map Coord | Description")
-    print("  ---------------|----------------|------------------")
-    
-    for x, y, desc in test_coords:
-        scaled_x = int(x / minimap.scale_x)
-        scaled_y = int(y / minimap.scale_y)
-        print(f"  ({x:3d}, {y:3d})    | ({scaled_x:2d}, {scaled_y:2d})        | {desc}")
-    
-    # Test direction arrows
-    print(f"\n" + "=" * 60)
-    print("DIRECTION ARROWS TEST")
-    print("=" * 60)
-    
-    print("\n  Angle | Arrow | Direction")
-    print("  ------|-------|------------------")
-    
-    for angle in [0, 45, 90, 135, 180, 225, 270, 315]:
-        arrow = minimap._get_direction_arrow(angle)
-        print(f"  {angle:3d}°  | {arrow}    |")
-    
-    # Test size adjustment
-    print(f"\n" + "=" * 60)
-    print("SIZE ADJUSTMENT TEST")
-    print("=" * 60)
-    
-    print(f"\nOriginal size: {minimap.minimap_size}x{minimap.minimap_size}")
-    
-    minimap.set_size(16)
-    print(f"After set_size(16): {minimap.minimap_size}x{minimap.minimap_size}")
-    print(f"  New scale X: {minimap.scale_x:.2f}")
-    print(f"  New scale Y: {minimap.scale_y:.2f}")
-    
-    minimap.set_size(8)
-    print(f"After set_size(8): {minimap.minimap_size}x{minimap.minimap_size}")
-    print(f"  New scale X: {minimap.scale_x:.2f}")
-    print(f"  New scale Y: {minimap.scale_y:.2f}")
-    
-    # Test toggles
-    print(f"\n" + "=" * 60)
-    print("FEATURE TOGGLES TEST")
-    print("=" * 60)
-    
-    print(f"\nShow fog: {minimap.show_fog}")
-    minimap.toggle_fog()
-    print(f"After toggle_fog(): {minimap.show_fog}")
-    
-    print(f"\nShow discovered only: {minimap.show_discovered_only}")
-    minimap.toggle_discovered_only()
-    print(f"After toggle_discovered_only(): {minimap.show_discovered_only}")
-    
-    print("\n✓ Mini-map renderer tests complete!")
-
-
-if __name__ == "__main__":
-    test_minimap()
+        self.local_radius = max(3, self.minimap_size // 2)

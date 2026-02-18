@@ -278,7 +278,7 @@ class GameUI:
         help_lines = [
             "WASD/Arrows - Move/Rotate | Q/E - Strafe | F/Space - Interact",
             "X - Attack | G - Pickup | J - Food | H - Weapon | K - Elixir | R - Scroll",
-            "Tab - Toggle 2D/3D | I - Debug | ? - Help"
+            "Tab - Toggle 2D/3D | M - Mini-map | L - Local/Global | I - Debug | ? - Help"
         ]
         
         for i, line in enumerate(help_lines):
@@ -316,6 +316,9 @@ class GameUI:
                 return (InputHandler.ACTION_NONE, None)
             elif action == InputHandler.ACTION_TOGGLE_MINIMAP:
                 self.renderer_3d.toggle_minimap()
+                return (InputHandler.ACTION_NONE, None)
+            elif action == InputHandler.ACTION_TOGGLE_MINIMAP_MODE:
+                self.renderer_3d.toggle_minimap_mode()
                 return (InputHandler.ACTION_NONE, None)
             elif action == InputHandler.ACTION_TOGGLE_SPRITES:
                 self.renderer_3d.toggle_sprites()

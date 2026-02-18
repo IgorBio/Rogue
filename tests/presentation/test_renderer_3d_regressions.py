@@ -123,3 +123,21 @@ def test_renderer_3d_ew_side_is_dimmer_than_ns(monkeypatch):
 
     assert ew_attr & renderer_3d_mod.curses.A_DIM
     assert not (ns_attr & renderer_3d_mod.curses.A_DIM)
+
+
+def test_renderer_3d_toggle_minimap_mode_switches_local_global(monkeypatch):
+    monkeypatch.setattr(renderer_3d_mod, "init_colors", lambda: None)
+
+    stdscr = FakeStdScr()
+    renderer = renderer_3d_mod.Renderer3D(
+        stdscr,
+        viewport_width=20,
+        viewport_height=12,
+        use_textures=False,
+        show_minimap=True,
+        show_sprites=False,
+    )
+
+    assert renderer.minimap_renderer.mode == renderer.minimap_renderer.MODE_LOCAL
+    assert renderer.toggle_minimap_mode() == renderer.minimap_renderer.MODE_GLOBAL
+    assert renderer.toggle_minimap_mode() == renderer.minimap_renderer.MODE_LOCAL
