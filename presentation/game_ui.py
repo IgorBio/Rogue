@@ -216,6 +216,7 @@ class GameUI:
             return
 
         self.renderer_3d.set_viewport(viewport_width, viewport_height)
+        camera_controller.set_targeting_viewport_width(self.renderer_3d.viewport_width)
         
         self.renderer_3d.render_viewport_border(x_offset=viewport_x, y_offset=viewport_y)
         self.renderer_3d.render_3d_view(camera, level, fog_of_war=fog_of_war,

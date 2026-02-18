@@ -36,6 +36,7 @@ class CameraController:
 
         self.collision_radius = CameraConfig.COLLISION_RADIUS
         self.interaction_range = CombatConfig.MELEE_ATTACK_RANGE
+        self._targeting_viewport_width = self._FALLBACK_VIEWPORT_WIDTH
 
     # ------------------------------------------------------------------
     # Movement
@@ -115,12 +116,17 @@ class CameraController:
         """
         fov_rad = math.radians(self.camera.fov)
         if not viewport_width or viewport_width <= 0:
-            viewport_width = self._FALLBACK_VIEWPORT_WIDTH
+            viewport_width = self._targeting_viewport_width or self._FALLBACK_VIEWPORT_WIDTH
 
         half_w = viewport_width / 2.0
         proj_dist = half_w / math.tan(fov_rad / 2.0)
         aim_angle = math.atan(self._AIM_HALF_PIXELS / proj_dist)
         return math.cos(aim_angle)
+
+    def set_targeting_viewport_width(self, viewport_width):
+        """Store active viewport width used by aiming logic."""
+        if viewport_width and viewport_width > 0:
+            self._targeting_viewport_width = int(viewport_width)
 
     def _has_line_of_sight(self, level, tx, ty, max_dist):
         """
@@ -201,6 +207,8 @@ class CameraController:
         """
         if check_distance is None:
             check_distance = self.interaction_range
+        if viewport_width and viewport_width > 0:
+            self._targeting_viewport_width = int(viewport_width)
 
         # Immediate exit: player is standing on the exit tile.
         grid_x, grid_y = int(self.camera.x), int(self.camera.y)
