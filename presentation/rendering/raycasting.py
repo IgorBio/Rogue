@@ -1,11 +1,12 @@
 """
 Ray casting utilities for 3D rendering.
 
-Implements DDA (Digital Differential Analyzer) algorithm for wall detection.
+Implements the DDA (Digital Differential Analyzer) algorithm for efficient
+wall detection in a grid-based world.
 """
 
 import math
-from typing import Tuple, Optional, List, TYPE_CHECKING
+from typing import Optional, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from presentation.camera.camera import Camera
@@ -16,41 +17,32 @@ from presentation.camera.camera import RayHit
 def cast_ray(camera: 'Camera', ray_angle: float, level,
              max_distance: float = 20.0) -> Optional[RayHit]:
     """
-    Cast a single ray from camera position at given angle.
-
-    Uses DDA algorithm for efficient grid traversal.
+    Cast a single ray from the camera position at the given angle.
 
     Args:
-        camera: Camera object with position
-        ray_angle: Angle of ray in degrees (absolute, not relative to camera)
-        level: Level object for collision detection
-        max_distance: Maximum ray distance
+        camera: Camera object with position and FOV.
+        ray_angle: Absolute angle of the ray in degrees.
+        level: Level object used for collision queries.
+        max_distance: Maximum ray travel distance.
 
     Returns:
-        RayHit object if wall found, None otherwise
+        RayHit if a wall was found, otherwise None.
     """
-    # Convert angle to radians
     rad = math.radians(ray_angle)
-
-    # Ray direction
     ray_dir_x = math.cos(rad)
     ray_dir_y = math.sin(rad)
 
-    # Prevent division by zero
     if abs(ray_dir_x) < 0.0001:
         ray_dir_x = 0.0001
     if abs(ray_dir_y) < 0.0001:
         ray_dir_y = 0.0001
 
-    # Current map position
     map_x = int(camera.x)
     map_y = int(camera.y)
 
-    # Length of ray from one x or y-side to next x or y-side
     delta_dist_x = abs(1 / ray_dir_x)
     delta_dist_y = abs(1 / ray_dir_y)
 
-    # Calculate step direction and initial side distances
     if ray_dir_x < 0:
         step_x = -1
         side_dist_x = (camera.x - map_x) * delta_dist_x
@@ -65,13 +57,11 @@ def cast_ray(camera: 'Camera', ray_angle: float, level,
         step_y = 1
         side_dist_y = (map_y + 1.0 - camera.y) * delta_dist_y
 
-    # Perform DDA
     hit = False
-    side = 'NS'  # Which side was hit (NS = north/south, EW = east/west)
+    side = 'NS'
     distance = 0.0
 
     while not hit and distance < max_distance:
-        # Jump to next map square
         if side_dist_x < side_dist_y:
             side_dist_x += delta_dist_x
             map_x += step_x
@@ -83,36 +73,29 @@ def cast_ray(camera: 'Camera', ray_angle: float, level,
             side = 'EW'
             distance = side_dist_y - delta_dist_y
 
-        # Doors should block rays regardless of walkability (open doors are still visible)
         door = level.get_door_at(map_x, map_y)
         if door:
             hit = True
             break
 
-        # Check if ray has hit a wall
         if level.is_wall(map_x, map_y):
             hit = True
         elif not level.is_walkable(map_x, map_y):
-            # Hit something non-walkable (could be out of bounds)
             hit = True
 
     if not hit:
         return None
 
-    # Calculate perpendicular distance (avoid fisheye effect)
     angle_diff = ray_angle - camera.angle
     perp_distance = distance * math.cos(math.radians(angle_diff))
 
-    # Calculate exact hit position for texture mapping
     if side == 'NS':
         wall_x = camera.y + distance * ray_dir_y
     else:
         wall_x = camera.x + distance * ray_dir_x
+    wall_x -= math.floor(wall_x)
 
-    wall_x -= math.floor(wall_x)  # Keep only fractional part (0.0 - 1.0)
-
-    # Determine wall type (and door info if applicable)
-    wall_type, door = _determine_wall_hit(level, map_x, map_y)
+    wall_type, door = _determine_wall_hit(level, map_x, map_y, side)
 
     return RayHit(
         distance=perp_distance,
@@ -121,139 +104,127 @@ def cast_ray(camera: 'Camera', ray_angle: float, level,
         hit_x=map_x,
         hit_y=map_y,
         side=side,
-        door=door
+        door=door,
     )
 
 
-def cast_fov_rays(camera: 'Camera', level, num_rays: int = 80) -> List[Optional[RayHit]]:
+def cast_fov_rays(camera: 'Camera', level,
+                  num_rays: int = 80) -> List[Optional[RayHit]]:
     """
-    Cast multiple rays across the camera's field of view.
+    Cast one ray per screen column across the camera's field of view.
 
     Args:
-        camera: Camera object
-        level: Level object
-        num_rays: Number of rays to cast (more = better quality, slower)
+        camera: Camera object.
+        level: Level object.
+        num_rays: Number of rays (should equal viewport width).
 
     Returns:
-        List of RayHit objects (one per screen column)
+        List of RayHit objects, one per column (None where no wall was hit).
     """
     results = []
-
-    # Calculate angle for each ray
     start_angle = camera.angle - (camera.fov / 2)
     angle_step = camera.fov / num_rays
-
     for i in range(num_rays):
-        ray_angle = start_angle + (i * angle_step)
-        hit = cast_ray(camera, ray_angle, level)
-        results.append(hit)
-
+        results.append(cast_ray(camera, start_angle + i * angle_step, level))
     return results
 
 
-def _determine_wall_hit(level, x: int, y: int):
+def _determine_wall_hit(level, x: int, y: int, side: str):
     """
-    Determine what type of wall is at the given position.
-
-    Args:
-        level: Level object
-        x: Grid X coordinate
-        y: Grid Y coordinate
+    Classify the wall tile at (x, y) that was hit by a ray.
 
     Returns:
-        (wall_type, door) tuple where wall_type is one of:
-        'room_wall', 'corridor_wall', 'door_open', 'door_locked'
+        Tuple of (wall_type: str, door).
+
+    Wall types:
+        'room_wall'                  Plain room wall with no adjacent corridor.
+        'room_wall_entrance'         The single tile that IS the corridor opening.
+                                     The ray struck its face head-on (perpendicular
+                                     to the corridor axis).
+        'room_wall_beside_entrance'  The torso/jamb view of the entrance tile, or
+                                     a wall tile adjacent to a pure corridor tile.
+                                     The ray struck a face parallel to the corridor.
+        'corridor_wall'              Corridor boundary or out-of-bounds tile.
+        'door_open' / 'door_locked'  Door tiles.
+
+    Geometry notes
+    --------------
+    The level generator starts each corridor ON the room's wall tile:
+
+        _connect_rooms_horizontal:
+            x1 = room1.x + room1.width - 1   <- right wall tile of room1
+            corridor.add_tile(x1, y_mid)     <- SAME tile as the wall
+
+    So the entrance tile W_E satisfies both is_wall() and get_corridor_at().
+    The tiles directly above and below W_E (W_B) are plain wall tiles; their
+    only corridor-adjacent neighbour is W_E itself, which is also a wall.
+
+    Classification
+    --------------
+    Case A  This tile is itself a corridor tile (W_E).
+            Find the first *pure* corridor neighbour (not also a wall) to
+            determine the corridor axis, then match against the DDA side:
+              horizontal corridor (dx neighbour) -> entrance face hit with side 'NS'
+              vertical   corridor (dy neighbour) -> entrance face hit with side 'EW'
+            Matching side  -> 'room_wall_entrance'
+            Non-matching   -> 'room_wall_beside_entrance'
+
+    Case B  Plain wall tile adjacent to a corridor.
+            Only pure corridor neighbours (not walls) are counted, preventing
+            W_B tiles from being misclassified because W_E is adjacent.
+            Pure corridor neighbour found -> 'room_wall_beside_entrance'
+            No such neighbour             -> 'room_wall'
     """
-    # Check if it's a door
     door = level.get_door_at(x, y)
     if door:
-        wall_type = 'door_locked' if door.is_locked else 'door_open'
-        return wall_type, door
+        return ('door_locked' if door.is_locked else 'door_open'), door
 
-    # Check if in a room
-    for room in level.rooms:
-        if room.is_on_wall(x, y):
-            # Highlight room walls adjacent to corridor entrances
-            for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-                corridor, _ = level.get_corridor_at(x + dx, y + dy)
-                if corridor is not None:
+    is_room_wall = any(room.is_on_wall(x, y) for room in level.rooms)
+    if not is_room_wall:
+        return 'corridor_wall', None
+
+    # Case A: entrance tile (wall + corridor overlap)
+    self_corridor, _ = level.get_corridor_at(x, y)
+    if self_corridor is not None:
+        for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            nb_corr, _ = level.get_corridor_at(x + dx, y + dy)
+            if nb_corr is not None and not level.is_wall(x + dx, y + dy):
+                if dx != 0 and side == 'NS':
                     return 'room_wall_entrance', None
-            return 'room_wall', None
+                if dy != 0 and side == 'EW':
+                    return 'room_wall_entrance', None
+                return 'room_wall_beside_entrance', None
+        return 'room_wall_entrance', None
 
-    # Must be a corridor wall or out of bounds
-    return 'corridor_wall', None
+    # Case B: plain wall tile beside a corridor
+    for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+        nb_corr, _ = level.get_corridor_at(x + dx, y + dy)
+        if nb_corr is not None and not level.is_wall(x + dx, y + dy):
+            return 'room_wall_beside_entrance', None
+
+    return 'room_wall', None
 
 
-def world_to_screen_column(camera: 'Camera', ray_index: int, num_rays: int,
-                          screen_width: int) -> int:
-    """
-    Convert ray index to screen column.
-
-    Args:
-        camera: Camera object
-        ray_index: Index of the ray (0 to num_rays-1)
-        num_rays: Total number of rays
-        screen_width: Width of screen in characters
-
-    Returns:
-        Screen column index (0 to screen_width-1)
-    """
+def world_to_screen_column(camera: 'Camera', ray_index: int,
+                            num_rays: int, screen_width: int) -> int:
+    """Map a ray index to a screen column index."""
     return int((ray_index / num_rays) * screen_width)
 
 
 def calculate_wall_height(distance: float, screen_height: int,
-                         wall_unit_size: float = 1.0) -> int:
+                          wall_unit_size: float = 1.0) -> int:
     """
-    Calculate how tall a wall should appear on screen based on distance.
+    Calculate projected wall height in screen characters.
 
     Args:
-        distance: Perpendicular distance to wall
-        screen_height: Height of screen in characters
-        wall_unit_size: Height of one grid unit in world space
+        distance: Perpendicular distance to the wall.
+        screen_height: Viewport height in characters.
+        wall_unit_size: World-space height of one wall unit.
 
     Returns:
-        Wall height in screen characters
+        Clamped wall height in characters.
     """
     if distance < 0.1:
-        distance = 0.1  # Prevent division by zero
-
-    # Simple perspective projection
+        distance = 0.1
     wall_height = int((screen_height * wall_unit_size) / distance)
-
-    # Clamp to reasonable values
     return max(1, min(wall_height, screen_height * 2))
-
-
-# Test function
-def test_raycasting():
-    """
-    Test ray casting with a simple example.
-
-    This would require a mock level object in real testing.
-    """
-    print("Ray Casting Module Loaded Successfully!")
-    print("\nKey Functions:")
-    print("- Camera: Manages position and orientation")
-    print("- cast_ray(): Casts single ray using DDA algorithm")
-    print("- cast_fov_rays(): Casts multiple rays for full FOV")
-    print("- RayHit: Stores ray collision data")
-
-    print("\nExample Camera:")
-    from presentation.camera.camera import Camera
-    cam = Camera(5.5, 5.5, angle=0.0, fov=60.0)
-    print(f"  Position: ({cam.x}, {cam.y})")
-    print(f"  Grid Position: {cam.grid_position}")
-    print(f"  Angle: {cam.angle}°")
-    print(f"  FOV: {cam.fov}°")
-
-    dx, dy = cam.get_direction_vector()
-    print(f"  Direction Vector: ({dx:.2f}, {dy:.2f})")
-
-    print("\nRay Casting Formula:")
-    print("  Perpendicular Distance = Distance × cos(ray_angle - camera_angle)")
-    print("  Wall Height = (Screen_Height × Wall_Size) / Distance")
-    print("\nReady for integration with game level!")
-
-
-if __name__ == "__main__":
-    test_raycasting()

@@ -1,410 +1,511 @@
 """
 Texture system for 3D wall rendering.
-Provides pattern-based textures that show movement direction.
+
+Provides 16x16 character-based textures with distance shading,
+room/corridor variations, and special entrance textures.
 """
-import math
 
 
 class WallTexture:
-    """Represents a wall texture pattern."""
-    
+    """A 2D character pattern used as a wall texture."""
+
     def __init__(self, name, pattern, width=None, height=None):
         """
-        Initialize wall texture.
-        
         Args:
-            name: Texture name
-            pattern: 2D list of characters (rows x columns)
-            width: Texture width (auto-calculated if None)
-            height: Texture height (auto-calculated if None)
+            name: Identifier string.
+            pattern: List of equal-length strings, or 2-D list of characters.
+            width: Override detected width (optional).
+            height: Override detected height (optional).
         """
         self.name = name
-        self.pattern = pattern
-        self.height = height or len(pattern)
-        self.width = width or (len(pattern[0]) if pattern else 0)
-    
-    def sample(self, texture_x, texture_y):
+
+        if not pattern:
+            self.pattern = [['█'] * 16 for _ in range(16)]
+            self.width = 16
+            self.height = 16
+            return
+
+        if isinstance(pattern[0], str):
+            self.pattern = [list(row) for row in pattern]
+        else:
+            self.pattern = pattern
+
+        self.height = height or len(self.pattern)
+        self.width = width or (len(self.pattern[0]) if self.pattern else 0)
+
+        if self.height <= 0 or self.width <= 0:
+            self.pattern = [['█'] * 16 for _ in range(16)]
+            self.width = 16
+            self.height = 16
+            return
+
+        # Normalise all rows to the same length
+        max_w = max(len(row) for row in self.pattern)
+        for i, row in enumerate(self.pattern):
+            if len(row) < max_w:
+                self.pattern[i] = row + [' '] * (max_w - len(row))
+        self.width = max_w
+
+    def sample(self, texture_x: float, texture_y: float) -> str:
         """
-        Sample texture at given coordinates.
-        
+        Return the character at normalised texture coordinates.
+
         Args:
-            texture_x: X coordinate (0.0 - 1.0)
-            texture_y: Y coordinate (0.0 - 1.0)
-        
+            texture_x: Horizontal position in [0.0, 1.0].
+            texture_y: Vertical position in [0.0, 1.0].
+
         Returns:
-            Character at texture position
+            Single character string.
         """
-        # Wrap coordinates
-        texture_x = texture_x % 1.0
-        texture_y = texture_y % 1.0
-        
-        # Convert to pixel coordinates
-        px = int(texture_x * self.width) % self.width
-        py = int(texture_y * self.height) % self.height
-        
-        # Clamp to valid range
-        px = max(0, min(px, self.width - 1))
-        py = max(0, min(py, self.height - 1))
-        
-        return self.pattern[py][px]
+        texture_x = max(0.0, min(0.9999, texture_x))
+        texture_y = max(0.0, min(0.9999, texture_y))
+
+        tex_x = max(0, min(int(texture_x * self.width), self.width - 1))
+        tex_y = max(0, min(int(texture_y * self.height), len(self.pattern) - 1))
+
+        if not self.pattern:
+            return '█'
+
+        row = self.pattern[tex_y]
+        if not row:
+            return '█'
+
+        return row[max(0, min(tex_x, len(row) - 1))]
 
 
 class TextureManager:
-    """Manages all wall textures."""
-    
+    """Registry and factory for wall textures."""
+
     def __init__(self):
-        """Initialize texture manager with predefined textures."""
-        self.textures = {}
-        self._create_default_textures()
-    
-    def _create_default_textures(self):
-        """Create default texture set."""
-        
-        # Brick wall texture (for rooms)
-        brick_pattern = [
-            "█▓▒░░▒▓█",
-            "▓▒░ ░▒▓█",
-            "░    ░▒▓",
-            "█▓▒░░▒▓█",
-            "▓▒░ ░▒▓█",
-            "░    ░▒▓",
-            "█▓▒░░▒▓█",
-            "▓▒░ ░▒▓█",
-        ]
-        self.textures['room_wall'] = WallTexture('room_wall', brick_pattern)
-        
-        # Stone wall texture (for corridors)
-        stone_pattern = [
-            "▓▓▒▒░░▒▒",
-            "▓▒▒░  ░▒",
-            "▒░    ░▒",
-            "░      ░",
-            "▒░    ░▒",
-            "▓▒▒░  ░▒",
-            "▓▓▒▒░░▒▒",
-            "▓▓▒▒░░▒▒",
-        ]
-        self.textures['corridor_wall'] = WallTexture('corridor_wall', stone_pattern)
-        
-        # Corridor entrance texture (room wall with opening)
-        corridor_entrance_pattern = [
-            "▓▓▓▓▓▓▓▓",
-            "▓▓▓  ▓▓▓",
-            "▓▓▓  ▓▓▓",
-            "▓▓▓  ▓▓▓",
-            "▓▓▓  ▓▓▓",
-            "▓▓▓  ▓▓▓",
-            "▓▓▓  ▓▓▓",
-            "▓▓▓▓▓▓▓▓",
-        ]
-        self.textures['room_wall_entrance'] = WallTexture('room_wall_entrance', corridor_entrance_pattern)
-        
-        # Door texture
-        door_pattern = [
-            "╔═══════╗",
-            "║███████║",
-            "║███████║",
-            "║██   ██║",
-            "║██ ● ██║",
-            "║██   ██║",
-            "║███████║",
-            "╚═══════╝",
-        ]
-        self.textures['door'] = WallTexture('door', door_pattern)
-        
-        # Locked door texture
-        locked_door_pattern = [
-            "╔═══════╗",
-            "║▓▓▓▓▓▓▓║",
-            "║▓▓▓▓▓▓▓║",
-            "║▓▓   ▓▓║",
-            "║▓▓ ⚿ ▓▓║",
-            "║▓▓   ▓▓║",
-            "║▓▓▓▓▓▓▓║",
-            "╚═══════╝",
-        ]
-        self.textures['locked_door'] = WallTexture('locked_door', locked_door_pattern)
-        
-        # Alternative brick pattern (horizontal)
-        brick_h_pattern = [
-            "████▓▓▓▓",
-            "▓▓▓▓░░░░",
-            "████▓▓▓▓",
-            "▓▓▓▓░░░░",
-            "████▓▓▓▓",
-            "▓▓▓▓░░░░",
-            "████▓▓▓▓",
-            "▓▓▓▓░░░░",
-        ]
-        self.textures['brick_horizontal'] = WallTexture('brick_horizontal', brick_h_pattern)
-        
-        # Metal panel texture
-        metal_pattern = [
-            "║│││││││",
-            "║│││││││",
-            "╬═══════",
-            "║│││││││",
-            "║│││││││",
-            "╬═══════",
-            "║│││││││",
-            "║│││││││",
-        ]
-        self.textures['metal'] = WallTexture('metal', metal_pattern)
-    
-    def get_texture(self, texture_name):
-        """
-        Get texture by name.
-        
-        Args:
-            texture_name: Name of texture
-        
-        Returns:
-            WallTexture object or None
-        """
-        return self.textures.get(texture_name)
-    
-    def add_texture(self, texture):
-        """
-        Add a custom texture.
-        
-        Args:
-            texture: WallTexture object
-        """
+        self.textures: dict = {}
+        self._build_textures()
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def get_texture(self, name: str):
+        """Return a WallTexture by name, or None."""
+        return self.textures.get(name)
+
+    def get_room_wall_texture(self, room_id: int):
+        """Return a room-wall texture varied by room index (4 variants)."""
+        return self.get_texture(f'room_wall_{room_id % 4}')
+
+    def get_corridor_wall_texture(self, corridor_id: int):
+        """Return a corridor-wall texture varied by corridor index (3 variants)."""
+        return self.get_texture(f'corridor_wall_{corridor_id % 3}')
+
+    def add_texture(self, texture: WallTexture) -> None:
+        """Register a custom texture."""
         self.textures[texture.name] = texture
-    
-    def sample_texture(self, texture_name, texture_x, texture_y):
+
+    def sample_texture(self, name: str, texture_x: float,
+                       texture_y: float) -> str:
         """
-        Sample a texture by name.
-        
-        Args:
-            texture_name: Name of texture
-            texture_x: X coordinate (0.0 - 1.0)
-            texture_y: Y coordinate (0.0 - 1.0)
-        
-        Returns:
-            Character at texture position or fallback character
+        Sample a texture by name with a safe fallback.
+
+        Returns '█' if the texture does not exist or sampling fails.
         """
-        texture = self.get_texture(texture_name)
-        
+        texture = self.get_texture(name)
         if texture:
-            return texture.sample(texture_x, texture_y)
-        
-        # Fallback - return solid character
+            try:
+                return texture.sample(texture_x, texture_y)
+            except Exception:
+                return '█'
         return '█'
+
+    # ------------------------------------------------------------------
+    # Texture definitions
+    # ------------------------------------------------------------------
+
+    def _build_textures(self) -> None:
+        # ── Room wall variants ────────────────────────────────────────
+
+        brick = [
+            "████▓▓▓▓▒▒▒▒░░░░",
+            "███▓▓▓▓▒▒▒▒░░░░ ",
+            "▓▓▓▓▒▒▒▒░░░░    ",
+            "▓▓▓▒▒▒▒░░░░  ░░░",
+            "████▓▓▓▓▒▒▒▒░░░░",
+            "███▓▓▓▓▒▒▒▒░░░░ ",
+            "▓▓▓▓▒▒▒▒░░░░    ",
+            "▓▓▓▒▒▒▒░░░░  ░░░",
+            "████▓▓▓▓▒▒▒▒░░░░",
+            "███▓▓▓▓▒▒▒▒░░░░ ",
+            "▓▓▓▓▒▒▒▒░░░░    ",
+            "▓▓▓▒▒▒▒░░░░  ░░░",
+            "████▓▓▓▓▒▒▒▒░░░░",
+            "███▓▓▓▓▒▒▒▒░░░░ ",
+            "▓▓▓▓▒▒▒▒░░░░    ",
+            "▓▓▓▒▒▒▒░░░░  ░░░",
+        ]
+        self.textures['room_wall'] = WallTexture('room_wall', brick)
+        self.textures['room_wall_0'] = WallTexture('room_wall_0', brick)
+
+        rough_stone = [
+            "▓▓▓▓▓▓▒▒▒▒▒▒░░░░",
+            "▓▓▓▓▒▒▒▒▒▒░░░░  ",
+            "▓▓▒▒▒▒▒░░░░░    ",
+            "▒▒▒▒▒░░░░░  ░░░░",
+            "▓▓▓▓▓▒▒▒▒▒▒░░░░ ",
+            "▓▓▓▒▒▒▒▒░░░░░   ",
+            "▓▒▒▒▒▒░░░░   ░░░",
+            "▒▒▒▒░░░░░  ░░░░░",
+            "▓▓▓▓▓▒▒▒▒▒▒░░░░ ",
+            "▓▓▓▒▒▒▒▒░░░░░   ",
+            "▓▒▒▒▒▒░░░░   ░░░",
+            "▒▒▒▒░░░░░  ░░░░░",
+            "▓▓▓▓▒▒▒▒▒░░░░░  ",
+            "▓▓▒▒▒▒░░░░░     ",
+            "▒▒▒▒░░░░   ░░░░ ",
+            "▒▒░░░░   ░░░░░░ ",
+        ]
+        self.textures['room_wall_1'] = WallTexture('room_wall_1', rough_stone)
+
+        carved = [
+            "║║║║║║║║║║║║║║║║",
+            "════════════════",
+            "║║║║║║║║║║║║║║║║",
+            "║║░░░░░░░░░░║║║║",
+            "║║░░░░░░░░░░║║║║",
+            "════════════════",
+            "║║║║║║║║║║║║║║║║",
+            "║║░░░░░░░░░░║║║║",
+            "║║░░░░░░░░░░║║║║",
+            "════════════════",
+            "║║║║║║║║║║║║║║║║",
+            "║║░░░░░░░░░░║║║║",
+            "║║░░░░░░░░░░║║║║",
+            "════════════════",
+            "║║║║║║║║║║║║║║║║",
+            "║║║║║║║║║║║║║║║║",
+        ]
+        self.textures['room_wall_2'] = WallTexture('room_wall_2', carved)
+
+        mossy = [
+            "████▓▓▓▓▒▒▒▒░░░░",
+            "██:▓▓::▒▒::░░:  ",
+            "▓:▓▓▒:▒▒░:░░    ",
+            "▓▓::▒▒::░░:  ░░:",
+            "████▓▓▓▓▒▒▒▒░░░░",
+            "██:▓▓::▒▒::░░:  ",
+            "▓:▓▓▒:▒▒░:░░    ",
+            "▓▓::▒▒::░░:  ░░:",
+            "████▓▓▓▓▒▒▒▒░░░░",
+            "██:▓▓::▒▒::░░:  ",
+            "▓:▓▓▒:▒▒░:░░    ",
+            "▓▓::▒▒::░░:  ░░:",
+            "████▓▓▓▓▒▒▒▒░░░░",
+            "██:▓▓::▒▒::░░:  ",
+            "▓:▓▓▒:▒▒░:░░    ",
+            "▓▓::▒▒::░░:  ░░:",
+        ]
+        self.textures['room_wall_3'] = WallTexture('room_wall_3', mossy)
+
+        # ── Corridor wall variants ────────────────────────────────────
+
+        corr0 = [
+            "▓▓▓▓▓▓▓▒▒▒▒▒░░░░",
+            "▓▓▓▓▓▒▒▒▒▒░░░░  ",
+            "▓▓▓▒▒▒▒▒░░░░    ",
+            "▓▒▒▒▒▒░░░░  ░░  ",
+            "▒▒▒▒░░░░    ░░░ ",
+            "▒▒░░░░  ░░  ░░░░",
+            "░░░░    ░░░░░░░░",
+            "░░  ░░  ░░░░░░░ ",
+            "▓▓▓▓▓▓▒▒▒▒▒░░░░ ",
+            "▓▓▓▓▒▒▒▒▒░░░░   ",
+            "▓▓▒▒▒▒▒░░░░     ",
+            "▒▒▒▒▒░░░░   ░░  ",
+            "▒▒▒░░░░  ░  ░░░ ",
+            "▒░░░░    ░░░░░░ ",
+            "░░░  ░░  ░░░░░░░",
+            "░  ░░░░░░░░░░░░ ",
+        ]
+        self.textures['corridor_wall'] = WallTexture('corridor_wall', corr0)
+        self.textures['corridor_wall_0'] = WallTexture('corridor_wall_0', corr0)
+
+        corr1 = [
+            "▓▓▓▓▓▓▓▒▒▒▒▒░░░░",
+            "▓▓~▓▓▒▒~▒▒░~░░  ",
+            "▓~▓▒▒~▒░░~░     ",
+            "~▒▒▒~░░░~  ░~   ",
+            "▒▒~░░░~    ~░░  ",
+            "▒~░░~  ░~  ~░░░ ",
+            "~░░    ~░░~░░░░ ",
+            "░  ~░  ~░░~░░░  ",
+            "▓▓▓▓▓▒▒▒▒▒~░░░  ",
+            "▓▓~▓▒▒~▒░░~░    ",
+            "▓~▒▒~▒░~░       ",
+            "~▒▒~░░~    ~    ",
+            "▒~░░~    ~  ~░  ",
+            "~░░  ~░  ~░~░░  ",
+            "░    ~░~░~░░░░  ",
+            "  ~░~░░~░░░░    ",
+        ]
+        self.textures['corridor_wall_1'] = WallTexture('corridor_wall_1', corr1)
+
+        corr2 = [
+            "▓▓▓▓/▓▓▒▒/▒▒░░\\░",
+            "▓▓/▓▒▒/▒░░/░    ",
+            "▓/▒▒/░░/        ",
+            "/▒▒/░░/    \\    ",
+            "▒/░░/    \\  \\   ",
+            "/░░/  \\  \\  \\░  ",
+            "░/    \\  \\░\\░░  ",
+            "/  \\  \\░\\░\\░░   ",
+            "▓▓▓▓/▓▒▒/▒░░/░  ",
+            "▓▓/▒▒/░░/░      ",
+            "▓/▒/░░/         ",
+            "/▒/░░/    \\     ",
+            "/░░/  \\    \\    ",
+            "░/  \\  \\  \\  \\  ",
+            "/    \\  \\  \\░\\  ",
+            "  \\  \\  \\░\\░\\   ",
+        ]
+        self.textures['corridor_wall_2'] = WallTexture('corridor_wall_2', corr2)
+
+        # ── Corner textures ───────────────────────────────────────────
+
+        self.textures['corner_nw'] = WallTexture('corner_nw', [
+            "████████████████",
+            "████████████████",
+            "████████▓▓▓▓▓▓▓▓",
+            "████████▓▓▓▓▓▓▒▒",
+            "██████▓▓▓▓▓▓▒▒▒▒",
+            "██████▓▓▓▓▒▒▒▒▒░",
+            "████▓▓▓▓▓▒▒▒▒░░░",
+            "████▓▓▓▓▒▒▒▒░░░░",
+            "██▓▓▓▓▓▒▒▒░░░░░ ",
+            "██▓▓▓▓▒▒▒░░░░   ",
+            "▓▓▓▓▓▒▒▒░░░░    ",
+            "▓▓▓▓▒▒▒░░░░     ",
+            "▓▓▓▒▒▒░░░       ",
+            "▓▓▒▒▒░░░        ",
+            "▓▒▒░░░          ",
+            "▒▒░░            ",
+        ])
+
+        self.textures['corner_ne'] = WallTexture('corner_ne', [
+            "████████████████",
+            "████████████████",
+            "▓▓▓▓▓▓▓▓████████",
+            "▒▒▓▓▓▓▓▓████████",
+            "▒▒▒▒▓▓▓▓▓▓██████",
+            "░▒▒▒▒▒▓▓▓▓██████",
+            "░░░▒▒▒▒▒▓▓▓▓████",
+            "░░░░▒▒▒▒▓▓▓▓████",
+            " ░░░░░▒▒▒▓▓▓▓██ ",
+            "   ░░░░▒▒▒▓▓▓▓██",
+            "    ░░░░▒▒▒▓▓▓▓▓",
+            "     ░░░░▒▒▒▓▓▓▓",
+            "       ░░░▒▒▒▓▓▓",
+            "        ░░░▒▒▒▓▓",
+            "          ░░░▒▒▓",
+            "            ░░▒▒",
+        ])
+
+        self.textures['corner_sw'] = WallTexture('corner_sw', [
+            "▒▒░░            ",
+            "▓▒▒░░░          ",
+            "▓▓▒▒▒░░░        ",
+            "▓▓▓▒▒▒░░░       ",
+            "▓▓▓▓▒▒▒░░░░     ",
+            "▓▓▓▓▓▒▒▒░░░░    ",
+            "██▓▓▓▓▒▒▒░░░░   ",
+            "██▓▓▓▓▓▒▒▒░░░░░ ",
+            "████▓▓▓▓▒▒▒▒░░░░",
+            "████▓▓▓▓▓▒▒▒▒░░░",
+            "██████▓▓▓▓▒▒▒▒▒░",
+            "██████▓▓▓▓▓▓▒▒▒▒",
+            "████████▓▓▓▓▓▓▒▒",
+            "████████▓▓▓▓▓▓▓▓",
+            "████████████████",
+            "████████████████",
+        ])
+
+        self.textures['corner_se'] = WallTexture('corner_se', [
+            "            ░░▒▒",
+            "          ░░░▒▒▓",
+            "        ░░░▒▒▒▓▓",
+            "       ░░░▒▒▒▓▓▓",
+            "     ░░░░▒▒▒▓▓▓▓",
+            "    ░░░░▒▒▒▓▓▓▓▓",
+            "   ░░░░▒▒▒▓▓▓▓██",
+            " ░░░░░▒▒▒▓▓▓▓▓██",
+            "░░░░▒▒▒▒▓▓▓▓████",
+            "░░░▒▒▒▒▓▓▓▓▓████",
+            "░▒▒▒▒▒▓▓▓▓██████",
+            "▒▒▒▒▓▓▓▓▓▓██████",
+            "▒▒▓▓▓▓▓▓████████",
+            "▓▓▓▓▓▓▓▓████████",
+            "████████████████",
+            "████████████████",
+        ])
+
+        # ── Entrance textures ─────────────────────────────────────────
+
+        # The real corridor opening: arrows point into the passage.
+        self.textures['room_wall_entrance'] = WallTexture('room_wall_entrance', [
+            "╔═══════════════╗",
+            "║███████████████║",
+            "║███         ███║",
+            "║███         ███║",
+            "║███    ↓    ███║",
+            "║███         ███║",
+            "║███         ███║",
+            "║███         ███║",
+            "║███    ↓    ███║",
+            "║███         ███║",
+            "║███         ███║",
+            "║███         ███║",
+            "║███    ↓    ███║",
+            "║███████████████║",
+            "╚═══════════════╝",
+            "                ",
+        ])
+
+        # The lateral face of the entrance tile: solid pillar, no gap, no arrow.
+        self.textures['room_wall_beside_entrance'] = WallTexture(
+            'room_wall_beside_entrance', [
+            "████████████████",
+            "█░░░░░░░░░░░░░░█",
+            "█░┌──────────┐░█",
+            "█░│  ██████  │░█",
+            "█░│  ██  ██  │░█",
+            "█░│  ██  ██  │░█",
+            "█░│  ██  ██  │░█",
+            "█░│  ██  ██  │░█",
+            "█░│  ██  ██  │░█",
+            "█░│  ██  ██  │░█",
+            "█░│  ██████  │░█",
+            "█░│          │░█",
+            "█░└──────────┘░█",
+            "█░░░░░░░░░░░░░░█",
+            "████████████████",
+            "                ",
+        ])
+
+        # ── Door textures ─────────────────────────────────────────────
+
+        door = [
+            "╔═══════════════╗",
+            "║███████████████║",
+            "║███████████████║",
+            "║███████████████║",
+            "║████       ████║",
+            "║████   ●   ████║",
+            "║████       ████║",
+            "║███████████████║",
+            "║███████████████║",
+            "║████       ████║",
+            "║████   ●   ████║",
+            "║████       ████║",
+            "║███████████████║",
+            "║███████████████║",
+            "╚═══════════════╝",
+            "                ",
+        ]
+        self.textures['door'] = WallTexture('door', door)
+        self.textures['door_open'] = self.textures['door']
+
+        locked_door = [
+            "╔═══════════════╗",
+            "║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║",
+            "║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║",
+            "║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║",
+            "║▓▓▓▓       ▓▓▓▓║",
+            "║▓▓▓▓   k   ▓▓▓▓║",
+            "║▓▓▓▓       ▓▓▓▓║",
+            "║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║",
+            "║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║",
+            "║▓▓▓▓       ▓▓▓▓║",
+            "║▓▓▓▓   k   ▓▓▓▓║",
+            "║▓▓▓▓       ▓▓▓▓║",
+            "║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║",
+            "║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║",
+            "╚═══════════════╝",
+            "                ",
+        ]
+        self.textures['locked_door'] = WallTexture('locked_door', locked_door)
+        self.textures['door_locked'] = self.textures['locked_door']
 
 
 class TexturedRenderer:
-    """Helper class for rendering textured walls."""
-    
-    def __init__(self, texture_manager):
-        """
-        Initialize textured renderer.
-        
-        Args:
-            texture_manager: TextureManager instance
-        """
+    """Applies textures and distance-based shading to wall columns."""
+
+    SHADE_CHARS = ['█', '▓', '▓', '▒', '▒', '▒', '░', '░', '░', '·', '·', ' ']
+    SHADE_DISTANCES = [1.5, 2.5, 3.5, 5.0, 6.5, 8.0, 10.0, 12.0, 14.5, 17.0, 19.5, 22.0]
+
+    _DIM_LEVELS = [
+        {},  # level 0: no change
+        {'█': '▓', '▓': '▒', '▒': '░', '░': '·',
+         '║': '│', '═': '─', '╔': '┌', '╗': '┐', '╚': '└', '╝': '┘'},
+        {'█': '▒', '▓': '░', '▒': '·', '░': ' ',
+         '║': '│', '═': '─', '↓': '|', ':': ':'},
+        {'█': '░', '▓': '·', '▒': '·', '░': ' ',
+         '║': '|', '═': '-', '↓': '|', ':': '.'},
+        {'█': '·', '▓': ' ', '▒': ' ', '░': ' ',
+         '║': ' ', '═': ' ', '↓': '·', ':': ' '},
+        {},  # level 5: everything -> ' '
+    ]
+
+    def __init__(self, texture_manager: TextureManager):
         self.texture_manager = texture_manager
-    
-    def get_wall_char(self, wall_type, texture_x, texture_y, distance):
-        """
-        Get character for a wall position with texture and shading.
-        
-        Args:
-            wall_type: Type of wall ('room_wall', 'corridor_wall', 'door_open', 'door_locked')
-            texture_x: X coordinate on texture (0.0 - 1.0)
-            texture_y: Y coordinate on texture (0.0 - 1.0)
-            distance: Distance to wall (for shading)
-        
-        Returns:
-            Character to render
-        """
-        # Get base texture character
-        texture_name = wall_type
-        if wall_type == 'door_open':
-            texture_name = 'door'
-        elif wall_type == 'door_locked':
-            texture_name = 'locked_door'
-        elif wall_type == 'room_wall_entrance':
-            texture_name = 'room_wall_entrance'
+        self._shade_cache: dict = {}
 
+    def get_wall_char(self, wall_type: str, texture_x: float,
+                      texture_y: float, distance: float) -> str:
+        """
+        Return the shaded texture character for a single wall pixel.
+
+        Args:
+            wall_type: One of the wall type strings from raycasting.
+            texture_x: Horizontal texture coordinate [0, 1].
+            texture_y: Vertical texture coordinate [0, 1].
+            distance: Perpendicular distance to the wall.
+
+        Returns:
+            Single character string.
+        """
+        name_map = {
+            'door_open': 'door',
+            'door_locked': 'locked_door',
+        }
+        texture_name = name_map.get(wall_type, wall_type)
         char = self.texture_manager.sample_texture(texture_name, texture_x, texture_y)
-        
-        # Apply distance-based shading
-        char = self._apply_distance_shading(char, distance)
-        
-        return char
-    
-    def _apply_distance_shading(self, char, distance):
-        """
-        Apply distance-based shading to character.
-        
-        Args:
-            char: Original character
-            distance: Distance to wall
-        
-        Returns:
-            Shaded character
-        """
-        # Define shading levels
-        # Bright characters stay bright, dim characters get dimmer
-        shading_map = {
-            # Very close (< 2.0) - no change
-            (0.0, 2.0): lambda c: c,
-            
-            # Close (2.0 - 4.0) - slight dimming
-            (2.0, 4.0): self._dim_char_level_1,
-            
-            # Medium (4.0 - 7.0) - moderate dimming
-            (4.0, 7.0): self._dim_char_level_2,
-            
-            # Far (7.0 - 11.0) - significant dimming
-            (7.0, 11.0): self._dim_char_level_3,
-            
-            # Very far (11.0 - 16.0) - heavy dimming
-            (11.0, 16.0): self._dim_char_level_4,
-            
-            # Extremely far (> 16.0) - almost invisible
-            (16.0, 100.0): self._dim_char_level_5,
-        }
-        
-        # Find appropriate shading function
-        for (min_dist, max_dist), shade_func in shading_map.items():
-            if min_dist <= distance < max_dist:
-                return shade_func(char)
-        
-        return char
-    
-    def _dim_char_level_1(self, char):
-        """Slight dimming."""
-        dim_map = {
-            '█': '▓', '▓': '▒', '▒': '░', '░': '·',
-            '║': '│', '═': '─', '╬': '+',
-            '●': 'o', '⚿': '*',
-        }
-        return dim_map.get(char, char)
-    
-    def _dim_char_level_2(self, char):
-        """Moderate dimming."""
-        dim_map = {
-            '█': '▒', '▓': '░', '▒': '░', '░': '·', '·': ' ',
-            '║': '│', '│': '|', '═': '─', '─': '-', '╬': '+',
-            '●': 'o', 'o': '.', '⚿': '*', '*': '.',
-        }
-        return dim_map.get(char, char)
-    
-    def _dim_char_level_3(self, char):
-        """Significant dimming."""
-        dim_map = {
-            '█': '░', '▓': '·', '▒': '·', '░': ' ', '·': ' ',
-            '║': '|', '│': '|', '|': '·', '═': '-', '─': '-', '-': '·',
-            '╬': '+', '+': '·',
-            '●': '.', 'o': '.', '⚿': '.', '*': '.',
-        }
-        return dim_map.get(char, '·')
-    
-    def _dim_char_level_4(self, char):
-        """Heavy dimming."""
-        dim_map = {
-            '█': '·', '▓': ' ', '▒': ' ', '░': ' ', '·': ' ',
-            '║': '·', '│': '·', '|': '·', '═': '·', '─': '·', '-': ' ',
-            '╬': '·', '+': '·',
-            '●': '·', 'o': '·', '.': ' ', '⚿': '·', '*': '·',
-        }
-        return dim_map.get(char, ' ')
-    
-    def _dim_char_level_5(self, char):
-        """Almost invisible."""
-        # Everything becomes empty or very faint
-        return ' ' if char not in ['·'] else '·'
+        return self._shade(char, distance)
+
+    def _shade(self, char: str, distance: float) -> str:
+        key = (char, int(distance * 10))
+        if key in self._shade_cache:
+            return self._shade_cache[key]
+
+        level = len(self.SHADE_DISTANCES)
+        for i, threshold in enumerate(self.SHADE_DISTANCES):
+            if distance < threshold:
+                level = i
+                break
+
+        if level == 0:
+            result = char
+        elif level >= len(self._DIM_LEVELS) - 1:
+            result = ' ' if char != '·' else '·'
+        else:
+            result = self._DIM_LEVELS[level].get(char, char)
+
+        self._shade_cache[key] = result
+        return result
 
 
-# Global texture manager instance
-_texture_manager = None
+# Module-level singleton
+_texture_manager: TextureManager = None
 
 
-def get_texture_manager():
-    """Get global texture manager instance."""
+def get_texture_manager() -> TextureManager:
+    """Return the shared TextureManager instance, creating it on first call."""
     global _texture_manager
     if _texture_manager is None:
         _texture_manager = TextureManager()
     return _texture_manager
-
-
-def test_textures():
-    """Test texture system."""
-    print("=" * 60)
-    print("TEXTURE SYSTEM TEST")
-    print("=" * 60)
-    
-    # Create texture manager
-    tm = TextureManager()
-    
-    print(f"\nLoaded {len(tm.textures)} textures:")
-    for name in tm.textures.keys():
-        print(f"  - {name}")
-    
-    # Test sampling
-    print("\n" + "=" * 60)
-    print("TEXTURE SAMPLING TEST")
-    print("=" * 60)
-    
-    # Sample room wall texture
-    room_texture = tm.get_texture('room_wall')
-    print(f"\nRoom Wall Texture ({room_texture.width}x{room_texture.height}):")
-    print("─" * 40)
-    for row in room_texture.pattern:
-        print("".join(row))
-    
-    # Sample corridor wall texture
-    corridor_texture = tm.get_texture('corridor_wall')
-    print(f"\nCorridor Wall Texture ({corridor_texture.width}x{corridor_texture.height}):")
-    print("─" * 40)
-    for row in corridor_texture.pattern:
-        print("".join(row))
-    
-    # Sample door texture
-    door_texture = tm.get_texture('door')
-    print(f"\nDoor Texture ({door_texture.width}x{door_texture.height}):")
-    print("─" * 40)
-    for row in door_texture.pattern:
-        print("".join(row))
-    
-    # Test texture sampling at different coordinates
-    print("\n" + "=" * 60)
-    print("COORDINATE SAMPLING TEST")
-    print("=" * 60)
-    
-    test_coords = [
-        (0.0, 0.0), (0.5, 0.0), (1.0, 0.0),
-        (0.0, 0.5), (0.5, 0.5), (1.0, 0.5),
-        (0.0, 1.0), (0.5, 1.0), (1.0, 1.0),
-    ]
-    
-    print("\nSampling room_wall at different coordinates:")
-    print("  Coord      | Char")
-    print("  -----------|-----")
-    for x, y in test_coords:
-        char = tm.sample_texture('room_wall', x, y)
-        print(f"  ({x:.1f}, {y:.1f}) | '{char}'")
-    
-    # Test textured renderer
-    print("\n" + "=" * 60)
-    print("DISTANCE SHADING TEST")
-    print("=" * 60)
-    
-    renderer = TexturedRenderer(tm)
-    
-    test_distances = [1.0, 3.0, 6.0, 9.0, 13.0, 18.0]
-    
-    print("\nShading '█' at different distances:")
-    print("  Distance | Result")
-    print("  ---------|-------")
-    for dist in test_distances:
-        char = renderer.get_wall_char('room_wall', 0.5, 0.5, dist)
-        print(f"  {dist:5.1f}   | '{char}'")
-    
-    print("\n✓ Texture system working correctly!")
-
-
-if __name__ == "__main__":
-    test_textures()

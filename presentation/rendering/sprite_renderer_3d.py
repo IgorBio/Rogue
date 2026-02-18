@@ -1,378 +1,267 @@
 """
-Sprite rendering system for 3D mode.
-Renders enemies, items, and other entities in 3D space.
+Sprite rendering for 3D mode.
+
+Sprites (enemies, items, exit) are projected into screen space,
+depth-tested against the z-buffer, and drawn as 3x3 character
+glyphs with a semi-transparent outline.
 """
 import math
-from typing import List, Tuple, Optional
+import time
+from typing import List, Optional
 
 
 class Sprite:
-    """Represents an entity to be rendered as a sprite in 3D."""
-    
-    def __init__(self, x, y, char, color, sprite_type='entity'):
-        """
-        Initialize sprite.
-        
-        Args:
-            x: World X position
-            y: World Y position
-            char: Character to display
-            color: Color pair ID
-            sprite_type: Type of sprite ('enemy', 'item', 'exit', etc.)
-        """
+    """A single entity to be rendered in 3D space."""
+
+    __slots__ = (
+        'x', 'y', 'char', 'color', 'sprite_type',
+        'distance', 'screen_x', 'height',
+        'has_outline', 'outline_char',
+    )
+
+    def __init__(self, x: float, y: float, char: str,
+                 color: int, sprite_type: str = 'entity'):
         self.x = x
         self.y = y
         self.char = char
         self.color = color
         self.sprite_type = sprite_type
-        self.distance = 0.0  # Distance from camera (calculated during render)
-        self.screen_x = 0    # Screen column position
-        self.height = 0      # Height on screen
+        self.distance: float = 0.0
+        self.screen_x: int = 0
+        self.height: int = 0
+        self.has_outline: bool = False
+        self.outline_char: str = '░'
 
 
 class SpriteRenderer:
-    """Handles rendering of sprites in 3D space."""
-    
-    def __init__(self, viewport_width, viewport_height, fov=60.0):
-        """
-        Initialize sprite renderer.
-        
-        Args:
-            viewport_width: Width of viewport in characters
-            viewport_height: Height of viewport in characters
-            fov: Field of view in degrees
-        """
+    """Projects and draws sprites with z-buffering and outline glyphs."""
+
+    def __init__(self, viewport_width: int, viewport_height: int,
+                 fov: float = 60.0):
         self.viewport_width = viewport_width
         self.viewport_height = viewport_height
         self.fov = fov
-        
-        # Sprite rendering constants
-        self.sprite_base_height = 1.0  # Height of sprite in world units
-        self.max_sprite_distance = 20.0  # Don't render sprites beyond this
-        self.sprite_width = 3  # Sprite width in screen columns
-    
-    def collect_sprites(self, level, fog_of_war=None):
+        self.max_sprite_distance = 20.0
+        self.sprite_base_height = 1.0
+
+    # ------------------------------------------------------------------
+    # Collection
+    # ------------------------------------------------------------------
+
+    def collect_sprites(self, level, fog_of_war=None) -> List[Sprite]:
         """
-        Collect all visible sprites from the level.
-        
+        Gather all visible sprites from the level.
+
         Args:
-            level: Level object
-            fog_of_war: FogOfWar object (optional)
-        
+            level: Level object.
+            fog_of_war: Optional FogOfWar used for visibility checks.
+
         Returns:
-            List of Sprite objects
+            List of Sprite objects.
         """
-        sprites = []
-        
-        # Collect enemies
+        sprites: List[Sprite] = []
+
         for room in level.rooms:
             for enemy in room.enemies:
                 if not enemy.is_alive():
                     continue
-                
-                # Check visibility
-                if fog_of_war:
-                    ex, ey = enemy.position
-                    if not fog_of_war.is_position_visible(ex, ey):
-                        continue
-                
-                # Get enemy color
-                from presentation.colors import get_enemy_color
-                color = get_enemy_color(enemy.char)
-                
-                sprite = Sprite(
-                    enemy.position[0],
-                    enemy.position[1],
-                    enemy.char,
-                    color,
-                    sprite_type='enemy'
-                )
-                sprites.append(sprite)
-        
-        # Collect items
+                ex, ey = enemy.position
+                if fog_of_war and not fog_of_war.is_position_visible(ex, ey):
+                    continue
+                sprites.append(self._make_enemy_sprite(enemy))
+
         for room in level.rooms:
             for item in room.items:
                 if not item.position:
                     continue
-                
-                # Check visibility
-                if fog_of_war:
-                    ix, iy = item.position
-                    if not fog_of_war.is_position_visible(ix, iy):
-                        continue
-                
-                # Get item character and color
-                from presentation.rendering.item_rendering import get_item_render_data
-                item_char, color = get_item_render_data(item)
-                
-                sprite = Sprite(
-                    item.position[0],
-                    item.position[1],
-                    item_char,
-                    color,
-                    sprite_type='item'
-                )
-                sprites.append(sprite)
-        
-        # Collect exit
+                ix, iy = item.position
+                if fog_of_war and not fog_of_war.is_position_visible(ix, iy):
+                    continue
+                sprites.append(self._make_item_sprite(item))
+
         if level.exit_position:
-            if fog_of_war:
-                if fog_of_war.is_room_discovered(level.exit_room_index):
-                    from presentation.colors import COLOR_EXIT
-                    sprite = Sprite(
-                        level.exit_position[0],
-                        level.exit_position[1],
-                        '>',
-                        COLOR_EXIT,
-                        sprite_type='exit'
-                    )
-                    sprites.append(sprite)
-            else:
-                from presentation.colors import COLOR_EXIT
-                sprite = Sprite(
-                    level.exit_position[0],
-                    level.exit_position[1],
-                    '>',
-                    COLOR_EXIT,
-                    sprite_type='exit'
-                )
-                sprites.append(sprite)
-        
+            visible = (
+                not fog_of_war
+                or fog_of_war.is_room_discovered(level.exit_room_index)
+            )
+            if visible:
+                sprites.append(self._make_exit_sprite(level.exit_position))
+
         return sprites
-    
-    def calculate_sprite_positions(self, sprites, camera):
+
+    # ------------------------------------------------------------------
+    # Sprite factories
+    # ------------------------------------------------------------------
+
+    def _make_enemy_sprite(self, enemy) -> Sprite:
+        from presentation.colors import get_enemy_color
+        sprite = Sprite(
+            enemy.position[0], enemy.position[1],
+            enemy.char.upper(),
+            get_enemy_color(enemy.char),
+            sprite_type='enemy',
+        )
+        sprite.has_outline = True
+        sprite.outline_char = '░'
+        return sprite
+
+    def _make_item_sprite(self, item) -> Sprite:
+        from presentation.rendering.item_rendering import get_item_render_data
+        char, color = get_item_render_data(item)
+        sprite = Sprite(
+            item.position[0], item.position[1],
+            char, color,
+            sprite_type='item',
+        )
+        sprite.has_outline = True
+        sprite.outline_char = '░'
+        return sprite
+
+    def _make_exit_sprite(self, position) -> Sprite:
+        from presentation.colors import COLOR_EXIT
+        sprite = Sprite(
+            position[0], position[1],
+            '>', COLOR_EXIT,
+            sprite_type='exit',
+        )
+        sprite.has_outline = True
+        sprite.outline_char = '▒'
+        return sprite
+
+    # ------------------------------------------------------------------
+    # Projection
+    # ------------------------------------------------------------------
+
+    def calculate_sprite_positions(self, sprites: List[Sprite],
+                                   camera) -> List[Sprite]:
         """
-        Calculate screen positions for all sprites.
-        
-        Args:
-            sprites: List of Sprite objects
-            camera: Camera object
-        
-        Returns:
-            List of sprites that should be rendered (sorted by distance)
+        Compute screen_x, distance, and height for each sprite.
+
+        Returns sprites that are in front of the camera, sorted
+        farthest-first for correct painter's-algorithm ordering.
         """
-        visible_sprites = []
-        
-        # Camera basis vectors
+        visible: List[Sprite] = []
         dx, dy = camera.get_direction_vector()
         right_x, right_y = -dy, dx
 
-        for sprite in sprites:
-            # Calculate relative position to camera
-            sprite_x = sprite.x - camera.x
-            sprite_y = sprite.y - camera.y
-            
-            # Calculate distance
-            distance = math.sqrt(sprite_x**2 + sprite_y**2)
-            
-            # Skip if too far
-            if distance > self.max_sprite_distance or distance < 0.1:
-                continue
-            
-            # Transform to camera space using forward/right basis
-            transformed_y = (sprite_x * dx) + (sprite_y * dy)  # forward
-            transformed_x = (sprite_x * right_x) + (sprite_y * right_y)  # right
-            
-            # Check if sprite is in front of camera
-            if transformed_y <= 0:
-                continue
-            
-            # Calculate screen position
-            # Project to screen using perspective division
-            fov_rad = math.radians(self.fov)
-            projection_plane_distance = (self.viewport_width / 2) / math.tan(fov_rad / 2)
-            
-            screen_x = int((transformed_x / transformed_y) * projection_plane_distance + self.viewport_width / 2)
-            
-            # Calculate sprite height based on distance and type
-            if sprite.sprite_type == 'enemy':
-                base_height = self.sprite_base_height * 1.0
-                min_height = 3
-            elif sprite.sprite_type == 'item':
-                base_height = self.sprite_base_height * 0.8
-                min_height = 2
-            elif sprite.sprite_type == 'exit':
-                base_height = self.sprite_base_height * 0.9
-                min_height = 2
-            else:
-                base_height = self.sprite_base_height
-                min_height = 1
+        half_w = self.viewport_width / 2
+        proj_dist = half_w / math.tan(math.radians(self.fov / 2))
 
-            sprite_height = int((base_height / distance) * self.viewport_height * 2)
-            sprite_height = max(min_height, min(sprite_height, self.viewport_height))
-            
-            # Store calculated values
-            sprite.distance = distance
+        for sprite in sprites:
+            sx = sprite.x - camera.x
+            sy = sprite.y - camera.y
+            dist = math.sqrt(sx * sx + sy * sy)
+
+            if dist > self.max_sprite_distance or dist < 0.1:
+                continue
+
+            forward = sx * dx + sy * dy
+            if forward <= 0:
+                continue
+
+            lateral = sx * right_x + sy * right_y
+            screen_x = int((lateral / forward) * proj_dist + half_w)
+
+            if sprite.sprite_type == 'enemy':
+                base_h, min_h = self.sprite_base_height * 1.2, 3
+            elif sprite.sprite_type == 'exit':
+                base_h, min_h = self.sprite_base_height * 1.5, 3
+            else:
+                base_h, min_h = self.sprite_base_height * 0.8, 2
+
+            height = max(min_h, min(
+                int((base_h / dist) * self.viewport_height * 2),
+                self.viewport_height,
+            ))
+
+            sprite.distance = dist
             sprite.screen_x = screen_x
-            sprite.height = sprite_height
-            
-            visible_sprites.append(sprite)
-        
-        # Sort by distance (furthest first for proper occlusion)
-        visible_sprites.sort(key=lambda s: s.distance, reverse=True)
-        
-        return visible_sprites
-    
-    def render_sprites(self, stdscr, sprites, camera, z_buffer, x_offset=0, y_offset=0):
+            sprite.height = height
+            visible.append(sprite)
+
+        visible.sort(key=lambda s: s.distance, reverse=True)
+        return visible
+
+    # ------------------------------------------------------------------
+    # Rendering
+    # ------------------------------------------------------------------
+
+    def render_sprites(self, stdscr, sprites: List[Sprite], camera,
+                       z_buffer: list, x_offset: int = 0,
+                       y_offset: int = 0) -> None:
         """
-        Render sprites to screen with Z-buffering.
-        
+        Draw all visible sprites onto the curses screen.
+
         Args:
-            stdscr: Curses screen object
-            sprites: List of Sprite objects (already calculated)
-            camera: Camera object (for reference)
-            z_buffer: List of distances for each screen column (from wall rendering)
-            x_offset: X offset for rendering
-            y_offset: Y offset for rendering
+            stdscr: Curses screen object.
+            sprites: Projected sprites sorted farthest-first.
+            camera: Camera (unused here, kept for API compatibility).
+            z_buffer: Per-column wall distances from the wall renderer.
+            x_offset: Viewport left edge on screen.
+            y_offset: Viewport top edge on screen.
         """
         import curses
-        
+
+        center_y = self.viewport_height // 2
+
         for sprite in sprites:
-            # Calculate vertical position
-            sprite_top = (self.viewport_height - sprite.height) // 2
-            sprite_bottom = sprite_top + sprite.height
-            
-            # Clamp to viewport
-            sprite_top = max(0, sprite_top)
-            sprite_bottom = min(self.viewport_height, sprite_bottom)
-            
-            # Get display character based on type
-            if sprite.sprite_type in ('item', 'exit'):
-                display_char = sprite.char
+            sx = sprite.screen_x
+            if sx < 1 or sx >= self.viewport_width - 1:
+                continue
+            if sprite.distance >= z_buffer[sx]:
+                continue
+
+            char = self._shade_char(sprite.char, sprite.distance)
+            color = curses.color_pair(sprite.color)
+            if sprite.sprite_type == 'exit':
+                color |= curses.A_BOLD
+            elif sprite.sprite_type == 'item' and sprite.distance < 5.0:
+                color |= curses.A_BOLD
+            elif sprite.sprite_type == 'enemy' and sprite.distance < 3.0:
+                color |= curses.A_BOLD
+
+            if sprite.has_outline:
+                ol = sprite.outline_char
+                ol_color = curses.color_pair(sprite.color) | curses.A_DIM
+                for ry, rx, ch, cl in (
+                    (center_y - 1, sx - 1, ol, ol_color),
+                    (center_y - 1, sx,     ol, ol_color),
+                    (center_y - 1, sx + 1, ol, ol_color),
+                    (center_y,     sx - 1, ol, ol_color),
+                    (center_y,     sx,     char, color),
+                    (center_y,     sx + 1, ol, ol_color),
+                    (center_y + 1, sx - 1, ol, ol_color),
+                    (center_y + 1, sx,     ol, ol_color),
+                    (center_y + 1, sx + 1, ol, ol_color),
+                ):
+                    self._put(stdscr, ry, rx, ch, cl, y_offset, x_offset)
             else:
-                display_char = self._shade_sprite_char(sprite.char, sprite.distance)
+                self._put(stdscr, center_y, sx, char, color, y_offset, x_offset)
 
-            half_width = self.sprite_width // 2
-            for col_offset in range(-half_width, half_width + 1):
-                render_x = sprite.screen_x + col_offset
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
 
-                if render_x < 0 or render_x >= self.viewport_width:
-                    continue
+    def _put(self, stdscr, rel_y: int, rel_x: int, char: str,
+             color, y_offset: int, x_offset: int) -> None:
+        import curses
+        if 0 <= rel_y < self.viewport_height and 0 <= rel_x < self.viewport_width:
+            try:
+                stdscr.addch(y_offset + rel_y, x_offset + rel_x, char, color)
+            except curses.error:
+                pass
 
-                # Check Z-buffer per column (don't draw if behind wall)
-                if render_x < len(z_buffer) and z_buffer[render_x] < sprite.distance:
-                    continue
-
-                # Draw sprite column
-                for y in range(sprite_top, sprite_bottom):
-                    try:
-                        stdscr.addch(
-                            y_offset + y,
-                            x_offset + render_x,
-                            display_char,
-                            curses.color_pair(sprite.color) | curses.A_BOLD
-                        )
-                    except curses.error:
-                        pass
-    
-    def _shade_sprite_char(self, char, distance):
-        """
-        Apply distance-based shading to sprite character.
-        
-        Args:
-            char: Original character
-            distance: Distance to sprite
-        
-        Returns:
-            Shaded character
-        """
-        # Progressive dimming based on distance
+    @staticmethod
+    def _shade_char(char: str, distance: float) -> str:
         if distance < 3.0:
             return char
-        elif distance < 6.0:
-            # Slight dimming for medium distance
-            dim_map = {
-                'z': 'z', 'v': 'v', 'g': 'g', 'o': 'o', 's': 's',
-                '%': '%', '$': '$', '(': '(', '!': '!', '?': '?',
-                '>': '>', 'k': 'k',
-            }
-            return dim_map.get(char, char)
-        elif distance < 10.0:
-            # More dimming for far distance
-            dim_map = {
-                'z': 'z', 'v': 'v', 'g': 'g', 'o': 'o', 's': 's',
-                '%': 'o', '$': 'o', '(': 'c', '!': 'i', '?': '.',
-                '>': '>', 'k': '.',
-            }
-            return dim_map.get(char, '.')
-        else:
-            # Very dim for very far
+        if distance < 6.0:
+            return char.lower() if char.isalpha() else char
+        if distance < 10.0:
+            if char.isalpha():
+                return char.lower()
+            return {'%': 'o', '$': 'o', '(': 'c', '!': 'i',
+                    '?': '.', 'k': '.', '>': '.'}.get(char, char)
+        if distance < 15.0:
             return '·'
-
-
-def test_sprite_renderer():
-    """Test sprite renderer."""
-    print("=" * 60)
-    print("SPRITE RENDERER TEST")
-    print("=" * 60)
-    
-    # Create renderer
-    renderer = SpriteRenderer(viewport_width=70, viewport_height=20, fov=60.0)
-    
-    print(f"\nRenderer Configuration:")
-    print(f"  Viewport: {renderer.viewport_width}x{renderer.viewport_height}")
-    print(f"  FOV: {renderer.fov}°")
-    print(f"  Max distance: {renderer.max_sprite_distance}")
-    
-    # Test sprite creation
-    print(f"\n" + "=" * 60)
-    print("SPRITE CREATION TEST")
-    print("=" * 60)
-    
-    from presentation.colors import COLOR_ZOMBIE
-    test_sprite = Sprite(10.5, 10.5, 'z', COLOR_ZOMBIE, 'enemy')
-    
-    print(f"\nTest Sprite:")
-    print(f"  Position: ({test_sprite.x}, {test_sprite.y})")
-    print(f"  Character: '{test_sprite.char}'")
-    print(f"  Type: {test_sprite.sprite_type}")
-    
-    # Test distance shading
-    print(f"\n" + "=" * 60)
-    print("DISTANCE SHADING TEST")
-    print("=" * 60)
-    
-    test_distances = [1.0, 3.0, 6.0, 10.0, 15.0]
-    test_chars = ['z', '%', '$', '>']
-    
-    print("\n  Char | Distance | Result")
-    print("  -----|----------|--------")
-    
-    for char in test_chars:
-        for dist in test_distances:
-            shaded = renderer._shade_sprite_char(char, dist)
-            print(f"  '{char}'  | {dist:5.1f}    | '{shaded}'")
-    
-    # Test sprite positioning
-    print(f"\n" + "=" * 60)
-    print("SPRITE POSITIONING TEST")
-    print("=" * 60)
-    
-    from presentation.camera.camera import Camera
-    
-    camera = Camera(5.0, 5.0, angle=0.0, fov=60.0)
-    
-    # Create test sprites at different positions
-    test_sprites = [
-        Sprite(8.0, 5.0, 'z', COLOR_ZOMBIE, 'enemy'),   # Directly ahead
-        Sprite(5.0, 8.0, '%', 2, 'item'),                # To the north
-        Sprite(3.0, 5.0, '$', 3, 'item'),                # Behind
-    ]
-    
-    visible = renderer.calculate_sprite_positions(test_sprites, camera)
-    
-    print(f"\nCamera at ({camera.x}, {camera.y}) facing {camera.angle}°")
-    print(f"Total sprites: {len(test_sprites)}")
-    print(f"Visible sprites: {len(visible)}")
-    
-    print("\n  Sprite | Distance | Screen X | Height")
-    print("  -------|----------|----------|--------")
-    
-    for sprite in visible:
-        print(f"  '{sprite.char}'    | {sprite.distance:6.2f}   | {sprite.screen_x:4d}     | {sprite.height:3d}")
-    
-    print("\n✓ Sprite renderer tests complete!")
-
-
-if __name__ == "__main__":
-    test_sprite_renderer()
+        return ' '
