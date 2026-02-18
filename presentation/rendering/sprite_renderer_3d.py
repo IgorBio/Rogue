@@ -43,6 +43,9 @@ class SpriteRenderer:
     _ITEM_CLOSE_DIST = 1.5
     _ITEM_Z_BIAS = 0.3
     _ITEM_Z_BIAS_MAX_RATIO = 0.10
+    _SHADE_NEAR_RATIO = 0.30
+    _SHADE_MID_RATIO = 0.55
+    _SHADE_FAR_RATIO = 0.80
 
     def __init__(self, viewport_width: int, viewport_height: int,
                  fov: float = 60.0):
@@ -162,11 +165,11 @@ class SpriteRenderer:
             sy = sprite.y - camera.y
             dist = math.sqrt(sx * sx + sy * sy)
 
-            if dist > self.max_sprite_distance or dist < 0.1:
+            if dist < 0.1:
                 continue
 
             forward = sx * dx + sy * dy
-            if forward <= 0.05:
+            if forward <= 0.05 or forward > self.max_sprite_distance:
                 continue
 
             lateral = sx * right_x + sy * right_y
@@ -237,6 +240,7 @@ class SpriteRenderer:
                 color |= curses.A_BOLD
             elif sprite.sprite_type == 'enemy' and sprite.distance < 3.0:
                 color |= curses.A_BOLD
+            color |= self._distance_attr(sprite.distance, curses)
 
             y_start = max(0, sprite.top_y)
             y_end = min(self.viewport_height - 1, sprite.bottom_y)
@@ -300,17 +304,24 @@ class SpriteRenderer:
             except curses.error:
                 pass
 
-    @staticmethod
-    def _shade_char(char: str, distance: float) -> str:
-        if distance < 3.0:
+    def _shade_char(self, char: str, distance: float) -> str:
+        near_cut = self.max_sprite_distance * self._SHADE_NEAR_RATIO
+        mid_cut = self.max_sprite_distance * self._SHADE_MID_RATIO
+        far_cut = self.max_sprite_distance * self._SHADE_FAR_RATIO
+
+        if distance < near_cut:
             return char
-        if distance < 6.0:
+        if distance < mid_cut:
             return char.lower() if char.isalpha() else char
-        if distance < 10.0:
+        if distance < far_cut:
             if char.isalpha():
                 return char.lower()
             return {'%': 'o', '$': 'o', '(': 'c', '!': 'i',
                     '?': '.', 'k': '.', '>': '.'}.get(char, char)
-        if distance < 15.0:
-            return '·'
-        return ' '
+        # Keep a faint marker up to max_sprite_distance to avoid pop-out.
+        return '·'
+
+    def _distance_attr(self, distance: float, curses_mod) -> int:
+        if distance < self.max_sprite_distance * self._SHADE_MID_RATIO:
+            return 0
+        return curses_mod.A_DIM

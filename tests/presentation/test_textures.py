@@ -10,8 +10,8 @@ sys.path.insert(0, '.')
 from presentation.rendering.texture_system import TextureManager, get_texture_manager
 
 
-def test_texture_initialization():
-    """Test that all textures are correctly initialized."""
+def _run_texture_initialization():
+    """Run texture initialization checks and return success flag."""
     print("=" * 70)
     print("TEXTURE SYSTEM VALIDATION")
     print("=" * 70)
@@ -72,6 +72,11 @@ def test_texture_initialization():
         print("✅ ALL TEXTURES VALID")
         return True
 
+
+
+def test_texture_initialization():
+    """Test that all textures are correctly initialized."""
+    assert _run_texture_initialization()
 
 def test_texture_manager_methods():
     """Test TextureManager methods."""
@@ -195,7 +200,7 @@ def main():
     results = []
     
     # Run tests
-    results.append(("Texture Initialization", test_texture_initialization()))
+    results.append(("Texture Initialization", _run_texture_initialization()))
     results.append(("TextureManager Methods", test_texture_manager_methods()))
     results.append(("Edge Cases", test_edge_cases()))
     

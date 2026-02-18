@@ -25,6 +25,8 @@ class Renderer3D:
 
     SHADE_CHARS = ['█', '▓', '▓', '▒', '▒', '▒', '░', '░', '░', '·', '·', ' ']
     SHADE_DISTANCES = [1.5, 2.5, 3.5, 5.0, 6.5, 8.0, 10.0, 12.0, 14.5, 17.0, 19.5, 22.0]
+    FLOOR_CHARS = ['.', ':', ';', 'x', '#']
+    CEILING_CHARS = ['#', 'x', ':', '.', ' ']
 
     def __init__(self, stdscr, viewport_width=None, viewport_height=None,
                  use_textures=True, show_minimap=True, show_sprites=True):
@@ -178,9 +180,13 @@ class Renderer3D:
         wall_top = max(0, (self.viewport_height - wall_height) // 2)
         wall_bottom = min(self.viewport_height, wall_top + wall_height)
         color = self._get_wall_color(hit.wall_type, hit.side, hit.door)
+        wall_attr = self._get_wall_attr(hit.side, hit.distance)
 
         for y in range(wall_top):
-            self._draw_char(y_offset + y, x_offset + column, ' ', COLOR_UI_TEXT)
+            ceiling_char = self._get_ceiling_char(y, wall_top)
+            self._draw_char(
+                y_offset + y, x_offset + column, ceiling_char, COLOR_UI_TEXT, curses.A_DIM
+            )
 
         if self.use_textures and self.textured_renderer:
             for y in range(wall_top, wall_bottom):
@@ -188,24 +194,28 @@ class Renderer3D:
                 char = self.textured_renderer.get_wall_char(
                     hit.wall_type, hit.texture_x, texture_y, hit.distance
                 )
-                self._draw_char(y_offset + y, x_offset + column, char, color)
+                self._draw_char(y_offset + y, x_offset + column, char, color, wall_attr)
         else:
             wall_char = self._get_simple_wall_char(hit)
             if wall_char == ' ':
                 wall_char = self._get_shade_char(hit.distance)
             for y in range(wall_top, wall_bottom):
-                self._draw_char(y_offset + y, x_offset + column, wall_char, color)
+                self._draw_char(y_offset + y, x_offset + column, wall_char, color, wall_attr)
 
-        floor_char = self._get_floor_char(wall_bottom, self.viewport_height)
         for y in range(wall_bottom, self.viewport_height):
+            floor_char = self._get_floor_char(y, wall_bottom, self.viewport_height)
             self._draw_char(y_offset + y, x_offset + column, floor_char, COLOR_FLOOR)
 
     def _render_empty_column(self, column, x_offset, y_offset):
         half = self.viewport_height // 2
         for y in range(half):
-            self._draw_char(y_offset + y, x_offset + column, ' ', COLOR_UI_TEXT)
+            ceiling_char = self._get_ceiling_char(y, half)
+            self._draw_char(
+                y_offset + y, x_offset + column, ceiling_char, COLOR_UI_TEXT, curses.A_DIM
+            )
         for y in range(half, self.viewport_height):
-            self._draw_char(y_offset + y, x_offset + column, '.', COLOR_FLOOR)
+            floor_char = self._get_floor_char(y, half, self.viewport_height)
+            self._draw_char(y_offset + y, x_offset + column, floor_char, COLOR_FLOOR)
 
     def _get_wall_color(self, wall_type, side, door=None):
         if wall_type == 'corridor_wall':
@@ -215,6 +225,14 @@ class Renderer3D:
         if wall_type == 'room_wall_entrance':
             return COLOR_CORRIDOR
         return COLOR_WALL
+
+    def _get_wall_attr(self, side, distance):
+        attr = curses.A_NORMAL
+        if side == 'EW':
+            attr |= curses.A_DIM
+        if distance < 2.5:
+            attr |= curses.A_BOLD
+        return attr
 
     def _get_simple_wall_char(self, hit):
         chars = {
@@ -236,13 +254,18 @@ class Renderer3D:
         self._shade_cache[key] = self.SHADE_CHARS[-1]
         return self.SHADE_CHARS[-1]
 
-    def _get_floor_char(self, wall_bottom, viewport_height):
-        d = abs(wall_bottom - viewport_height / 2)
-        if d < 2:
-            return '·'
-        if d < 5:
-            return '.'
-        return ' '
+    def _get_floor_char(self, y, wall_bottom, viewport_height):
+        span = max(1, viewport_height - wall_bottom - 1)
+        rel = (y - wall_bottom) / span
+        idx = min(int(rel * (len(self.FLOOR_CHARS) - 1)), len(self.FLOOR_CHARS) - 1)
+        return self.FLOOR_CHARS[idx]
+
+    def _get_ceiling_char(self, y, wall_top):
+        if wall_top <= 1:
+            return ' '
+        rel = y / (wall_top - 1)
+        idx = min(int(rel * (len(self.CEILING_CHARS) - 1)), len(self.CEILING_CHARS) - 1)
+        return self.CEILING_CHARS[idx]
 
     # ------------------------------------------------------------------
     # UI helpers
@@ -308,9 +331,9 @@ class Renderer3D:
     # Low-level drawing
     # ------------------------------------------------------------------
 
-    def _draw_char(self, y, x, char, color_pair):
+    def _draw_char(self, y, x, char, color_pair, attr=0):
         try:
-            self.stdscr.addch(y, x, char, curses.color_pair(color_pair))
+            self.stdscr.addch(y, x, char, curses.color_pair(color_pair) | attr)
         except curses.error as exc:
             self._log_curses_error(exc, y, x)
 

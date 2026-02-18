@@ -139,3 +139,21 @@
 - Нет заметных артефактов окклюзии у стен/дверей/углов.
 - Глубина пола/потолка и боковых стен читается визуально.
 - Нет резких исчезновений спрайтов в рабочей дальности.
+
+## Статус выполнения
+- Этап 1: выполнен.
+- Этап 2: выполнен.
+- Этап 3: выполнен.
+- Этап 4: выполнен.
+- Этап 5: выполнен.
+- Этап 6: выполнен частично (автотесты и golden snapshot добавлены; замер frame-time выполняется как ручная проверка).
+
+## Реализованные проверки Этапа 6
+- Добавлены regression-тесты рендера 3D:
+  - `tests/presentation/test_renderer_3d_regressions.py`
+- Добавлен golden-master snapshot кадра:
+  - `tests/presentation/snapshots/renderer_3d_frame.txt`
+- Добавлены regression-тесты спрайтов (дальность/затухание):
+  - `tests/presentation/test_sprite_renderer_3d_regressions.py`
+- Команда запуска новых проверок:
+  - `python -m pytest tests/presentation/test_renderer_3d_regressions.py tests/presentation/test_sprite_renderer_3d_regressions.py -q`
