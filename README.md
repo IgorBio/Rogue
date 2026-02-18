@@ -62,3 +62,4 @@ pytest --cov=domain --cov=data --cov-report=xml:coverage.xml
 
 - The game is turn-based: player and enemy actions are processed in turns.
 - Switching `2D/3D` does not reset session state or progress.
+- 3D mini-map has two modes (`local`/`global`) that can be toggled in-game.

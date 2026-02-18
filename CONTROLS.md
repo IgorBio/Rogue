@@ -47,6 +47,7 @@ Visual toggles:
 - `Tab` switch `2D` / `3D`
 - `T` textures
 - `M` mini-map
+- `L` mini-map mode (`local` / `global`)
 - `N` sprites
 - `I` debug info
 - `?` or `/` help
