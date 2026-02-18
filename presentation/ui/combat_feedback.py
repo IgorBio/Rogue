@@ -2,7 +2,6 @@
 Combat and interaction UI elements for 3D mode.
 """
 import curses
-import time
 
 
 class CombatFeedback:
@@ -362,40 +361,3 @@ class EnemyHealthBar:
         """Toggle health bar visibility."""
         self.enabled = not self.enabled
         return self.enabled
-
-
-def test_combat_ui():
-    """Test combat UI components."""
-    print("=" * 60)
-    print("COMBAT UI TEST")
-    print("=" * 60)
-    
-    print("\nCombatFeedback Messages:")
-    print("  - Attack Hit: 'HIT Enemy for 25 damage!'")
-    print("  - Attack Miss: 'Missed Enemy!'")
-    print("  - Enemy Killed: 'Killed Zombie! +50 treasure'")
-    print("  - Item Pickup: 'Picked up: Health Potion'")
-    print("  - Damage Taken: 'Took 15 damage!'")
-    
-    print("\nTargetingReticle Designs:")
-    print("  - Simple: '+'")
-    print("  - Cross: '╬'")
-    print("  - Circle: '◎'")
-    print("  - Dot: '·'")
-    
-    print("\nEnemyHealthBar Example:")
-    print("  Full health:  [██████████]")
-    print("  Half health:  [█████░░░░░]")
-    print("  Low health:   [██░░░░░░░░]")
-    
-    print("\nUsage in game:")
-    print("  1. Create CombatFeedback instance")
-    print("  2. On attack hit: feedback.show_attack_hit(damage, enemy_name)")
-    print("  3. On each frame: feedback.update()")
-    print("  4. On render: feedback.render(x_offset, y_offset)")
-    
-    print("\n✓ Combat UI components ready!")
-
-
-if __name__ == "__main__":
-    test_combat_ui()

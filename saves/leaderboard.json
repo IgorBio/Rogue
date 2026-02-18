@@ -3610,5 +3610,26 @@
     "final_strength": 10,
     "final_dexterity": 10,
     "timestamp": "2026-02-18T22:10:43.471432"
+  },
+  {
+    "treasure_collected": 0,
+    "level_reached": 2,
+    "enemies_defeated": 4,
+    "food_consumed": 0,
+    "elixirs_used": 0,
+    "scrolls_read": 1,
+    "weapons_equipped": 0,
+    "attacks_made": 34,
+    "hits_taken": 12,
+    "damage_dealt": 188,
+    "damage_received": 93,
+    "tiles_moved": 412,
+    "items_collected": 10,
+    "deaths": 1,
+    "victory": false,
+    "final_health": 12,
+    "final_strength": 10,
+    "final_dexterity": 10,
+    "timestamp": "2026-02-18T22:29:34.109904"
   }
 ]

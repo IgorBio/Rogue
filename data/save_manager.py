@@ -3,6 +3,7 @@ Save and load game state persistence.
 """
 
 from common.logging_utils import log_exception
+from common.logging_utils import get_logger
 import json
 import os
 from datetime import datetime
@@ -40,6 +41,7 @@ class SaveManager:
         """
         self.save_dir = save_dir
         self.autosave_file = os.path.join(save_dir, AUTOSAVE_FILENAME)
+        self._logger = get_logger(__name__)
         os.makedirs(save_dir, exist_ok=True)
 
     def save_game(self, game_session, filename=None):
@@ -116,7 +118,7 @@ class SaveManager:
             return True
 
         except Exception as e:
-            print(f"Error saving game: {e}")
+            self._logger.exception("Failed to save game to '%s': %s", filename, e)
             return False
 
     def load_game(self, filename=None):
@@ -141,7 +143,7 @@ class SaveManager:
             with open(filename, 'r') as f:
                 return json.load(f)
         except Exception as e:
-            print(f"Error loading game: {e}")
+            self._logger.exception("Failed to load game from '%s': %s", filename, e)
             return None
 
     def save_exists(self, filename=None):

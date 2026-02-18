@@ -8,11 +8,13 @@ and performance analysis.
 import json
 import os
 from datetime import datetime
+from common.logging_utils import get_logger
 
 
 # Persistence configuration
 DEFAULT_SAVE_DIR = 'saves'
 LEADERBOARD_FILENAME = 'leaderboard.json'
+_logger = get_logger(__name__)
 
 # Display configuration
 DEFAULT_TOP_RUNS_COUNT = 10
@@ -306,7 +308,7 @@ class StatisticsManager:
             with open(self.leaderboard_file, 'w') as f:
                 json.dump(leaderboard, f, indent=2)
         except Exception as e:
-            print(f"Error saving leaderboard: {e}")
+            _logger.exception("Failed to save leaderboard to '%s': %s", self.leaderboard_file, e)
     
     def load_leaderboard(self):
         """
@@ -322,7 +324,7 @@ class StatisticsManager:
             with open(self.leaderboard_file, 'r') as f:
                 return json.load(f)
         except Exception as e:
-            print(f"Error loading leaderboard: {e}")
+            _logger.exception("Failed to load leaderboard from '%s': %s", self.leaderboard_file, e)
             return []
     
     def get_top_runs(self, count=DEFAULT_TOP_RUNS_COUNT):
