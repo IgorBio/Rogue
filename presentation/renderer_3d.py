@@ -61,7 +61,7 @@ class Renderer3D:
             self.textured_renderer = None
 
         self.sprite_renderer = (
-            SpriteRenderer(self.viewport_width, self.viewport_height, fov=60.0)
+            SpriteRenderer(self.viewport_width, self.viewport_height)
             if self.show_sprites else None
         )
 
@@ -105,6 +105,9 @@ class Renderer3D:
                 self._render_empty_column(column, x_offset, y_offset)
 
         if self.show_sprites and self.sprite_renderer:
+            self.sprite_renderer.sync_projection(
+                self.viewport_width, self.viewport_height, camera.fov
+            )
             sprites = self.sprite_renderer.collect_sprites(level, fog_of_war)
             visible = self.sprite_renderer.calculate_sprite_positions(sprites, camera)
             self.sprite_renderer.render_sprites(

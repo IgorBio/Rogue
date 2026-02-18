@@ -222,7 +222,9 @@ class GameUI:
                                         x_offset=viewport_x, y_offset=viewport_y)
         self.renderer_3d.render_mode_indicator(y_offset=viewport_y - 1)
         
-        entity, entity_type, distance = camera_controller.get_entity_in_front(level)
+        entity, entity_type, distance = camera_controller.get_entity_in_front(
+            level, viewport_width=self.renderer_3d.viewport_width
+        )
 
         # Door detection in front of camera (without triggering interaction)
         rad = math.radians(camera.angle)
