@@ -183,9 +183,9 @@ class ActionProcessor:
             return door_success
 
         if entity_type == 'enemy':
-            return self._handle_3d_attack()
+            return self._handle_3d_attack(target_enemy=entity, target_distance=distance)
         elif entity_type == 'item':
-            return self._handle_3d_pickup()
+            return self._handle_3d_pickup(target_item=entity, target_distance=distance)
         elif entity_type == 'exit':
             return self.session.handle_movement('forward')
 
@@ -194,15 +194,30 @@ class ActionProcessor:
             self.session.process_enemy_turns()
         return False
 
-    def _handle_3d_attack(self):
+    def _handle_3d_attack(self, target_enemy=None, target_distance=None):
         """Handle attack in 3D mode."""
         camera_controller = self.session.get_camera_controller()
         if not camera_controller:
             return False
 
-        success, message, enemy = camera_controller.attack_entity_in_front(
-            self.session.character, self.session.level
-        )
+        if target_enemy is not None:
+            enemy = target_enemy
+            if target_distance is None:
+                camera = self.session.get_camera()
+                if camera is not None and getattr(enemy, 'position', None):
+                    ex, ey = enemy.position
+                    dx = (ex + 0.5) - camera.x
+                    dy = (ey + 0.5) - camera.y
+                    target_distance = (dx * dx + dy * dy) ** 0.5
+            if target_distance is not None and target_distance > camera_controller.interaction_range:
+                success, message = False, "Enemy too far away"
+            else:
+                success = True
+                message = f"Enemy spotted: {getattr(enemy, 'enemy_type', 'enemy')}"
+        else:
+            success, message, enemy = camera_controller.attack_entity_in_front(
+                self.session.character, self.session.level
+            )
 
         self.session.message = message
 
@@ -223,15 +238,37 @@ class ActionProcessor:
 
         return success
 
-    def _handle_3d_pickup(self):
+    def _handle_3d_pickup(self, target_item=None, target_distance=None):
         """Handle item pickup in 3D mode."""
         camera_controller = self.session.get_camera_controller()
         if not camera_controller:
             return False
 
-        success, message, item = camera_controller.pickup_item_in_front(
-            self.session.character, self.session.level
-        )
+        if target_item is not None:
+            item = target_item
+            if target_distance is None:
+                camera = self.session.get_camera()
+                if camera is not None and getattr(item, 'position', None):
+                    ix, iy = item.position
+                    dx = (ix + 0.5) - camera.x
+                    dy = (iy + 0.5) - camera.y
+                    target_distance = (dx * dx + dy * dy) ** 0.5
+            if target_distance is not None and target_distance > camera_controller.interaction_range:
+                success, message = False, "Item too far away"
+            else:
+                success = self.session.character.backpack.add_item(item)
+                if success:
+                    for room in self.session.level.rooms:
+                        if item in room.items:
+                            room.remove_item(item)
+                            break
+                    message = self._build_pickup_message(item)
+                else:
+                    message = "Backpack full!"
+        else:
+            success, message, item = camera_controller.pickup_item_in_front(
+                self.session.character, self.session.level
+            )
 
         self.session.message = message
 
@@ -249,3 +286,22 @@ class ActionProcessor:
                 self.session.process_enemy_turns()
 
         return success
+
+    @staticmethod
+    def _build_pickup_message(item):
+        """Build a user-facing message for a successfully picked up item."""
+        from config.game_config import ItemType
+
+        if item.item_type == ItemType.TREASURE:
+            return f"Picked up {item.value} treasure!"
+        if item.item_type == ItemType.FOOD:
+            return f"Picked up food (heals {item.health_restoration} HP)"
+        if item.item_type == ItemType.WEAPON:
+            return f"Picked up {item.name}"
+        if item.item_type == ItemType.ELIXIR:
+            return f"Picked up elixir ({item.stat_type} +{item.bonus})"
+        if item.item_type == ItemType.SCROLL:
+            return f"Picked up scroll ({item.stat_type} +{item.bonus})"
+        if item.item_type == ItemType.KEY:
+            return f"Picked up {item.color.value} key!"
+        return "Picked up item"

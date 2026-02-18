@@ -15,6 +15,7 @@ class CameraController:
     _AIM_HALF_PIXELS = 2
     _FALLBACK_VIEWPORT_WIDTH = 80
     _INTERACTION_RANGE_BONUS = 1.0
+    _MIN_AIM_ANGLE_DEG = 4.5
 
     def __init__(self, camera, level, move_speed=CameraConfig.MOVE_SPEED,
                  rotation_speed=CameraConfig.ROTATION_SPEED):
@@ -124,6 +125,9 @@ class CameraController:
         half_w = viewport_width / 2.0
         proj_dist = half_w / math.tan(fov_rad / 2.0)
         aim_angle = math.atan(self._AIM_HALF_PIXELS / proj_dist)
+        # Keep a minimum angular cone so targeting does not become too strict
+        # on wide terminals (notably in long corridors).
+        aim_angle = max(aim_angle, math.radians(self._MIN_AIM_ANGLE_DEG))
         return math.cos(aim_angle)
 
     def set_targeting_viewport_width(self, viewport_width):
