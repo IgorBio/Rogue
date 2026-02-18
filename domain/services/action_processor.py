@@ -166,7 +166,8 @@ class ActionProcessor:
                 target_y = exit_y + 0.5
                 dx = camera.x - target_x
                 dy = camera.y - target_y
-                if (dx * dx + dy * dy) <= 2.25:
+                interact_range = getattr(camera_controller, "interaction_range", 1.5)
+                if (dx * dx + dy * dy) <= (interact_range * interact_range):
                     self.session.advance_level()
                     self.session.message = "Descending to the next level..."
                     return True

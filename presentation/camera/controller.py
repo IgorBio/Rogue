@@ -14,6 +14,7 @@ class CameraController:
     # +/- _AIM_HALF_PIXELS of the viewport centre counts as "in the reticle".
     _AIM_HALF_PIXELS = 2
     _FALLBACK_VIEWPORT_WIDTH = 80
+    _INTERACTION_RANGE_BONUS = 1.0
 
     def __init__(self, camera, level, move_speed=CameraConfig.MOVE_SPEED,
                  rotation_speed=CameraConfig.ROTATION_SPEED):
@@ -35,7 +36,9 @@ class CameraController:
         self.velocity_y = 0.0
 
         self.collision_radius = CameraConfig.COLLISION_RADIUS
-        self.interaction_range = CombatConfig.MELEE_ATTACK_RANGE
+        self.interaction_range = (
+            CombatConfig.MELEE_ATTACK_RANGE + self._INTERACTION_RANGE_BONUS
+        )
         self._targeting_viewport_width = self._FALLBACK_VIEWPORT_WIDTH
 
     # ------------------------------------------------------------------
