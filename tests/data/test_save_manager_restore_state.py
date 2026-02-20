@@ -74,3 +74,22 @@ class TestRestoreState:
         save = _make_minimal_save()
         session = sm.restore_game_session(save)
         assert session.state_machine.current_state == GameState.PLAYING
+
+    def test_restore_syncs_level_manager_to_saved_level(self):
+        sm = SaveManager()
+        save = _make_minimal_save(
+            current_level_number=3,
+            level={
+                'level_number': 3,
+                'starting_room_index': 0,
+                'exit_room_index': None,
+                'exit_position': None,
+                'rooms': [],
+                'corridors': [],
+                'doors': []
+            }
+        )
+        session = sm.restore_game_session(save)
+
+        assert session.current_level_number == 3
+        assert session._coordinator.level_manager.current_level_number == 3

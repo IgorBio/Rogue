@@ -239,6 +239,17 @@ class SaveManager:
             self._restore_doors(level, level_data['doors'])
 
         game_session.level = level
+        # Keep LevelManager in sync with restored session/level state.
+        # Without this, advancing after load can jump to an incorrect level
+        # because LevelManager starts from its constructor default (1).
+        try:
+            coordinator = getattr(game_session, "_coordinator", None)
+            level_manager = getattr(coordinator, "level_manager", None) if coordinator is not None else None
+            if level_manager is not None:
+                level_manager.current_level_number = game_session.current_level_number
+                level_manager.current_level = level
+        except Exception as exc:
+            log_exception(exc, __name__)
 
         # Restore fog of war
         fog_of_war = FogOfWar(level)
