@@ -191,3 +191,48 @@ def test_weapon_bonus_applied(monkeypatch):
     assert result['hit'] is True
     # With uniform=1.0, damage should equal strength + weapon bonus
     assert result['damage'] >= (player.strength + weapon.strength_bonus)
+
+
+def test_vampire_first_incoming_attack_always_misses(monkeypatch):
+    # Even with guaranteed hit randomness, first hit against vampire must miss.
+    monkeypatch.setattr(random, 'random', lambda: 0.0)
+    monkeypatch.setattr(random, 'uniform', lambda a, b: 1.0)
+
+    from domain.services.combat_system import CombatSystem
+    from domain.entities.character import Character
+    from domain.entities.enemy import Vampire
+
+    combat = CombatSystem(statistics=DummyStats())
+    player = Character(0, 0)
+    player.strength = 50
+    vampire = Vampire(0, 1)
+    start_hp = vampire.health
+
+    first = combat.resolve_player_attack(player, vampire)
+    second = combat.resolve_player_attack(player, vampire)
+
+    assert first['hit'] is False
+    assert first['damage'] == 0
+    assert vampire.first_attack_against is False
+    assert second['hit'] is True
+    assert vampire.health < start_hp
+
+
+def test_vampire_first_miss_has_specific_message(monkeypatch):
+    monkeypatch.setattr(random, 'random', lambda: 0.0)
+    monkeypatch.setattr(random, 'uniform', lambda a, b: 1.0)
+
+    from domain.services.combat_system import CombatSystem
+    from domain.entities.character import Character
+    from domain.entities.enemy import Vampire
+    from domain.combat import get_combat_message
+
+    combat = CombatSystem(statistics=DummyStats())
+    player = Character(0, 0)
+    vampire = Vampire(0, 1)
+
+    result = combat.resolve_player_attack(player, vampire)
+    message = get_combat_message(result)
+
+    assert result['hit'] is False
+    assert message == "Your first attack against a Vampire always misses!"

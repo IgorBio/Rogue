@@ -131,59 +131,6 @@ def test_pathfinding_service_basic():
     assert pathfinding_service.is_adjacent(start, goal) is True
 
 
-# def test_enemy_ai_variants(monkeypatch):
-#     level, room, _ = _make_walkable_level()
-#     player_pos = (2, 2)
-
-#     enemy = Mimic(3, 3)
-#     room.add_enemy(enemy)
-#     assert get_enemy_movement(enemy, player_pos, level, [enemy]) is None
-#     enemy.is_disguised = False
-#     enemy.is_chasing = True
-
-#     monkeypatch.setattr(pathfinding_service, "get_next_step", lambda a, b, c: (2, 3))
-#     assert get_enemy_movement(enemy, player_pos, level, [enemy]) == (2, 3)
-
-#     zombie = Zombie(3, 3)
-#     room.add_enemy(zombie)
-#     monkeypatch.setattr(pathfinding_service, "get_random_adjacent_walkable", lambda a, b: (2, 3))
-#     assert get_enemy_movement(zombie, player_pos, level, [zombie]) == (2, 3)
-
-#     vampire = Vampire(3, 3)
-#     vampire.is_chasing = True
-#     assert get_enemy_movement(vampire, player_pos, level, [vampire]) == (2, 3)
-
-#     ghost = Ghost(3, 3)
-#     room.add_enemy(ghost)
-#     monkeypatch.setattr(random, "randint", lambda a, b: a)
-#     pos = get_enemy_movement(ghost, player_pos, level, [ghost])
-#     assert pos is not None
-
-#     ogre = Ogre(3, 3)
-#     ogre.is_resting = True
-#     assert get_enemy_movement(ogre, player_pos, level, [ogre]) is None
-
-#     snake = SnakeMage(3, 3)
-#     snake.is_chasing = True
-#     snake.direction_cooldown = 0
-#     monkeypatch.setattr(random, "choice", lambda seq: seq[0])
-#     move = get_enemy_movement(snake, player_pos, level, [snake])
-#     assert move is not None
-
-#     class UnknownEnemy:
-#         def __init__(self):
-#             self.enemy_type = "unknown"
-#             self.position = (3, 3)
-#             self.hostility = 1
-#             self.is_chasing = False
-#         def is_alive(self):
-#             return True
-
-#     unknown = UnknownEnemy()
-#     move = get_enemy_movement(unknown, player_pos, level, [unknown])
-#     assert move is not None
-
-
 def test_enemy_ai_attack_effects(monkeypatch):
     vampire = Vampire(0, 0)
     snake = SnakeMage(0, 0)

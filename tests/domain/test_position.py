@@ -1,21 +1,14 @@
-﻿"""
-English description.
-"""
-
-import pytest
+﻿import pytest
 from domain.entities.position import Position, create_position, positions_equal
 
 
 class TestPositionCreation:
-    """English description."""
-    
     def test_create_from_int(self):
         pos = Position(10, 20)
         assert pos.x == 10
         assert pos.y == 20
     
     def test_create_from_float(self):
-        """English description."""
         pos = Position(10.7, 20.3)
         assert pos.x == 10
         assert pos.y == 20
@@ -23,8 +16,6 @@ class TestPositionCreation:
 
 
 class TestPositionEquality:
-    """English description."""
-    
     def test_equality_with_tuple(self):
         pos = Position(10, 20)
         assert pos == (10, 20)
@@ -35,16 +26,13 @@ class TestPositionEquality:
         assert pos == (10, 20)
     
     def test_hash_for_set(self):
-        """English description."""
         pos1 = Position(10, 20)
         pos2 = Position(10, 20)
         pos_set = {pos1, pos2}
-        assert len(pos_set) == 1  # English comment
+        assert len(pos_set) == 1
 
 
 class TestPositionUpdate:
-    """English description."""
-    
     def test_update_from_float(self):
         pos = Position(0, 0)
         pos.update(5.9, 7.1)
@@ -58,8 +46,6 @@ class TestPositionUpdate:
 
 
 class TestPositionDistance:
-    """English description."""
-    
     def test_euclidean_distance(self):
         pos1 = Position(0, 0)
         pos2 = Position(3, 4)
@@ -72,8 +58,6 @@ class TestPositionDistance:
 
 
 class TestPositionAdjacency:
-    """English description."""
-    
     def test_adjacent_horizontal(self):
         pos1 = Position(10, 10)
         pos2 = Position(11, 10)

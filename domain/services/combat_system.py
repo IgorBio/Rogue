@@ -35,7 +35,23 @@ class CombatSystem:
         Returns a dict compatible with `domain.combat.resolve_attack`.
         Publishes AttackPerformedEvent for statistics tracking.
         """
-        result = _combat.resolve_attack(player, enemy, attacker_weapon)
+        # Vampire passive: the first incoming player attack always misses.
+        if (
+            getattr(enemy, 'enemy_type', None) == 'vampire' and
+            getattr(enemy, 'first_attack_against', False)
+        ):
+            enemy.first_attack_against = False
+            result = {
+                'hit': False,
+                'damage': 0,
+                'killed': False,
+                'attacker_name': 'You',
+                'defender_name': 'Vampire',
+                'hit_chance': 0.0,
+                'special_miss_reason': 'vampire_first_attack',
+            }
+        else:
+            result = _combat.resolve_attack(player, enemy, attacker_weapon)
 
         # Publish attack event for statistics tracking
         try:

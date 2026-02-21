@@ -1,10 +1,5 @@
 """
 Unit tests for complete game state serialization.
-
-STEP 1.3: Tests for new serialization fields:
-- Game flow state (rendering_mode, player_asleep, game_over, victory)
-- Difficulty manager (all modifiers and performance data)
-- Camera (position, angle, FOV)
 """
 
 import pytest
@@ -233,7 +228,6 @@ class TestCompleteSerialization:
         """Test that missing fields have sensible defaults."""
         save_data = {
             'current_level_number': 5,
-            # Old save - missing new fields
         }
 
         # Simulate restore with fallbacks

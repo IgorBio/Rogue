@@ -170,6 +170,8 @@ def get_combat_message(result: Dict[str, Any]) -> str:
     defender = result['defender_name']
     
     if not result['hit']:
+        if result.get('special_miss_reason') == 'vampire_first_attack':
+            return "Your first attack against a Vampire always misses!"
         return f"{attacker} attacked {defender} but missed!"
     
     damage = result['damage']

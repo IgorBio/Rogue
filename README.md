@@ -23,6 +23,7 @@ python main.py
 ```
 
 Main menu options:
+
 - `1` new game
 - `2` continue
 - `3` statistics
@@ -34,13 +35,7 @@ Detailed controls: `CONTROLS.md`.
 ## Running Tests
 
 ```bash
-pytest
-```
-
-Coverage for `domain` and `data` only:
-
-```bash
-pytest --cov=domain --cov=data --cov-report=xml:coverage.xml
+python -m pytest
 ```
 
 ## Project Structure
